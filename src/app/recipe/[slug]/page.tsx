@@ -35,10 +35,17 @@ type Recipe = {
 }
 
 // ===== HELPERS =====
+function capitalizeIngredient(name: string): string {
+  if (!name) return name
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
-  if (!ingredients || ingredients.length === 0) return []
-  if (ingredients[0]?.group) return ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
-  return ingredients as IngredientItem[]
+  let items: IngredientItem[] = []
+  if (!ingredients || ingredients.length === 0) return items
+  if (ingredients[0]?.group) items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
+  else items = ingredients as IngredientItem[]
+  return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
 }
 
 function formatTime(minutes: number | null): string {
@@ -53,12 +60,21 @@ function EggDot({ size = 9 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
 
+const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  easy: { label: 'Easy', color: C.green, bg: C.greenBg },
+  simple: { label: 'Easy', color: C.green, bg: C.greenBg },
+  beginner: { label: 'Easy', color: C.green, bg: C.greenBg },
+  medium: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  moderate: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  intermediate: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  hard: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+  difficult: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+  advanced: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+}
+
 function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const styles: Record<string, { color: string; bg: string }> = {
-    easy: { color: C.green, bg: C.greenBg }, medium: { color: C.gold, bg: C.goldBg }, hard: { color: C.accent, bg: C.accentBg },
-  }
-  const s = styles[difficulty] || styles.easy
-  return <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg, padding: '3px 8px', borderRadius: 2, fontFamily: MONO }}>{difficulty}</span>
+  const d = DIFFICULTY_MAP[difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
+  return <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: d.color, background: d.bg, padding: '3px 8px', borderRadius: 2, fontFamily: MONO }}>{d.label}</span>
 }
 
 function BrokenEggSVG({ width = 60 }: { width?: number }) {
@@ -562,29 +578,16 @@ export default function RecipePage() {
             </div>
           )}
 
-          {/* Action buttons: Save · Grocery list · Share */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={toggleSave} style={{
-              padding: '12px 16px', borderRadius: 6,
-              border: `1.5px solid ${saved ? C.accent : C.rule}`,
-              background: saved ? C.accentBg : 'transparent',
-              color: saved ? C.accent : C.text3,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-              </svg>
-              {saved ? 'Saved' : 'Save'}
-            </button>
+          {/* Action buttons: Grocery list · Share · Save */}
+          <div style={{ display: 'flex', gap: 8 }}>
             {hasIngredients && (
               <button onClick={() => setShowGroceryList(true)} style={{
-                padding: '12px 20px', borderRadius: 6,
-                border: `1.5px solid ${C.green}`, background: C.greenBg,
-                color: C.green, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
-                display: 'flex', alignItems: 'center', gap: 6,
+                flex: 1, padding: '12px 16px', borderRadius: 6,
+                border: `1.5px solid ${C.rule}`, background: 'transparent',
+                color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                   <rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" />
                 </svg>
@@ -592,18 +595,29 @@ export default function RecipePage() {
               </button>
             )}
             <button onClick={handleShare} style={{
-              padding: '12px 16px', borderRadius: 6,
-              border: `1.5px solid ${C.rule}`,
-              background: 'transparent',
-              color: C.text3,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', gap: 5,
+              flex: 1, padding: '12px 16px', borderRadius: 6,
+              border: `1.5px solid ${C.rule}`, background: 'transparent',
+              color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
             }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
               Share
+            </button>
+            <button onClick={toggleSave} style={{
+              flex: 1, padding: '12px 16px', borderRadius: 6,
+              border: `1.5px solid ${saved ? C.accent : C.rule}`,
+              background: saved ? C.accentBg : 'transparent',
+              color: saved ? C.accent : C.text2,
+              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              {saved ? 'Saved' : 'Save'}
             </button>
           </div>
         </div>
@@ -657,12 +671,6 @@ export default function RecipePage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
-                  {s.timer_minutes && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, fontFamily: MONO, color: C.accent }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M12 2v2" /></svg>
-                      {formatTime(s.timer_minutes)}
-                    </span>
-                  )}
                 </div>
               </div>
             ))}
@@ -670,7 +678,7 @@ export default function RecipePage() {
               width: '100%', marginTop: 8, padding: '14px', borderRadius: 6, border: 'none',
               background: C.text, color: C.bg,
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-            }}>Start cooking →</button>
+            }}>Cook mode →</button>
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>

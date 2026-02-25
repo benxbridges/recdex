@@ -28,10 +28,17 @@ type Recipe = {
   ingredients: RawIngredients; steps: Step[]
 }
 
+function capitalizeIngredient(name: string): string {
+  if (!name) return name
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
-  if (!ingredients || ingredients.length === 0) return []
-  if (ingredients[0]?.group) return ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
-  return ingredients as IngredientItem[]
+  let items: IngredientItem[] = []
+  if (!ingredients || ingredients.length === 0) return items
+  if (ingredients[0]?.group) items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
+  else items = ingredients as IngredientItem[]
+  return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
 }
 
 function formatTime(minutes: number | null): string {

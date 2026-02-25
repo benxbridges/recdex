@@ -38,10 +38,17 @@ type Recipe = {
 type Category = { id: string; name: string; recipe_count: number }
 
 // ===== HELPERS =====
+function capitalizeIngredient(name: string): string {
+  if (!name) return name
+  return name.charAt(0).toUpperCase() + name.slice(1)
+}
+
 function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
-  if (!ingredients || ingredients.length === 0) return []
-  if (ingredients[0]?.group) return ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
-  return ingredients as IngredientItem[]
+  let items: IngredientItem[] = []
+  if (!ingredients || ingredients.length === 0) return items
+  if (ingredients[0]?.group) items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
+  else items = ingredients as IngredientItem[]
+  return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
 }
 
 function formatTime(minutes: number | null): string {
@@ -56,12 +63,21 @@ function EggDot({ size = 9 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
 
+const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
+  easy: { label: 'Easy', color: C.green, bg: C.greenBg },
+  simple: { label: 'Easy', color: C.green, bg: C.greenBg },
+  beginner: { label: 'Easy', color: C.green, bg: C.greenBg },
+  medium: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  moderate: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  intermediate: { label: 'Medium', color: C.gold, bg: C.goldBg },
+  hard: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+  difficult: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+  advanced: { label: 'Advanced', color: C.accent, bg: C.accentBg },
+}
+
 function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const styles: Record<string, { color: string; bg: string }> = {
-    easy: { color: C.green, bg: C.greenBg }, medium: { color: C.gold, bg: C.goldBg }, hard: { color: C.accent, bg: C.accentBg },
-  }
-  const s = styles[difficulty] || styles.easy
-  return <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg, padding: '2px 7px', borderRadius: 1, fontFamily: MONO }}>{difficulty}</span>
+  const d = DIFFICULTY_MAP[difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
+  return <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: d.color, background: d.bg, padding: '2px 7px', borderRadius: 1, fontFamily: MONO }}>{d.label}</span>
 }
 
 // Small broken egg for thumbnails (80×56 browse view)
