@@ -220,22 +220,8 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
           </div>
         </div>
         <div style={{ padding: '12px 24px 20px', overflowY: 'auto', flex: 1 }}>
-          {/* One-click add all */}
-          {!addedToList && (
-            <button onClick={addAllToShoppingList} style={{
-              width: '100%', padding: '11px 16px', borderRadius: 6,
-              border: `1.5px solid ${C.green}`, background: C.greenBg,
-              color: C.green, fontSize: 13, fontWeight: 600,
-              cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              marginBottom: 14,
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
-              Add all to shopping list
-            </button>
-          )}
           {!addedToList && items.length > 1 && (
-            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 8px', textAlign: 'center' }}>or select items individually</p>
+            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 8px', textAlign: 'center' }}>select items or add all below</p>
           )}
           {items.map((ing, i) => {
             const isAdded = added[i]
@@ -267,7 +253,6 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
           })}
         </div>
         <div style={{ padding: '16px 24px 20px', borderTop: `1px solid ${C.rule}`, flexShrink: 0 }}>
-          {/* Show "Added" state OR selective add button */}
           {addedToList ? (
             <button onClick={() => router.push('/pantry')} style={{
               width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none',
@@ -288,7 +273,18 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
               {addedCount === items.length ? 'Add all to shopping list' : `Add ${addedCount} item${addedCount !== 1 ? 's' : ''} to shopping list`}
             </button>
-          ) : null}
+          ) : (
+            <button onClick={addAllToShoppingList} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 6,
+              border: `1.5px solid ${C.green}`, background: C.greenBg,
+              color: C.green, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              Add all to shopping list
+            </button>
+          )}
           {/* Copy to clipboard */}
           <button onClick={copyToClipboard} style={{
             width: '100%', marginTop: addedToList || addedCount > 0 ? 8 : 0, padding: '10px 16px', borderRadius: 6,
@@ -617,18 +613,20 @@ export default function RecipePage() {
         {/* Ingredients */}
         {hasIngredients ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.05s both' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Ingredients</h2>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: 0 }}>Ingredients</h2>
               <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>serves {recipe.servings || 4}{recipe.servings_label ? ` ${recipe.servings_label}` : ''}</span>
             </div>
-            <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
-              {ingredientItems.map((item, i) => (
-                <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
-                  {item.name}
-                  {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
-                  {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
-                </p>
-              ))}
+            <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '16px 20px', background: C.cool }}>
+              <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
+                {ingredientItems.map((item, i) => (
+                  <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
+                    {item.name}
+                    {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
+                    {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
