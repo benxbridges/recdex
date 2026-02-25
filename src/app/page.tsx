@@ -613,9 +613,9 @@ export default function Home() {
               <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
               </Link>
-              <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
-                <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>My Box</span>
-              </div>
+              <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
+                <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
+              </Link>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 
@@ -116,18 +117,20 @@ function ContributePhotoCTA() {
 
 function RecipeBoxNav() {
   return (
-    <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 10px', borderRadius: 4, border: `1.5px solid ${C.rule}`, background: C.warm }}>
-      <div style={{ position: 'relative', width: 26, height: 22 }}>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 14, background: '#D4A574', borderRadius: '2px 2px 3px 3px', border: '1.5px solid #B8956A' }} />
-        <div style={{ position: 'absolute', top: 2, left: -1, right: -1, height: 8, background: '#C49660', borderRadius: '3px 3px 0 0', border: '1.5px solid #B8956A', borderBottom: 'none' }} />
-        <div style={{ position: 'absolute', top: 0, left: 4, width: 5, height: 5, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
-        <div style={{ position: 'absolute', top: -1, left: 11, width: 5, height: 6, background: '#fff', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
-        <div style={{ position: 'absolute', top: 1, left: 18, width: 5, height: 4, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
+    <Link href="/profile" style={{ textDecoration: 'none' }}>
+      <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px 6px 10px', borderRadius: 4, border: `1.5px solid ${C.rule}`, background: C.warm }}>
+        <div style={{ position: 'relative', width: 26, height: 22 }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 14, background: '#D4A574', borderRadius: '2px 2px 3px 3px', border: '1.5px solid #B8956A' }} />
+          <div style={{ position: 'absolute', top: 2, left: -1, right: -1, height: 8, background: '#C49660', borderRadius: '3px 3px 0 0', border: '1.5px solid #B8956A', borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: 0, left: 4, width: 5, height: 5, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: -1, left: 11, width: 5, height: 6, background: '#fff', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: 1, left: 18, width: 5, height: 4, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
+        </div>
+        <div>
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Profile</span>
+        </div>
       </div>
-      <div>
-        <span style={{ fontSize: 11, fontWeight: 600, color: C.text, fontFamily: SANS, lineHeight: 1 }}>My Box</span>
-      </div>
-    </div>
+    </Link>
   )
 }
 
