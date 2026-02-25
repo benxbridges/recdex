@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 
 // ===== DESIGN TOKENS =====
@@ -189,26 +190,19 @@ function CookedRecentlyFeed() {
 }
 
 // ===== RECIPE CARD (Browse view) =====
-function RecipeCard({ recipe, isExpanded, onToggle }: {
-  recipe: Recipe; isExpanded: boolean; onToggle: () => void
-}) {
-  const hasIngredients = recipe.ingredients && recipe.ingredients.length > 0
-  const hasSteps = recipe.steps && recipe.steps.length > 0
-  const ingredientItems = getIngredientItems(recipe.ingredients)
+function RecipeCard({ recipe, onClick }: { recipe: Recipe; onClick: () => void }) {
   return (
     <div style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px 0' }}>
-      <div style={{ display: 'flex', gap: 14, cursor: 'pointer' }} onClick={onToggle}>
+      <div style={{ display: 'flex', gap: 14, cursor: 'pointer' }} onClick={onClick}>
         <div style={{ width: 80, height: 56, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {recipe.image_url ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <Link href={`/recipe/${recipe.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <h3 style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.25, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{recipe.title}</h3>
-            </Link>
+            <h3 style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.25, display: 'inline' }}>{recipe.title}</h3>
             <span style={{ fontSize: 12, color: C.text3, fontFamily: SANS }}>{recipe.cuisine}</span>
           </div>
-          {!isExpanded && recipe.description && (
+          {recipe.description && (
             <p style={{ fontSize: 13, color: C.text2, lineHeight: 1.45, margin: '3px 0 0', fontFamily: SANS, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{recipe.description}</p>
           )}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
@@ -217,45 +211,303 @@ function RecipeCard({ recipe, isExpanded, onToggle }: {
             <TimeDisplay total={recipe.time_total} active={recipe.time_active} passiveLabel={recipe.time_passive_label} passiveTime={recipe.time_passive} />
           </div>
         </div>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 6, transition: 'transform 0.15s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}><path d="M6 9l6 6 6-6" /></svg>
       </div>
-      {isExpanded && (
-        <div style={{ marginTop: 14, paddingLeft: 94, animation: 'fadeIn 0.15s ease' }}>
-          {recipe.description && <p style={{ fontSize: 14, color: C.text, lineHeight: 1.6, margin: '0 0 16px', fontFamily: SERIF, fontStyle: 'italic', maxWidth: 520 }}>&ldquo;{recipe.description}&rdquo;</p>}
-          {recipe.time_passive_label && recipe.time_passive && (
-            <div style={{ marginBottom: 14, padding: '8px 12px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 6, fontSize: 12, color: C.accent, fontFamily: SANS }}>+ {formatTime(recipe.time_passive)} {recipe.time_passive_label}</div>
+    </div>
+  )
+}
+
+// ===== GROCERY LIST MODAL (for quick view) =====
+function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
+  const router = useRouter()
+  const items = getIngredientItems(recipe.ingredients)
+  const [added, setAdded] = useState<Record<number, boolean>>({})
+  const [addedToList, setAddedToList] = useState(false)
+  const [listCopied, setListCopied] = useState(false)
+
+  const addItem = (i: number) => setAdded(prev => ({ ...prev, [i]: true }))
+  const removeItem = (i: number) => setAdded(prev => ({ ...prev, [i]: false }))
+  const addedCount = Object.values(added).filter(Boolean).length
+
+  const addAllToShoppingList = () => {
+    const stored = localStorage.getItem('recdex-grocery')
+    let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
+    if (stored) { try { existing = JSON.parse(stored) } catch { /* ignore */ } }
+    existing = existing.filter(item => item.recipeId !== recipe.id)
+    const newItems = items.map(ing => ({
+      name: ing.name, amount: ing.amount, unit: ing.unit, notes: ing.notes,
+      recipeId: recipe.id, recipeTitle: recipe.title, recipeSlug: recipe.slug, checked: false,
+    }))
+    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    const a: Record<number, boolean> = {}
+    items.forEach((_, i) => { a[i] = true })
+    setAdded(a)
+    setAddedToList(true)
+  }
+
+  useEffect(() => {
+    const stored = localStorage.getItem('recdex-grocery')
+    if (stored) {
+      try {
+        const existing = JSON.parse(stored)
+        if (existing.some((item: { recipeId: string }) => item.recipeId === recipe.id)) setAddedToList(true)
+      } catch { /* ignore */ }
+    }
+  }, [recipe.id])
+
+  const addToShoppingList = () => {
+    const stored = localStorage.getItem('recdex-grocery')
+    let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
+    if (stored) { try { existing = JSON.parse(stored) } catch { /* ignore */ } }
+    existing = existing.filter(item => item.recipeId !== recipe.id)
+    const newItems = items.filter((_, i) => added[i]).map(ing => ({
+      name: ing.name, amount: ing.amount, unit: ing.unit, notes: ing.notes,
+      recipeId: recipe.id, recipeTitle: recipe.title, recipeSlug: recipe.slug, checked: false,
+    }))
+    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    setAddedToList(true)
+  }
+
+  const copyToClipboard = async () => {
+    const toCopy = addedCount > 0 ? items.filter((_, i) => added[i]) : items
+    const lines = toCopy.map(ing => {
+      const amt = ing.amount ? ` / ${ing.amount}${ing.unit ? ` ${ing.unit}` : ''}` : ''
+      return `${ing.name}${amt}${ing.notes ? ` (${ing.notes})` : ''}`
+    })
+    await navigator.clipboard?.writeText(`${recipe.title}\n${lines.join('\n')}`)
+    setListCopied(true)
+    setTimeout(() => setListCopied(false), 2000)
+  }
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [onClose])
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.4)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
+      <div style={{ position: 'relative', width: '100%', maxWidth: 400, maxHeight: '85vh', background: C.bg, borderRadius: 14, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.2)', animation: 'modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px', fontFamily: SANS }}>Grocery List</p>
+              <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>{recipe.title}</h3>
+              <p style={{ fontSize: 11, fontFamily: MONO, color: C.text3, marginTop: 2 }}>Serves {recipe.servings || 4} · {items.length} ingredient{items.length !== 1 ? 's' : ''}</p>
+            </div>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: C.text3, cursor: 'pointer', padding: 4 }}>×</button>
+          </div>
+        </div>
+        <div style={{ padding: '12px 24px 20px', overflowY: 'auto', flex: 1 }}>
+          {!addedToList && items.length > 1 && (
+            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 8px', textAlign: 'center' }}>select items or add all below</p>
           )}
-          {hasIngredients && ingredientItems.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px', fontFamily: SANS, borderBottom: `1px solid ${C.rule}`, paddingBottom: 4 }}>Ingredients · serves {recipe.servings || 4}{recipe.servings_label ? ` ${recipe.servings_label}` : ''}</p>
-              <div style={{ columns: 2, columnGap: 24 }}>
-                {ingredientItems.map((item, i) => (
-                  <p key={i} style={{ fontSize: 13, color: C.text, margin: '3px 0', fontFamily: SANS, lineHeight: 1.4, breakInside: 'avoid' as const }}>
-                    {item.amount && <span style={{ fontWeight: 500 }}>{item.amount} {item.unit} </span>}{item.name}
-                    {item.notes && <span style={{ color: C.text3, fontSize: 12 }}> ({item.notes})</span>}
-                  </p>
-                ))}
+          {items.map((ing, i) => {
+            const isAdded = added[i]
+            return (
+              <div key={i} onClick={() => isAdded ? removeItem(i) : addItem(i)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer' }}>
+                <span style={{ fontSize: 14, fontFamily: SANS, flex: 1, color: isAdded ? C.text3 : C.text, fontStyle: isAdded ? 'italic' : 'normal', transition: 'all 0.15s' }}>
+                  {capitalizeIngredient(ing.name)}
+                  {ing.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {ing.amount}{ing.unit ? ` ${ing.unit}` : ''}</span>}
+                  {ing.notes && <span style={{ color: C.text3 }}> ({ing.notes})</span>}
+                </span>
+                <div style={{ width: 24, height: 24, borderRadius: 6, flexShrink: 0, border: `1.5px solid ${isAdded ? C.green : C.rule}`, background: isAdded ? C.green : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', color: isAdded ? '#fff' : C.text3, fontSize: 15, fontWeight: 300, lineHeight: 1 }}>
+                  {isAdded ? <span style={{ fontSize: 12, fontWeight: 600 }}>✓</span> : '+'}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ padding: '16px 24px 20px', borderTop: `1px solid ${C.rule}`, flexShrink: 0 }}>
+          {addedToList ? (
+            <button onClick={() => router.push('/pantry')} style={{ width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none', background: C.green, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+              Added — view shopping list
+            </button>
+          ) : addedCount > 0 ? (
+            <button onClick={addToShoppingList} style={{ width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none', background: C.text, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              {addedCount === items.length ? 'Add all to shopping list' : `Add ${addedCount} item${addedCount !== 1 ? 's' : ''} to shopping list`}
+            </button>
+          ) : (
+            <button onClick={addAllToShoppingList} style={{ width: '100%', padding: '12px 16px', borderRadius: 6, border: `1.5px solid ${C.green}`, background: C.greenBg, color: C.green, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              Add all to shopping list
+            </button>
+          )}
+          <button onClick={copyToClipboard} style={{ width: '100%', marginTop: addedToList || addedCount > 0 ? 8 : 0, padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: listCopied ? C.green : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, transition: 'all 0.15s' }}>
+            {listCopied ? '✓ Copied to clipboard' : 'Copy to clipboard'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ===== RECIPE QUICK VIEW MODAL =====
+function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; onClose: () => void; isMobile: boolean }) {
+  const router = useRouter()
+  const ingredientItems = getIngredientItems(recipe.ingredients)
+  const hasIngredients = ingredientItems.length > 0
+  const hasSteps = recipe.steps && recipe.steps.length > 0
+  const [saved, setSaved] = useState(false)
+  const [showGroceryList, setShowGroceryList] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('recdex-box')
+    if (stored) {
+      try { const box = JSON.parse(stored); setSaved(box.includes(recipe.id)) } catch { /* ignore */ }
+    }
+  }, [recipe.id])
+
+  const toggleSave = () => {
+    const stored = localStorage.getItem('recdex-box')
+    let box: string[] = []
+    if (stored) { try { box = JSON.parse(stored) } catch { /* ignore */ } }
+    if (box.includes(recipe.id)) { box = box.filter(id => id !== recipe.id); setSaved(false) }
+    else { box.push(recipe.id); setSaved(true) }
+    localStorage.setItem('recdex-box', JSON.stringify(box))
+  }
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/recipe/${recipe.slug}`
+    if (navigator.share) { try { await navigator.share({ title: recipe.title, url }) } catch { /* cancelled */ } }
+    else { await navigator.clipboard?.writeText(url) }
+  }
+
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  const onEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !showGroceryList) onClose()
+  }, [onClose, showGroceryList])
+  useEffect(() => { window.addEventListener('keydown', onEscape); return () => window.removeEventListener('keydown', onEscape) }, [onEscape])
+
+  const stepsToShow = recipe.steps?.slice(0, 3) || []
+  const remainingSteps = (recipe.steps?.length || 0) - stepsToShow.length
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 0 : 20 }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.4)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
+      <div style={{
+        position: 'relative', width: '100%', maxWidth: isMobile ? '100%' : 560, maxHeight: isMobile ? '100vh' : '90vh',
+        background: C.bg, borderRadius: isMobile ? 0 : 14, overflow: 'hidden',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.2)', animation: 'modalIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+        display: 'flex', flexDirection: 'column',
+      }} onClick={e => e.stopPropagation()}>
+
+        {/* Hero image */}
+        <div style={{ position: 'relative', aspectRatio: isMobile ? '16/10' : '16/9', flexShrink: 0, background: C.warm, overflow: 'hidden' }}>
+          {recipe.image_url ? (
+            <>
+              <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%)' }} />
+            </>
+          ) : <BrokenEggCard />}
+          <div style={{ position: 'absolute', bottom: 16, left: 20, right: 60 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 700, color: '#fff', margin: 0, lineHeight: 1.15, textShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>{recipe.title}</h2>
+          </div>
+          <button onClick={onClose} style={{
+            position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: '50%',
+            background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', border: 'none',
+            color: '#fff', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </div>
+
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 20px' }}>
+          {/* Meta */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <DifficultyBadge difficulty={recipe.difficulty} />
+            <TimeDisplay total={recipe.time_total} active={recipe.time_active} passiveLabel={recipe.time_passive_label} passiveTime={recipe.time_passive} />
+            {recipe.cuisine && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
+          </div>
+
+          {/* Description */}
+          {recipe.description && (
+            <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: 'italic', color: C.text, lineHeight: 1.6, margin: '0 0 16px' }}>&ldquo;{recipe.description}&rdquo;</p>
+          )}
+
+          {/* Passive time callout */}
+          {recipe.time_passive_label && recipe.time_passive && (
+            <div style={{ marginBottom: 16, padding: '8px 12px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 6, fontSize: 12, color: C.accent, fontFamily: SANS }}>+ {formatTime(recipe.time_passive)} {recipe.time_passive_label}</div>
+          )}
+
+          {/* Ingredients */}
+          {hasIngredients && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+                <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Ingredients</h3>
+                <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>serves {recipe.servings || 4}</span>
+              </div>
+              <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '14px 18px', background: C.cool }}>
+                <div style={{ columns: isMobile ? 1 : 2, columnGap: 28 }}>
+                  {ingredientItems.map((item, i) => (
+                    <p key={i} style={{ fontSize: 14, color: C.text, margin: '4px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
+                      {capitalizeIngredient(item.name)}
+                      {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
+                      {item.notes && <span style={{ color: C.text3, fontSize: 12 }}> ({item.notes})</span>}
+                    </p>
+                  ))}
+                </div>
               </div>
             </div>
           )}
-          {recipe.tags && recipe.tags.length > 0 && (
-            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 14 }}>
-              {recipe.tags.map(tag => <span key={tag} style={{ fontSize: 10, fontFamily: MONO, color: C.text3, padding: '2px 8px', background: C.cool, borderRadius: 6 }}>{tag}</span>)}
+
+          {/* Steps preview */}
+          {hasSteps && (
+            <div style={{ marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Steps</h3>
+                <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipe.steps.length} steps</span>
+              </div>
+              {stepsToShow.map((s, i) => (
+                <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 4, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: 11, fontWeight: 700, background: C.ruleLight, color: C.text3 }}>{i + 1}</div>
+                  <p style={{ fontFamily: SANS, fontSize: 13, lineHeight: 1.55, color: C.text, margin: 0 }}>{s.text}</p>
+                </div>
+              ))}
+              {remainingSteps > 0 && (
+                <p style={{ fontSize: 12, fontFamily: MONO, color: C.text3, margin: '4px 0 0', paddingLeft: 38 }}>+ {remainingSteps} more step{remainingSteps !== 1 ? 's' : ''}...</p>
+              )}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-            {hasSteps ? (
-              <Link href={`/recipe/${recipe.slug}/cook`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
-                <button style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-              </Link>
-            ) : (
-              <button disabled style={{ padding: '10px 24px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`, background: 'transparent', color: C.text3, fontSize: 13, fontWeight: 500, fontFamily: SANS, cursor: 'default' }}>Steps coming soon</button>
+        </div>
+
+        {/* Sticky footer */}
+        <div style={{ flexShrink: 0, borderTop: `1px solid ${C.rule}`, padding: '16px 24px 20px' }}>
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+            {hasIngredients && (
+              <button onClick={() => setShowGroceryList(true)} style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" /></svg>
+                Grocery list
+              </button>
             )}
-            <button style={{ padding: '10px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save</button>
-            <button style={{ padding: '10px 20px', borderRadius: 6, border: `1.5px solid ${C.text}`, background: C.text, color: C.bg, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
+            <button onClick={handleShare} style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></svg>
+              Share
+            </button>
+            <button onClick={toggleSave} style={{ flex: 1, padding: '10px 12px', borderRadius: 6, border: `1.5px solid ${saved ? C.accent : C.rule}`, background: saved ? C.accentBg : 'transparent', color: saved ? C.accent : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+              {saved ? 'Saved' : 'Save'}
+            </button>
+          </div>
+          {/* Cook mode */}
+          {hasSteps && (
+            <button onClick={() => router.push(`/recipe/${recipe.slug}/cook`)} style={{ width: '100%', padding: '13px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS, marginBottom: 8 }}>Cook mode →</button>
+          )}
+          {/* View full recipe */}
+          <div style={{ textAlign: 'center' }}>
+            <Link href={`/recipe/${recipe.slug}`} style={{ fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 500, textDecoration: 'none' }}>View full recipe →</Link>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Grocery list sub-modal */}
+      {showGroceryList && <GroceryListModal recipe={recipe} onClose={() => setShowGroceryList(false)} />}
     </div>
   )
 }
@@ -279,7 +531,7 @@ export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [activeCategory, setActiveCategory] = useState('all')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [quickViewId, setQuickViewId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -334,6 +586,7 @@ export default function Home() {
   useEffect(() => { if (searchQuery.trim()) setView('browse') }, [searchQuery])
 
   const activeCategoryName = activeCategory === 'all' ? 'All Recipes' : categories.find(c => c.id === activeCategory)?.name || 'All Recipes'
+  const quickViewRecipe = quickViewId ? (recipes.find(r => r.id === quickViewId) || featuredRecipes.find(r => r.id === quickViewId) || quickRecipes.find(r => r.id === quickViewId) || (rotdRecipe?.id === quickViewId ? rotdRecipe : null)) : null
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
@@ -342,6 +595,8 @@ export default function Home() {
         *{box-sizing:border-box}body{margin:0;background:${C.bg}}::selection{background:rgba(200,74,42,0.15);color:${C.text}}input::placeholder{color:${C.text3}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${C.rule}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        @keyframes modalIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes backdropIn{from{opacity:0}to{opacity:1}}
       `}</style>
 
       {/* HEADER */}
@@ -459,7 +714,7 @@ export default function Home() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
               {featuredRecipes.slice(0, 4).map((r, i) => (
-                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => { setView('browse'); setExpandedId(r.id) }}>
+                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => setQuickViewId(r.id)}>
                   <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 8 }}>
                     {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
                   </div>
@@ -467,9 +722,7 @@ export default function Home() {
                     <DifficultyBadge difficulty={r.difficulty} />
                     <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
                   </div>
-                  <Link href={`/recipe/${r.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
-                    <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.25, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{r.title}</h3>
-                  </Link>
+                  <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.25, display: 'inline' }}>{r.title}</h3>
                   {TIPS[r.slug] && (
                     <div style={{ padding: '6px 10px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}` }}>
                       <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.4, margin: 0 }}>
@@ -492,13 +745,11 @@ export default function Home() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               {quickRecipes.map((r, i) => (
-                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.04}s both` }} onClick={() => { setView('browse'); setExpandedId(r.id) }}>
+                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.04}s both` }} onClick={() => setQuickViewId(r.id)}>
                   <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 6 }}>
                     {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
                   </div>
-                  <Link href={`/recipe/${r.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
-                    <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{r.title}</h3>
-                  </Link>
+                  <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2, display: 'inline' }}>{r.title}</h3>
                   <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
                 </div>
               ))}
@@ -548,9 +799,9 @@ export default function Home() {
           </div>
           {isMobile && (
             <div style={{ display: 'flex', gap: 4, paddingBottom: 12, overflowX: 'auto', borderBottom: `1px solid ${C.ruleLight}` }}>
-              <button onClick={() => { setActiveCategory('all'); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === 'all' ? 600 : 400, background: activeCategory === 'all' ? C.text : 'transparent', color: activeCategory === 'all' ? C.bg : C.text3 }}>All</button>
+              <button onClick={() => { setActiveCategory('all'); setQuickViewId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === 'all' ? 600 : 400, background: activeCategory === 'all' ? C.text : 'transparent', color: activeCategory === 'all' ? C.bg : C.text3 }}>All</button>
               {categories.map(cat => (
-                <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === cat.id ? 600 : 400, background: activeCategory === cat.id ? C.text : 'transparent', color: activeCategory === cat.id ? C.bg : C.text3 }}>{cat.name}</button>
+                <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setQuickViewId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === cat.id ? 600 : 400, background: activeCategory === cat.id ? C.text : 'transparent', color: activeCategory === cat.id ? C.bg : C.text3 }}>{cat.name}</button>
               ))}
             </div>
           )}
@@ -558,12 +809,12 @@ export default function Home() {
             {!isMobile && (
               <div style={{ width: 210, flexShrink: 0, paddingTop: 8, paddingRight: 24, borderRight: `1px solid ${C.rule}`, position: 'sticky', top: 0, height: '100vh', overflowY: 'auto' }}>
                 <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 10px', fontFamily: SANS }}>Categories</p>
-                <button onClick={() => { setActiveCategory('all'); setExpandedId(null) }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', padding: '5px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}>
+                <button onClick={() => { setActiveCategory('all'); setQuickViewId(null) }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', padding: '5px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}>
                   <span style={{ fontSize: 12.5, color: activeCategory === 'all' ? C.text : C.text2, fontWeight: activeCategory === 'all' ? 600 : 400, borderBottom: activeCategory === 'all' ? `1.5px solid ${C.text}` : '1.5px solid transparent', paddingBottom: 1 }}>All Recipes</span>
                   <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{totalCount}</span>
                 </button>
                 {categories.map(cat => (
-                  <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setExpandedId(null) }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', padding: '5px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}>
+                  <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setQuickViewId(null) }} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', width: '100%', padding: '5px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: SANS, textAlign: 'left' }}>
                     <span style={{ fontSize: 12.5, color: activeCategory === cat.id ? C.text : C.text2, fontWeight: activeCategory === cat.id ? 600 : 400, borderBottom: activeCategory === cat.id ? `1.5px solid ${C.text}` : '1.5px solid transparent', paddingBottom: 1 }}>{cat.name}</span>
                     <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{cat.recipe_count}</span>
                   </button>
@@ -581,12 +832,15 @@ export default function Home() {
               {loading && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>Loading recipes...</p></div>}
               {!loading && recipes.length === 0 && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>{searchQuery ? `No recipes found for "${searchQuery}".` : 'No recipes in this category yet.'}</p></div>}
               {!loading && recipes.map(recipe => (
-                <RecipeCard key={recipe.id} recipe={recipe} isExpanded={expandedId === recipe.id} onToggle={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)} />
+                <RecipeCard key={recipe.id} recipe={recipe} onClick={() => setQuickViewId(recipe.id)} />
               ))}
             </div>
           </div>
         </div>
       )}
+
+      {/* QUICK VIEW MODAL */}
+      {quickViewRecipe && <RecipeQuickViewModal recipe={quickViewRecipe} onClose={() => setQuickViewId(null)} isMobile={isMobile} />}
 
       {/* FOOTER */}
       <footer style={{ borderTop: `1.5px solid ${C.text}`, marginTop: 24 }}>
