@@ -676,9 +676,7 @@ export default function Home() {
                     <span style={{ color: C.rule }}>·</span>
                     <span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{rotdRecipe.cuisine}</span>
                   </div>
-                  <Link href={`/recipe/${rotdRecipe.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <h3 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.15, letterSpacing: -0.5, marginBottom: 8, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 2, display: 'inline' }}>{rotdRecipe.title}</h3>
-                  </Link>
+                  <h3 onClick={() => setQuickViewId(rotdRecipe.id)} style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.15, letterSpacing: -0.5, marginBottom: 8, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.rule, textUnderlineOffset: 3 }}>{rotdRecipe.title}</h3>
                   <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, marginBottom: 12, maxWidth: 360 }}>{rotdRecipe.description}</p>
                   {TIPS[rotdRecipe.slug] && (
                     <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
@@ -688,9 +686,7 @@ export default function Home() {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Link href={`/recipe/${rotdRecipe.slug}/cook`} style={{ textDecoration: 'none' }}>
-                      <button style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-                    </Link>
+                    <button onClick={() => setQuickViewId(rotdRecipe.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
                     <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                       {rotdSaved ? 'Saved' : 'Save'}
