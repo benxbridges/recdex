@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/app/lib/supabase'
 
 // ===== DESIGN TOKENS =====
@@ -49,11 +50,6 @@ function formatTime(minutes: number | null): string {
   return `${minutes} min`
 }
 
-function formatTimerDisplay(seconds: number): string {
-  const m = Math.floor(seconds / 60), s = seconds % 60
-  return `${m}:${s.toString().padStart(2, '0')}`
-}
-
 // ===== SMALL COMPONENTS =====
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
@@ -66,6 +62,42 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
   }
   const s = styles[difficulty] || styles.easy
   return <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: s.color, background: s.bg, padding: '2px 7px', borderRadius: 1, fontFamily: MONO }}>{difficulty}</span>
+}
+
+// Small broken egg for thumbnails (80×56 browse view)
+function BrokenEggSmall() {
+  return (
+    <svg width="32" height="24" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.5 }}>
+      <ellipse cx="100" cy="115" rx="55" ry="18" fill={C.ruleLight} />
+      <g transform="translate(42, 30) rotate(-8)">
+        <path d="M0 50 C0 22, 12 0, 28 0 C44 0, 56 22, 56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.warm} stroke={C.rule} strokeWidth="3" />
+      </g>
+      <g transform="translate(102, 35) rotate(12)">
+        <path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22, 36 0, 20 0 C4 0, -8 22, 0 48Z" fill={C.warm} stroke={C.rule} strokeWidth="3" />
+      </g>
+      <ellipse cx="100" cy="108" rx="16" ry="12" fill="#E8A44A" opacity="0.25" />
+      <ellipse cx="100" cy="106" rx="13" ry="10" fill="#E8A44A" opacity="0.35" />
+    </svg>
+  )
+}
+
+// Larger broken egg for card placeholders (community picks, quick meals)
+function BrokenEggCard() {
+  return (
+    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.warm }}>
+      <svg width="48" height="36" viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.4 }}>
+        <ellipse cx="100" cy="115" rx="55" ry="18" fill={C.ruleLight} />
+        <g transform="translate(42, 30) rotate(-8)">
+          <path d="M0 50 C0 22, 12 0, 28 0 C44 0, 56 22, 56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="2.5" />
+        </g>
+        <g transform="translate(102, 35) rotate(12)">
+          <path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22, 36 0, 20 0 C4 0, -8 22, 0 48Z" fill={C.cool} stroke={C.rule} strokeWidth="2.5" />
+        </g>
+        <ellipse cx="100" cy="108" rx="16" ry="12" fill="#E8A44A" opacity="0.2" />
+        <ellipse cx="100" cy="106" rx="13" ry="10" fill="#E8A44A" opacity="0.35" />
+      </svg>
+    </div>
+  )
 }
 
 function CookCount({ count }: { count: number }) {
@@ -140,128 +172,9 @@ function CookedRecentlyFeed() {
   )
 }
 
-// ===== INLINE TIMER =====
-function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
-  minutes: number; label: string; timerKey: string
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>
-  onStart: (key: string, seconds: number, label: string) => void
-}) {
-  const t = timers[timerKey]
-  const isActive = t && t.active
-  const isFinished = t && t.active && t.remaining <= 0
-  const seconds = minutes * 60
-  if (isActive) {
-    const pct = t.total > 0 ? ((t.total - t.remaining) / t.total) * 100 : 0
-    return (
-      <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 2, background: isFinished ? C.accentBg : C.timerBg, border: `1.5px solid ${isFinished ? C.accentMed : C.timerRing}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div style={{ width: 28, height: 28, position: 'relative', flexShrink: 0 }}>
-          <svg width="28" height="28" viewBox="0 0 28 28" style={{ transform: 'rotate(-90deg)' }}>
-            <circle cx="14" cy="14" r="11" fill="none" stroke={C.timerRing} strokeWidth="2" />
-            <circle cx="14" cy="14" r="11" fill="none" stroke={isFinished ? C.accent : C.green} strokeWidth="2" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 11}`} strokeDashoffset={`${2 * Math.PI * 11 * (1 - pct / 100)}`} style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
-          </svg>
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontSize: 8, fontWeight: 700, color: isFinished ? C.accent : C.text, fontFamily: MONO }}>{isFinished ? '✓' : formatTimerDisplay(t.remaining)}</span>
-          </div>
-        </div>
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: isFinished ? C.accent : C.text, margin: 0, fontFamily: SANS }}>{isFinished ? `${label} — Done!` : label}</p>
-          <div style={{ height: 2, borderRadius: 1, background: C.timerRing, marginTop: 4, overflow: 'hidden' }}>
-            <div style={{ height: '100%', borderRadius: 1, background: isFinished ? C.accent : C.green, width: `${pct}%`, transition: 'width 0.5s ease' }} />
-          </div>
-        </div>
-      </div>
-    )
-  }
-  return (
-    <button onClick={e => { e.stopPropagation(); onStart(timerKey, seconds, label) }} style={{ marginTop: 8, padding: '6px 12px', borderRadius: 2, border: `1.5px solid ${C.timerRing}`, background: C.timerBg, color: C.accent, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 6 }}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M12 2v2" /></svg>
-      Start timer · {formatTime(minutes)}
-    </button>
-  )
-}
-
-// ===== COOK MODE =====
-function CookMode({ recipe, onExit, timers, startTimer }: {
-  recipe: Recipe; onExit: () => void
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>
-  startTimer: (key: string, seconds: number, label: string) => void
-}) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [showIngredients, setShowIngredients] = useState(false)
-  const stepRefs = useRef<(HTMLDivElement | null)[]>([])
-  const total = recipe.steps.length
-  const ingredientItems = getIngredientItems(recipe.ingredients)
-
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 100, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <style>{`@keyframes cookModeIn{from{opacity:0;transform:translateY(30px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes backdropIn{from{opacity:0}to{opacity:1}}`}</style>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.45)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', animation: 'backdropIn 0.25s ease' }} onClick={onExit} />
-      <div style={{ position: 'relative', width: '100%', maxWidth: 680, maxHeight: '88vh', background: C.bg, borderRadius: 12, boxShadow: '0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', animation: 'cookModeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div style={{ padding: '16px 20px 12px', borderBottom: `1.5px solid ${C.rule}`, background: C.bg, flexShrink: 0, borderRadius: '12px 12px 0 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <button onClick={onExit} style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 2, padding: '5px 12px', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>← Exit</button>
-            <div style={{ textAlign: 'center' }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>
-              <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: '2px 0 0' }}>{recipe.title}</h2>
-            </div>
-            <button onClick={() => setShowIngredients(!showIngredients)} style={{ background: showIngredients ? C.text : 'none', border: `1px solid ${showIngredients ? C.text : C.rule}`, borderRadius: 2, padding: '5px 12px', color: showIngredients ? C.bg : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Ingredients</button>
-          </div>
-          <div style={{ display: 'flex', gap: 3, marginTop: 10 }}>
-            {recipe.steps.map((_, i) => (
-              <div key={i} onClick={() => setActiveStep(i)} style={{ flex: 1, height: 4, borderRadius: 1, cursor: 'pointer', background: i < activeStep ? C.green : i === activeStep ? C.accent : C.ruleLight, transition: 'background 0.3s' }} />
-            ))}
-          </div>
-        </div>
-        {/* Ingredients panel */}
-        {showIngredients && ingredientItems.length > 0 && (
-          <div style={{ padding: '14px 20px', background: C.warm, borderBottom: `1px solid ${C.rule}`, flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px', fontFamily: SANS }}>Ingredients · serves {recipe.servings || 4}</p>
-            <div style={{ columns: 2, columnGap: 20 }}>
-              {ingredientItems.map((item, i) => (
-                <p key={i} style={{ fontSize: 12, color: C.text, margin: '2px 0', fontFamily: SANS, lineHeight: 1.4, breakInside: 'avoid' as const }}>
-                  {item.amount && <span style={{ fontWeight: 500 }}>{item.amount} {item.unit} </span>}{item.name}
-                  {item.notes && <span style={{ color: C.text3 }}> ({item.notes})</span>}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* Steps */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 80px' }}>
-            {recipe.steps.map((s, i) => {
-              const isActive = i === activeStep, isCompleted = i < activeStep
-              return (
-                <div key={i} ref={el => { stepRefs.current[i] = el }} onClick={() => setActiveStep(i)}
-                  style={{ display: 'flex', gap: 14, padding: '14px 16px', marginBottom: 4, borderRadius: 2, cursor: 'pointer', background: isActive ? C.accentBg : 'transparent', borderLeft: isActive ? `3px solid ${C.accent}` : isCompleted ? `3px solid ${C.green}` : '3px solid transparent', transition: 'all 0.2s ease', opacity: isCompleted && !isActive ? 0.55 : 1 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: 2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: MONO, fontSize: 12, fontWeight: 700, background: isCompleted ? C.greenBg : isActive ? C.accent : C.ruleLight, color: isCompleted ? C.green : isActive ? '#fff' : C.text3, transition: 'all 0.2s' }}>
-                    {isCompleted ? '✓' : i + 1}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontFamily: isActive ? SERIF : SANS, fontSize: isActive ? 16 : 13.5, lineHeight: isActive ? 1.6 : 1.5, color: isCompleted ? C.text3 : C.text, margin: 0, fontWeight: 400 }}>{s.text}</p>
-                    {s.timer_minutes && (isActive || timers[`${recipe.id}-${i}`]?.active) && (
-                      <InlineTimer minutes={s.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-            {activeStep >= total - 1 && (
-              <div style={{ marginTop: 16, padding: 20, borderRadius: 8, background: C.greenBg, border: '1px solid #D5DDD2', textAlign: 'center', animation: 'fadeIn 0.2s ease' }}>
-                <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.green, margin: '0 0 4px' }}>All steps complete</p>
-                <p style={{ fontSize: 12, color: C.text2, margin: '0 0 14px', fontFamily: SANS }}>Nice work. How did it turn out?</p>
-                <button onClick={onExit} style={{ padding: '10px 28px', borderRadius: 6, border: 'none', background: C.green, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Finish & close</button>
-              </div>
-            )}
-        </div>
-      </div>
-    </div>
-  )
-}
-
 // ===== RECIPE CARD (Browse view) =====
-function RecipeCard({ recipe, isExpanded, onToggle, onCookMode }: {
-  recipe: Recipe; isExpanded: boolean; onToggle: () => void; onCookMode: () => void
+function RecipeCard({ recipe, isExpanded, onToggle }: {
+  recipe: Recipe; isExpanded: boolean; onToggle: () => void
 }) {
   const hasIngredients = recipe.ingredients && recipe.ingredients.length > 0
   const hasSteps = recipe.steps && recipe.steps.length > 0
@@ -269,12 +182,14 @@ function RecipeCard({ recipe, isExpanded, onToggle, onCookMode }: {
   return (
     <div style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px 0' }}>
       <div style={{ display: 'flex', gap: 14, cursor: 'pointer' }} onClick={onToggle}>
-        <div style={{ width: 80, height: 56, borderRadius: 2, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {recipe.image_url ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <span style={{ fontSize: 22, opacity: 0.4 }}>🍽</span>}
+        <div style={{ width: 80, height: 56, borderRadius: 6, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {recipe.image_url ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-            <h3 style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.25 }}>{recipe.title}</h3>
+            <Link href={`/recipe/${recipe.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <h3 style={{ fontFamily: SERIF, fontSize: 16.5, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.25, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{recipe.title}</h3>
+            </Link>
             <span style={{ fontSize: 12, color: C.text3, fontFamily: SANS }}>{recipe.cuisine}</span>
           </div>
           {!isExpanded && recipe.description && (
@@ -292,7 +207,7 @@ function RecipeCard({ recipe, isExpanded, onToggle, onCookMode }: {
         <div style={{ marginTop: 14, paddingLeft: 94, animation: 'fadeIn 0.15s ease' }}>
           {recipe.description && <p style={{ fontSize: 14, color: C.text, lineHeight: 1.6, margin: '0 0 16px', fontFamily: SERIF, fontStyle: 'italic', maxWidth: 520 }}>&ldquo;{recipe.description}&rdquo;</p>}
           {recipe.time_passive_label && recipe.time_passive && (
-            <div style={{ marginBottom: 14, padding: '8px 12px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 2, fontSize: 12, color: C.accent, fontFamily: SANS }}>+ {formatTime(recipe.time_passive)} {recipe.time_passive_label}</div>
+            <div style={{ marginBottom: 14, padding: '8px 12px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 6, fontSize: 12, color: C.accent, fontFamily: SANS }}>+ {formatTime(recipe.time_passive)} {recipe.time_passive_label}</div>
           )}
           {hasIngredients && ingredientItems.length > 0 && (
             <div style={{ marginBottom: 16 }}>
@@ -309,17 +224,19 @@ function RecipeCard({ recipe, isExpanded, onToggle, onCookMode }: {
           )}
           {recipe.tags && recipe.tags.length > 0 && (
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 14 }}>
-              {recipe.tags.map(tag => <span key={tag} style={{ fontSize: 10, fontFamily: MONO, color: C.text3, padding: '2px 8px', background: C.cool, borderRadius: 2 }}>{tag}</span>)}
+              {recipe.tags.map(tag => <span key={tag} style={{ fontSize: 10, fontFamily: MONO, color: C.text3, padding: '2px 8px', background: C.cool, borderRadius: 6 }}>{tag}</span>)}
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
             {hasSteps ? (
-              <button onClick={e => { e.stopPropagation(); onCookMode() }} style={{ padding: '10px 24px', borderRadius: 2, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
+              <Link href={`/recipe/${recipe.slug}/cook`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
+                <button style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
+              </Link>
             ) : (
-              <button disabled style={{ padding: '10px 24px', borderRadius: 2, border: `1.5px solid ${C.ruleLight}`, background: 'transparent', color: C.text3, fontSize: 13, fontWeight: 500, fontFamily: SANS, cursor: 'default' }}>Steps coming soon</button>
+              <button disabled style={{ padding: '10px 24px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`, background: 'transparent', color: C.text3, fontSize: 13, fontWeight: 500, fontFamily: SANS, cursor: 'default' }}>Steps coming soon</button>
             )}
-            <button style={{ padding: '10px 20px', borderRadius: 2, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save</button>
-            <button style={{ padding: '10px 20px', borderRadius: 2, border: `1.5px solid ${C.text}`, background: C.text, color: C.bg, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
+            <button style={{ padding: '10px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save</button>
+            <button style={{ padding: '10px 20px', borderRadius: 6, border: `1.5px solid ${C.text}`, background: C.text, color: C.bg, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
           </div>
         </div>
       )}
@@ -352,8 +269,6 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
-  const [cookModeRecipe, setCookModeRecipe] = useState<Recipe | null>(null)
-  const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; label: string }>>({})
   const [view, setView] = useState<'home' | 'browse'>('home')
   const [rotdSaved, setRotdSaved] = useState(false)
 
@@ -364,23 +279,6 @@ export default function Home() {
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([])
   const [quickRecipes, setQuickRecipes] = useState<Recipe[]>([])
   const [rotdRecipe, setRotdRecipe] = useState<Recipe | null>(null)
-
-  // Timer tick
-  useEffect(() => {
-    const hasActive = Object.values(timers).some(t => t.active && t.remaining > 0)
-    if (!hasActive) return
-    const interval = setInterval(() => {
-      setTimers(prev => {
-        const next = { ...prev }
-        Object.keys(next).forEach(k => { if (next[k].active && next[k].remaining > 0) next[k] = { ...next[k], remaining: next[k].remaining - 1 } })
-        return next
-      })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [timers])
-
-  const startTimer = (key: string, seconds: number, label: string) => setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, label } }))
-  const cancelTimer = (key: string) => setTimers(prev => { const next = { ...prev }; delete next[key]; return next })
 
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 700); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
   useEffect(() => { supabase.from('categories').select('*').order('sort_order').then(({ data }) => { if (data) setCategories(data) }) }, [])
@@ -421,8 +319,6 @@ export default function Home() {
 
   const activeCategoryName = activeCategory === 'all' ? 'All Recipes' : categories.find(c => c.id === activeCategory)?.name || 'All Recipes'
 
-  // Cook mode is now an overlay, rendered at the bottom of the component
-
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
       <style>{`
@@ -446,6 +342,9 @@ export default function Home() {
               <span style={{ color: C.text2, cursor: 'pointer' }}>about</span>
               <span style={{ color: C.text2, cursor: 'pointer' }}>contribute</span>
               <div style={{ width: 1, height: 14, background: C.rule }} />
+              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
+              </Link>
               <div style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
                 <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>My Box</span>
               </div>
@@ -474,11 +373,11 @@ export default function Home() {
             </svg>
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
               placeholder="Search by recipe, ingredient, or cuisine..."
-              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchFocused ? C.text : C.rule}`, borderRadius: 3, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: '#fff', boxShadow: searchFocused ? '0 2px 12px rgba(0,0,0,0.06)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
+              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchFocused ? C.text : C.rule}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: '#fff', boxShadow: searchFocused ? '0 2px 12px rgba(0,0,0,0.06)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking'].map(tag => (
-              <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 2, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
+              <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
             ))}
           </div>
         </div>
@@ -498,10 +397,10 @@ export default function Home() {
                 </div>
                 <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>FEB 24</span>
               </div>
-              <div style={{ display: 'flex', gap: 28, cursor: 'pointer', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 380px', aspectRatio: '16/10', borderRadius: 4, overflow: 'hidden', background: C.warm, minHeight: 220 }}>
-                  {rotdRecipe.image_url && <img src={rotdRecipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-                </div>
+              <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+                <Link href={`/recipe/${rotdRecipe.slug}`} style={{ flex: '1 1 380px', aspectRatio: '16/10', borderRadius: 10, overflow: 'hidden', background: C.warm, minHeight: 220, display: 'block' }}>
+                  {rotdRecipe.image_url ? <img src={rotdRecipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
+                </Link>
                 <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '4px 0' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                     <DifficultyBadge difficulty={rotdRecipe.difficulty} />
@@ -509,18 +408,22 @@ export default function Home() {
                     <span style={{ color: C.rule }}>·</span>
                     <span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{rotdRecipe.cuisine}</span>
                   </div>
-                  <h3 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.15, letterSpacing: -0.5, marginBottom: 8 }}>{rotdRecipe.title}</h3>
+                  <Link href={`/recipe/${rotdRecipe.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <h3 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.15, letterSpacing: -0.5, marginBottom: 8, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 2, display: 'inline' }}>{rotdRecipe.title}</h3>
+                  </Link>
                   <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, marginBottom: 12, maxWidth: 360 }}>{rotdRecipe.description}</p>
                   {TIPS[rotdRecipe.slug] && (
-                    <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 2, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
+                    <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
                       <p style={{ fontSize: 12, color: C.text, fontFamily: SANS, lineHeight: 1.5, margin: 0 }}>
                         <span style={{ fontWeight: 600, color: C.accent }}>@{TIPS[rotdRecipe.slug].user}</span> {TIPS[rotdRecipe.slug].text}
                       </p>
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setCookModeRecipe(rotdRecipe)} style={{ padding: '10px 24px', borderRadius: 2, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-                    <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 2, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
+                    <Link href={`/recipe/${rotdRecipe.slug}/cook`} style={{ textDecoration: 'none' }}>
+                      <button style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
+                    </Link>
+                    <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
                       {rotdSaved ? 'Saved' : 'Save'}
                     </button>
@@ -541,16 +444,18 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
               {featuredRecipes.slice(0, 4).map((r, i) => (
                 <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => { setView('browse'); setExpandedId(r.id) }}>
-                  <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 3, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 8 }}>
-                    {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 32, opacity: 0.3 }}>🍽</span></div>}
+                  <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 8 }}>
+                    {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
                     <DifficultyBadge difficulty={r.difficulty} />
                     <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
                   </div>
-                  <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.25 }}>{r.title}</h3>
+                  <Link href={`/recipe/${r.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
+                    <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.25, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{r.title}</h3>
+                  </Link>
                   {TIPS[r.slug] && (
-                    <div style={{ padding: '6px 10px', background: C.cool, borderRadius: 2, borderLeft: `2px solid ${C.ruleLight}` }}>
+                    <div style={{ padding: '6px 10px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}` }}>
                       <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.4, margin: 0 }}>
                         <span style={{ fontWeight: 600, color: C.text3 }}>@{TIPS[r.slug].user}</span> {TIPS[r.slug].text}
                       </p>
@@ -572,10 +477,12 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               {quickRecipes.map((r, i) => (
                 <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.04}s both` }} onClick={() => { setView('browse'); setExpandedId(r.id) }}>
-                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 3, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 6 }}>
-                    {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span style={{ fontSize: 20, opacity: 0.3 }}>🍽</span></div>}
+                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 6 }}>
+                    {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
                   </div>
-                  <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{r.title}</h3>
+                  <Link href={`/recipe/${r.slug}`} onClick={e => e.stopPropagation()} style={{ textDecoration: 'none' }}>
+                    <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 1, display: 'inline' }}>{r.title}</h3>
+                  </Link>
                   <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
                 </div>
               ))}
@@ -593,7 +500,7 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               {categories.slice(0, 12).map((cat, i) => (
                 <div key={cat.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.03}s both` }} onClick={() => { setActiveCategory(cat.id); setView('browse') }}>
-                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 3, overflow: 'hidden', position: 'relative', background: C.text }}>
+                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', position: 'relative', background: C.text }}>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 10 }}>
                       <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 1 }}>{cat.name}</h3>
                       <span style={{ fontSize: 10, fontFamily: MONO, color: 'rgba(255,255,255,0.7)' }}>{cat.recipe_count} recipes</span>
@@ -605,12 +512,12 @@ export default function Home() {
           </section>
 
           {/* MISSION */}
-          <div style={{ padding: '28px 32px', borderRadius: 4, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 32, textAlign: 'center' }}>
+          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 32, textAlign: 'center' }}>
             <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
             <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-              <button style={{ padding: '9px 20px', borderRadius: 2, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
-              <button style={{ padding: '9px 20px', borderRadius: 2, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
+              <button style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
+              <button style={{ padding: '9px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
             </div>
           </div>
         </div>
@@ -625,9 +532,9 @@ export default function Home() {
           </div>
           {isMobile && (
             <div style={{ display: 'flex', gap: 4, paddingBottom: 12, overflowX: 'auto', borderBottom: `1px solid ${C.ruleLight}` }}>
-              <button onClick={() => { setActiveCategory('all'); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === 'all' ? 600 : 400, background: activeCategory === 'all' ? C.text : 'transparent', color: activeCategory === 'all' ? C.bg : C.text3 }}>All</button>
+              <button onClick={() => { setActiveCategory('all'); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === 'all' ? 600 : 400, background: activeCategory === 'all' ? C.text : 'transparent', color: activeCategory === 'all' ? C.bg : C.text3 }}>All</button>
               {categories.map(cat => (
-                <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 2, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === cat.id ? 600 : 400, background: activeCategory === cat.id ? C.text : 'transparent', color: activeCategory === cat.id ? C.bg : C.text3 }}>{cat.name}</button>
+                <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setExpandedId(null) }} style={{ padding: '5px 12px', whiteSpace: 'nowrap', border: 'none', borderRadius: 6, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: activeCategory === cat.id ? 600 : 400, background: activeCategory === cat.id ? C.text : 'transparent', color: activeCategory === cat.id ? C.bg : C.text3 }}>{cat.name}</button>
               ))}
             </div>
           )}
@@ -658,7 +565,7 @@ export default function Home() {
               {loading && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>Loading recipes...</p></div>}
               {!loading && recipes.length === 0 && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>{searchQuery ? `No recipes found for "${searchQuery}".` : 'No recipes in this category yet.'}</p></div>}
               {!loading && recipes.map(recipe => (
-                <RecipeCard key={recipe.id} recipe={recipe} isExpanded={expandedId === recipe.id} onToggle={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)} onCookMode={() => setCookModeRecipe(recipe)} />
+                <RecipeCard key={recipe.id} recipe={recipe} isExpanded={expandedId === recipe.id} onToggle={() => setExpandedId(expandedId === recipe.id ? null : recipe.id)} />
               ))}
             </div>
           </div>
@@ -686,8 +593,6 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* COOK MODE OVERLAY */}
-      {cookModeRecipe && <CookMode recipe={cookModeRecipe} onExit={() => setCookModeRecipe(null)} timers={timers} startTimer={startTimer} />}
     </div>
   )
 }

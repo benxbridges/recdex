@@ -117,9 +117,90 @@ function RecipeBoxNav() {
 
 // ===== GROCERY LIST MODAL =====
 function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
-  const [checked, setChecked] = useState<Record<number, boolean>>({})
+  const router = useRouter()
   const items = getIngredientItems(recipe.ingredients)
-  const toggle = (i: number) => setChecked(prev => ({ ...prev, [i]: !prev[i] }))
+  // Items start unselected — click + to add
+  const [added, setAdded] = useState<Record<number, boolean>>({})
+  const [addedToList, setAddedToList] = useState(false)
+  const [listCopied, setListCopied] = useState(false)
+
+  const addItem = (i: number) => setAdded(prev => ({ ...prev, [i]: true }))
+  const removeItem = (i: number) => setAdded(prev => ({ ...prev, [i]: false }))
+  const addedCount = Object.values(added).filter(Boolean).length
+
+  const addAll = () => {
+    const all: Record<number, boolean> = {}
+    items.forEach((_, i) => { all[i] = true })
+    setAdded(all)
+  }
+
+  // One-click: add ALL items directly to shopping list (no two-step)
+  const addAllToShoppingList = () => {
+    const stored = localStorage.getItem('recdex-grocery')
+    let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
+    if (stored) {
+      try { existing = JSON.parse(stored) } catch { /* ignore */ }
+    }
+    existing = existing.filter(item => item.recipeId !== recipe.id)
+    const newItems = items.map(ing => ({
+      name: ing.name, amount: ing.amount, unit: ing.unit, notes: ing.notes,
+      recipeId: recipe.id, recipeTitle: recipe.title, recipeSlug: recipe.slug, checked: false,
+    }))
+    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    const a: Record<number, boolean> = {}
+    items.forEach((_, i) => { a[i] = true })
+    setAdded(a)
+    setAddedToList(true)
+  }
+
+  // Check if this recipe's items are already in the shopping list
+  useEffect(() => {
+    const stored = localStorage.getItem('recdex-grocery')
+    if (stored) {
+      try {
+        const existing = JSON.parse(stored)
+        const hasRecipe = existing.some((item: { recipeId: string }) => item.recipeId === recipe.id)
+        if (hasRecipe) setAddedToList(true)
+      } catch { /* ignore */ }
+    }
+  }, [recipe.id])
+
+  const addToShoppingList = () => {
+    const stored = localStorage.getItem('recdex-grocery')
+    let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
+    if (stored) {
+      try { existing = JSON.parse(stored) } catch { /* ignore */ }
+    }
+    // Remove any existing items from this recipe (replace with fresh selection)
+    existing = existing.filter(item => item.recipeId !== recipe.id)
+    // Only add selected items
+    const newItems = items
+      .filter((_, i) => added[i])
+      .map(ing => ({
+        name: ing.name,
+        amount: ing.amount,
+        unit: ing.unit,
+        notes: ing.notes,
+        recipeId: recipe.id,
+        recipeTitle: recipe.title,
+        recipeSlug: recipe.slug,
+        checked: false,
+      }))
+    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    setAddedToList(true)
+  }
+
+  const copyToClipboard = async () => {
+    // Copy added items, or all items if none selected
+    const toCopy = addedCount > 0 ? items.filter((_, i) => added[i]) : items
+    const lines = toCopy.map(ing => {
+      const amt = ing.amount ? ` / ${ing.amount}${ing.unit ? ` ${ing.unit}` : ''}` : ''
+      return `${ing.name}${amt}${ing.notes ? ` (${ing.notes})` : ''}`
+    })
+    await navigator.clipboard?.writeText(`${recipe.title}\n${lines.join('\n')}`)
+    setListCopied(true)
+    setTimeout(() => setListCopied(false), 2000)
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
@@ -131,42 +212,186 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
             <div>
               <p style={{ fontSize: 9, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px', fontFamily: SANS }}>Grocery List</p>
               <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>{recipe.title}</h3>
-              <p style={{ fontSize: 11, fontFamily: MONO, color: C.text3, marginTop: 2 }}>Serves {recipe.servings || 4} · {items.length} items</p>
+              <p style={{ fontSize: 11, fontFamily: MONO, color: C.text3, marginTop: 2 }}>
+                Serves {recipe.servings || 4} · {items.length} ingredient{items.length !== 1 ? 's' : ''}
+              </p>
             </div>
             <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: C.text3, cursor: 'pointer', padding: 4 }}>×</button>
           </div>
         </div>
         <div style={{ padding: '12px 24px 20px', overflowY: 'auto', flex: 1 }}>
-          {items.map((ing, i) => (
-            <div key={i} onClick={() => toggle(i)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer' }}>
-              <div style={{ width: 20, height: 20, borderRadius: 4, flexShrink: 0, border: `2px solid ${checked[i] ? C.green : C.rule}`, background: checked[i] ? C.green : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
-                {checked[i] && <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>✓</span>}
+          {/* One-click add all */}
+          {!addedToList && (
+            <button onClick={addAllToShoppingList} style={{
+              width: '100%', padding: '11px 16px', borderRadius: 6,
+              border: `1.5px solid ${C.green}`, background: C.greenBg,
+              color: C.green, fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              marginBottom: 14,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              Add all to shopping list
+            </button>
+          )}
+          {!addedToList && items.length > 1 && (
+            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 8px', textAlign: 'center' }}>or select items individually</p>
+          )}
+          {items.map((ing, i) => {
+            const isAdded = added[i]
+            return (
+              <div key={i} onClick={() => isAdded ? removeItem(i) : addItem(i)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer' }}>
+                <span style={{
+                  fontSize: 14, fontFamily: SANS, flex: 1,
+                  color: isAdded ? C.text3 : C.text,
+                  fontStyle: isAdded ? 'italic' : 'normal',
+                  transition: 'all 0.15s',
+                }}>
+                  {ing.name}
+                  {ing.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {ing.amount}{ing.unit ? ` ${ing.unit}` : ''}</span>}
+                  {ing.notes && <span style={{ color: C.text3 }}> ({ing.notes})</span>}
+                </span>
+                <div style={{
+                  width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+                  border: `1.5px solid ${isAdded ? C.green : C.rule}`,
+                  background: isAdded ? C.green : 'transparent',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                  color: isAdded ? '#fff' : C.text3,
+                  fontSize: 15, fontWeight: 300, lineHeight: 1,
+                }}>
+                  {isAdded ? <span style={{ fontSize: 12, fontWeight: 600 }}>✓</span> : '+'}
+                </div>
               </div>
-              <span style={{ fontSize: 14, fontFamily: SANS, color: checked[i] ? C.text3 : C.text, textDecoration: checked[i] ? 'line-through' : 'none', transition: 'all 0.15s' }}>
-                {ing.amount && <strong>{ing.amount} {ing.unit} </strong>}{ing.name}
-                {ing.notes && <span style={{ color: C.text3 }}> ({ing.notes})</span>}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
         <div style={{ padding: '16px 24px 20px', borderTop: `1px solid ${C.rule}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button style={{ flex: 1, padding: '11px 16px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4z" /></svg>
-              Text to myself
+          {/* Show "Added" state OR selective add button */}
+          {addedToList ? (
+            <button onClick={() => router.push('/pantry')} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none',
+              background: C.green, color: '#fff',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+              Added — view shopping list
             </button>
-            <button style={{ flex: 1, padding: '11px 16px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2" /><path d="M22 7l-10 7L2 7" /></svg>
-              Email
+          ) : addedCount > 0 ? (
+            <button onClick={addToShoppingList} style={{
+              width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none',
+              background: C.text, color: '#fff',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
+              {addedCount === items.length ? 'Add all to shopping list' : `Add ${addedCount} item${addedCount !== 1 ? 's' : ''} to shopping list`}
             </button>
-          </div>
-          <button style={{ width: '100%', marginTop: 8, padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Copy to clipboard</button>
+          ) : null}
+          {/* Copy to clipboard */}
+          <button onClick={copyToClipboard} style={{
+            width: '100%', marginTop: addedToList || addedCount > 0 ? 8 : 0, padding: '10px 16px', borderRadius: 6,
+            border: `1.5px solid ${C.rule}`, background: 'transparent',
+            color: listCopied ? C.green : C.text2,
+            fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+            transition: 'all 0.15s',
+          }}>
+            {listCopied ? '✓ Copied to clipboard' : 'Copy to clipboard'}
+          </button>
         </div>
       </div>
     </div>
   )
 }
 
+// ===== SHARE CARD MODAL =====
+function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
+  const [linkCopied, setLinkCopied] = useState(false)
+  const items = getIngredientItems(recipe.ingredients)
+
+  const copyLink = async () => {
+    await navigator.clipboard?.writeText(window.location.href)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
+
+  const shareNative = async () => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try { await navigator.share({ title: recipe.title, url: window.location.href }) } catch { /* cancelled */ }
+    } else {
+      await copyLink()
+    }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <style>{`@keyframes cardIn{from{opacity:0;transform:scale(0.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.55)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
+      <div onClick={e => e.stopPropagation()} style={{ width: 'min(380px, 90vw)', animation: 'cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+        {/* The card */}
+        <div style={{ background: '#FFFEFA', border: `1.5px solid ${C.text}`, borderRadius: 10, padding: '28px 26px 24px', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+            <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 600, letterSpacing: 2, color: C.text3, textTransform: 'uppercase' }}>Recipe Index</span>
+            <span style={{ fontFamily: MONO, fontSize: 8, color: C.text3 }}>recipeindex.org</span>
+          </div>
+          <div style={{ height: 1, background: C.text, marginBottom: 18 }} />
+
+          {/* Title & meta */}
+          <h2 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.15, letterSpacing: -0.5 }}>{recipe.title}</h2>
+          {recipe.cuisine && <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: '0 0 2px' }}>{recipe.cuisine}</p>}
+          {recipe.description && <p style={{ fontFamily: SERIF, fontSize: 12, color: C.text2, margin: '4px 0 0', fontStyle: 'italic', lineHeight: 1.5 }}>{recipe.description}</p>}
+
+          <div style={{ height: 1, background: C.rule, margin: '14px 0' }} />
+
+          {/* Time & servings */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 14, alignItems: 'center' }}>
+            {recipe.time_total && <span style={{ fontSize: 11, fontFamily: MONO, color: C.text2 }}>{formatTime(recipe.time_total)}</span>}
+            {recipe.time_active && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_active)} active</span></>}
+            <span style={{ color: C.rule }}>·</span>
+            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text2 }}>serves {recipe.servings || 4}{recipe.servings_label ? ` ${recipe.servings_label}` : ''}</span>
+          </div>
+
+          {/* Ingredients */}
+          {items.length > 0 && (
+            <>
+              <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 8px', fontFamily: SANS }}>Ingredients</p>
+              <div style={{ columns: 2, columnGap: 16, marginBottom: 16 }}>
+                {items.map((ing, i) => (
+                  <p key={i} style={{ fontSize: 12, color: C.text, margin: '3px 0', fontFamily: SANS, lineHeight: 1.4, breakInside: 'avoid' as const }}>
+                    {ing.name}{ing.amount && <span style={{ color: C.text3 }}> / {ing.amount}{ing.unit ? ` ${ing.unit}` : ''}</span>}
+                  </p>
+                ))}
+              </div>
+            </>
+          )}
+
+          <div style={{ height: 1, background: C.text, margin: '14px 0 12px' }} />
+
+          {/* Footer */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ fontSize: 11, color: C.text2, fontFamily: SANS, fontWeight: 500 }}>Recipe Index<EggDot size={5} /></span>
+              <p style={{ fontSize: 10, color: C.text3, fontFamily: MONO, margin: '2px 0 0' }}>Free recipes, no ads, always.</p>
+            </div>
+            <div style={{ width: 44, height: 44, border: `1.5px solid ${C.text}`, borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 7, fontFamily: MONO, color: C.text3, textAlign: 'center', lineHeight: 1.3 }}>QR<br/>code</div>
+          </div>
+        </div>
+
+        {/* Action buttons below card */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+          <button onClick={copyLink} style={{ flex: 1, padding: '9px 0', border: `1px solid ${linkCopied ? C.green : C.rule}`, borderRadius: 6, background: linkCopied ? C.greenBg : '#fff', color: linkCopied ? C.green : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, transition: 'all 0.15s' }}>
+            {linkCopied ? 'Copied!' : 'Copy link'}
+          </button>
+          <button style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: '#fff', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save image</button>
+          <button onClick={shareNative} style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: '#fff', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
+        </div>
+        <button onClick={onClose} style={{ width: '100%', padding: '9px 0', border: 'none', borderRadius: 6, background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, marginTop: 6 }}>Close</button>
+      </div>
+    </div>
+  )
+}
 
 // ===== RECIPE PAGE =====
 export default function RecipePage() {
@@ -177,7 +402,9 @@ export default function RecipePage() {
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [showGroceryList, setShowGroceryList] = useState(false)
+  const [showShareCard, setShowShareCard] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -212,6 +439,10 @@ export default function RecipePage() {
       localStorage.setItem('recdex-box', JSON.stringify([...box, recipe.id]))
     }
     setSaved(!saved)
+  }
+
+  const handleShare = () => {
+    setShowShareCard(true)
   }
 
   if (loading) {
@@ -256,6 +487,9 @@ export default function RecipePage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
               <div style={{ width: 1, height: 14, background: C.rule }} />
+              <span onClick={() => router.push('/pantry')} style={{ color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
+              </span>
               <RecipeBoxNav />
             </div>
           </div>
@@ -263,10 +497,31 @@ export default function RecipePage() {
       </header>
 
       {/* HERO IMAGE */}
-      <div style={{ maxWidth: 960, margin: '0 auto' }}>
-        <div style={{ width: '100%', aspectRatio: isMobile ? '16/10' : '21/9', background: C.warm, overflow: 'hidden' }}>
+      <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px clamp(16px,4vw,24px) 0' }}>
+        <div style={{
+          width: '100%', aspectRatio: isMobile ? '16/10' : '21/9',
+          background: C.warm, overflow: 'hidden', borderRadius: 10,
+          position: 'relative',
+          boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)',
+        }}>
           {recipe.image_url ? (
-            <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            <>
+              <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              {/* Title overlay on photo */}
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                padding: isMobile ? '48px 20px 16px' : '60px 32px 22px',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.18) 55%, transparent 100%)',
+              }}>
+                <h1 style={{
+                  fontFamily: SERIF, fontSize: 'clamp(22px, 4.5vw, 36px)', fontWeight: 700,
+                  color: '#fff', lineHeight: 1.1, letterSpacing: -0.5, margin: 0,
+                  textShadow: '0 1px 6px rgba(0,0,0,0.25)',
+                }}>
+                  {recipe.title}
+                </h1>
+              </div>
+            </>
           ) : (
             <ContributePhotoCTA />
           )}
@@ -293,9 +548,11 @@ export default function RecipePage() {
             {recipe.cuisine && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
           </div>
 
-          <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, color: C.text, lineHeight: 1.1, letterSpacing: -0.5, marginBottom: 10 }}>
-            {recipe.title}
-          </h1>
+          {!recipe.image_url && (
+            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, color: C.text, lineHeight: 1.1, letterSpacing: -0.5, marginBottom: 10 }}>
+              {recipe.title}
+            </h1>
+          )}
 
           {recipe.description && (
             <p style={{ fontFamily: SERIF, fontSize: 16, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
@@ -309,21 +566,21 @@ export default function RecipePage() {
             </div>
           )}
 
-          {/* Action buttons */}
+          {/* Action buttons: Save · Grocery list · Share */}
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {hasSteps ? (
-              <button onClick={() => router.push(`/recipe/${slug}/cook`)} style={{
-                padding: '12px 28px', borderRadius: 6, border: 'none',
-                background: C.text, color: C.bg,
-                fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              }}>Cook this →</button>
-            ) : (
-              <button disabled style={{
-                padding: '12px 28px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`,
-                background: 'transparent', color: C.text3,
-                fontSize: 14, fontWeight: 500, fontFamily: SANS, cursor: 'default',
-              }}>Steps coming soon</button>
-            )}
+            <button onClick={toggleSave} style={{
+              padding: '12px 16px', borderRadius: 6,
+              border: `1.5px solid ${saved ? C.accent : C.rule}`,
+              background: saved ? C.accentBg : 'transparent',
+              color: saved ? C.accent : C.text3,
+              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              </svg>
+              {saved ? 'Saved' : 'Save'}
+            </button>
             {hasIngredients && (
               <button onClick={() => setShowGroceryList(true)} style={{
                 padding: '12px 20px', borderRadius: 6,
@@ -338,18 +595,19 @@ export default function RecipePage() {
                 Grocery list
               </button>
             )}
-            <button onClick={toggleSave} style={{
+            <button onClick={handleShare} style={{
               padding: '12px 16px', borderRadius: 6,
-              border: `1.5px solid ${saved ? C.accent : C.rule}`,
-              background: saved ? C.accentBg : 'transparent',
-              color: saved ? C.accent : C.text3,
+              border: `1.5px solid ${C.rule}`,
+              background: 'transparent',
+              color: C.text3,
               fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+              display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              {saved ? 'Saved' : 'Save'}
+              Share
             </button>
           </div>
         </div>
@@ -357,7 +615,7 @@ export default function RecipePage() {
         <div style={{ height: 1, background: C.rule }} />
 
         {/* Ingredients */}
-        {hasIngredients && (
+        {hasIngredients ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.05s both' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Ingredients</h2>
@@ -366,18 +624,24 @@ export default function RecipePage() {
             <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
               {ingredientItems.map((item, i) => (
                 <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
-                  {item.amount && <span style={{ fontWeight: 600 }}>{item.amount} {item.unit} </span>}{item.name}
+                  {item.name}
+                  {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
                   {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
                 </p>
               ))}
             </div>
           </div>
+        ) : (
+          <div style={{ paddingTop: 24, paddingBottom: 24 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Ingredients</h2>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Full ingredient list coming soon. Know this recipe? You can help by contributing.</p>
+          </div>
         )}
 
-        {hasIngredients && hasSteps && <div style={{ height: 1, background: C.rule }} />}
+        <div style={{ height: 1, background: C.rule }} />
 
         {/* Steps preview */}
-        {hasSteps && (
+        {hasSteps ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Steps</h2>
@@ -409,6 +673,11 @@ export default function RecipePage() {
               background: C.text, color: C.bg,
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
             }}>Start cooking →</button>
+          </div>
+        ) : (
+          <div style={{ paddingTop: 24, paddingBottom: 24 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Step-by-step instructions coming soon.</p>
           </div>
         )}
 
@@ -447,6 +716,9 @@ export default function RecipePage() {
 
       {/* GROCERY LIST MODAL */}
       {showGroceryList && <GroceryListModal recipe={recipe} onClose={() => setShowGroceryList(false)} />}
+
+      {/* SHARE CARD MODAL */}
+      {showShareCard && <ShareCardModal recipe={recipe} onClose={() => setShowShareCard(false)} />}
     </div>
   )
 }
