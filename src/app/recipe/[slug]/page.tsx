@@ -572,12 +572,6 @@ export default function RecipePage() {
             </p>
           )}
 
-          {recipe.time_passive_label && recipe.time_passive && (
-            <div style={{ padding: '8px 14px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 4, fontSize: 12, color: C.accent, fontFamily: SANS, marginBottom: 16, display: 'inline-block' }}>
-              + {formatTime(recipe.time_passive)} {recipe.time_passive_label}
-            </div>
-          )}
-
           {/* Action buttons: Grocery list · Share · Save */}
           <div style={{ display: 'flex', gap: 8 }}>
             {hasIngredients && (

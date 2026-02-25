@@ -430,10 +430,7 @@ function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; o
             <p style={{ fontFamily: SERIF, fontSize: 15, fontStyle: 'italic', color: C.text, lineHeight: 1.6, margin: '0 0 16px' }}>&ldquo;{recipe.description}&rdquo;</p>
           )}
 
-          {/* Passive time callout */}
-          {recipe.time_passive_label && recipe.time_passive && (
-            <div style={{ marginBottom: 16, padding: '8px 12px', background: C.accentBg, border: `1px solid ${C.accentMed}`, borderRadius: 6, fontSize: 12, color: C.accent, fontFamily: SANS }}>+ {formatTime(recipe.time_passive)} {recipe.time_passive_label}</div>
-          )}
+
 
           {/* Ingredients */}
           {hasIngredients && (
