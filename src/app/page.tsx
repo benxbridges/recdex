@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
@@ -509,6 +509,142 @@ function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; o
   )
 }
 
+// ===== COOKBOOK DATA =====
+type BookReview = { id: string; book_key: string; display_name: string; body: string; rating: string | null; created_at: string }
+
+const BOOKS = [
+  { key: 'salt-fat-acid-heat', title: 'Salt, Fat, Acid, Heat', author: 'Samin Nosrat', isbn: '9781476753836', color: '#E8C170', accent: '#B8862D', blurb: 'The fundamentals, beautifully taught.', url: 'https://bookshop.org/p/books/salt-fat-acid-heat-mastering-the-elements-of-good-cooking-samin-nosrat/688dffb91cf9000a' },
+  { key: 'the-food-lab', title: 'The Food Lab', author: 'J. Kenji López-Alt', isbn: '9780393081084', color: '#4A6741', accent: '#fff', blurb: 'Science-driven home cooking.', url: 'https://bookshop.org/p/books/the-food-lab-better-home-cooking-through-science-j-kenji-lopez-alt/16021521' },
+  { key: 'essentials-italian', title: 'Essentials of Classic Italian Cooking', author: 'Marcella Hazan', isbn: '9780394584041', color: '#C84A2A', accent: '#FDE8D0', blurb: 'The Italian kitchen bible.', url: 'https://bookshop.org/p/books/essentials-of-classic-italian-cooking-30th-anniversary-edition-a-cookbook-marcella-hazan/ab8a9f657a0275b1' },
+  { key: 'mastering-french', title: 'Mastering the Art of French Cooking', author: 'Julia Child', isbn: '9780375413407', color: '#2C3E6B', accent: '#E0D4B8', blurb: 'Where it all started.', url: 'https://bookshop.org/p/books/mastering-the-art-of-french-cooking-volume-1-a-cookbook-julia-child/b53c1bec7abff872' },
+  { key: 'ottolenghi-simple', title: 'Ottolenghi Simple', author: 'Yotam Ottolenghi', isbn: '9781607749165', color: '#F5F0E0', accent: '#1A1A18', blurb: 'Vibrant weeknight cooking.', url: 'https://bookshop.org/p/books/ottolenghi-simple-a-cookbook-yotam-ottolenghi/12838994' },
+  { key: 'joy-of-cooking', title: 'Joy of Cooking', author: 'Irma S. Rombauer', isbn: '9781501169717', color: '#8B2323', accent: '#F5E6C8', blurb: 'The one every kitchen needs.', url: 'https://bookshop.org/p/books/joy-of-cooking-2019-edition-fully-revised-and-updated-irma-s-rombauer/951724' },
+  { key: 'six-seasons', title: 'Six Seasons', author: 'Joshua McFadden', isbn: '9781579656317', color: '#6B8E5A', accent: '#fff', blurb: 'Vegetables at their peak.', url: 'https://bookshop.org/p/books/six-seasons-a-new-way-with-vegetables-joshua-mcfadden/6e6aa62a4ee2c649' },
+  { key: 'mexico-city-kitchen', title: 'My Mexico City Kitchen', author: 'Gabriela Cámara', isbn: '9780399580574', color: '#D4A574', accent: '#3A2518', blurb: 'Sophisticated, accessible Mexican.', url: 'https://bookshop.org/p/books/my-mexico-city-kitchen-recipes-and-convictions-a-cookbook-malena-watrous/11369337' },
+]
+
+function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: () => void }) {
+  const [reviews, setReviews] = useState<BookReview[]>([])
+  const [reviewBody, setReviewBody] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const backdropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    async function fetchReviews() {
+      setLoading(true)
+      const { data } = await supabase.from('book_reviews').select('*').eq('book_key', book.key).order('created_at', { ascending: false })
+      if (data) setReviews(data)
+      setLoading(false)
+    }
+    fetchReviews()
+  }, [book.key])
+
+  const getDisplayName = () => {
+    try { return JSON.parse(localStorage.getItem('recdex-profile') || '{}').displayName || '' } catch { return '' }
+  }
+
+  const postReview = async () => {
+    const displayName = getDisplayName()
+    if (!displayName || !reviewBody.trim()) return
+    setPosting(true)
+    const { data } = await supabase.from('book_reviews').insert({ book_key: book.key, display_name: displayName, body: reviewBody.trim() }).select()
+    if (data) setReviews(prev => [data[0], ...prev])
+    setReviewBody('')
+    setPosting(false)
+  }
+
+  const displayName = getDisplayName()
+  const coverUrl = `https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg`
+
+  return (
+    <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) onClose() }} style={{
+      position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      animation: 'fadeIn 0.2s ease',
+    }}>
+      <div style={{
+        background: C.bg, borderRadius: 12, width: '100%', maxWidth: 520,
+        maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+      }}>
+        {/* Header with cover */}
+        <div style={{ padding: '24px 24px 20px', borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', gap: 20 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={coverUrl} alt={book.title} style={{ width: 90, height: 135, borderRadius: 4, objectFit: 'cover', boxShadow: '2px 3px 8px rgba(0,0,0,0.15)', background: book.color, flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.25 }}>{book.title}</h3>
+            <p style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px' }}>{book.author}</p>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, margin: '0 0 12px', lineHeight: 1.5 }}>{book.blurb}</p>
+            <a href={book.url} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '7px 14px', borderRadius: 5, background: C.text, color: C.bg,
+              fontSize: 11, fontWeight: 600, fontFamily: SANS, textDecoration: 'none',
+            }}>Buy on Bookshop.org ↗</a>
+          </div>
+          <button onClick={onClose} style={{ position: 'absolute', right: 16, top: 16, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.text3, padding: 4 }}>✕</button>
+        </div>
+
+        {/* Reviews */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h4 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>What cooks are saying</h4>
+            <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{reviews.length}</span>
+          </div>
+
+          {/* Post input */}
+          {displayName ? (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: SANS }}>{displayName.charAt(0).toUpperCase()}</div>
+                <span style={{ fontSize: 12, fontFamily: MONO, color: C.accent }}>@{displayName}</span>
+              </div>
+              <textarea
+                value={reviewBody}
+                onChange={e => setReviewBody(e.target.value)}
+                placeholder={`What do you love about ${book.title}?`}
+                style={{ width: '100%', minHeight: 60, padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`, background: C.warm, fontSize: 13, fontFamily: SANS, color: C.text, lineHeight: 1.5, resize: 'vertical', outline: 'none' }}
+                onFocus={e => { e.target.style.borderColor = C.rule }}
+                onBlur={e => { e.target.style.borderColor = C.ruleLight }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                <button onClick={postReview} disabled={posting || !reviewBody.trim()} style={{
+                  padding: '7px 16px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                  background: reviewBody.trim() ? C.text : C.ruleLight,
+                  color: reviewBody.trim() ? C.bg : C.text3,
+                  fontSize: 12, fontWeight: 600, fontFamily: SANS, transition: 'all 0.15s',
+                }}>{posting ? 'Posting...' : 'Post'}</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: '12px 16px', borderRadius: 6, background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 20, fontSize: 12, color: C.text2, fontFamily: SANS }}>
+              <a href="/profile" style={{ color: C.accent, fontWeight: 600 }}>Set up your profile</a> to share your thoughts on this book.
+            </div>
+          )}
+
+          {/* Reviews list */}
+          {loading ? (
+            <p style={{ fontSize: 12, color: C.text3, fontFamily: SANS }}>Loading...</p>
+          ) : reviews.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, fontStyle: 'italic' }}>No reviews yet. Be the first to share your thoughts!</p>
+          ) : (
+            reviews.map(r => (
+              <div key={r.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.ruleLight}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 22, height: 22, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, fontFamily: SANS }}>{r.display_name.charAt(0).toUpperCase()}</div>
+                  <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent }}>@{r.display_name}</span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                </div>
+                <p style={{ fontSize: 13, fontFamily: SANS, color: C.text, lineHeight: 1.55, margin: 0 }}>{r.body}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===== COMMUNITY TIP CARD =====
 const TIPS: Record<string, { user: string; text: string }> = {
   'cacio-e-pepe': { user: 'maria_c', text: 'Add the cheese off heat in three batches. Patience is the whole recipe.' },
@@ -536,6 +672,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
   const [view, setView] = useState<'home' | 'browse'>('home')
   const [rotdSaved, setRotdSaved] = useState(false)
+  const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null)
 
   // Featured recipe slugs
   const FEATURED_SLUGS = ['cacio-e-pepe', 'shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
@@ -751,6 +888,57 @@ export default function Home() {
 
           <div style={{ height: 1, background: C.rule }} />
 
+          {/* ESSENTIAL COOKBOOKS */}
+          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Essential cookbooks</h2>
+              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
+            </div>
+            <div style={{
+              display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12,
+              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+            }}>
+              <style>{`div::-webkit-scrollbar{display:none}`}</style>
+              {BOOKS.map((book, i) => (
+                <div key={i} onClick={() => setSelectedBook(book)} style={{
+                  flexShrink: 0, width: 130, scrollSnapAlign: 'start',
+                  cursor: 'pointer',
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`}
+                    alt={book.title}
+                    style={{
+                      width: 130, height: 195, borderRadius: 4, objectFit: 'cover',
+                      background: book.color,
+                      boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
+                      transition: 'transform 0.2s',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
+                  />
+                  <p style={{ fontFamily: SERIF, fontSize: 12, fontWeight: 600, color: C.text, margin: '8px 0 2px', lineHeight: 1.3 }}>{book.title}</p>
+                  <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: 0 }}>{book.author}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div style={{ height: 1, background: C.rule }} />
+
+          {/* MISSION */}
+          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 28, marginTop: 28, textAlign: 'center' }}>
+            <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
+            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+              <button style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
+              <button style={{ padding: '9px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: C.rule }} />
+
           {/* BROWSE BY CUISINE */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -770,66 +958,6 @@ export default function Home() {
               ))}
             </div>
           </section>
-
-          {/* ESSENTIAL COOKBOOKS */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Essential cookbooks</h2>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
-            </div>
-            <div style={{
-              display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12,
-              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-            }}>
-              {[
-                { title: 'Salt, Fat, Acid, Heat', author: 'Samin Nosrat', color: '#E8C170', accent: '#B8862D', blurb: 'The fundamentals, beautifully taught.', url: 'https://bookshop.org/p/books/salt-fat-acid-heat-mastering-the-elements-of-good-cooking-samin-nosrat/688dffb91cf9000a' },
-                { title: 'The Food Lab', author: 'J. Kenji López-Alt', color: '#4A6741', accent: '#fff', blurb: 'Science-driven home cooking.', url: 'https://bookshop.org/p/books/the-food-lab-better-home-cooking-through-science-j-kenji-lopez-alt/16021521' },
-                { title: 'Essentials of Classic Italian Cooking', author: 'Marcella Hazan', color: '#C84A2A', accent: '#FDE8D0', blurb: 'The Italian kitchen bible.', url: 'https://bookshop.org/p/books/essentials-of-classic-italian-cooking-30th-anniversary-edition-a-cookbook-marcella-hazan/ab8a9f657a0275b1' },
-                { title: 'Mastering the Art of French Cooking', author: 'Julia Child', color: '#2C3E6B', accent: '#E0D4B8', blurb: 'Where it all started.', url: 'https://bookshop.org/p/books/mastering-the-art-of-french-cooking-volume-1-a-cookbook-julia-child/b53c1bec7abff872' },
-                { title: 'Ottolenghi Simple', author: 'Yotam Ottolenghi', color: '#F5F0E0', accent: '#1A1A18', blurb: 'Vibrant weeknight cooking.', url: 'https://bookshop.org/p/books/ottolenghi-simple-a-cookbook-yotam-ottolenghi/12838994' },
-                { title: 'Joy of Cooking', author: 'Irma S. Rombauer', color: '#8B2323', accent: '#F5E6C8', blurb: 'The one every kitchen needs.', url: 'https://bookshop.org/p/books/joy-of-cooking-2019-edition-fully-revised-and-updated-irma-s-rombauer/951724' },
-                { title: 'Six Seasons', author: 'Joshua McFadden', color: '#6B8E5A', accent: '#fff', blurb: 'Vegetables at their peak.', url: 'https://bookshop.org/p/books/six-seasons-a-new-way-with-vegetables-joshua-mcfadden/6e6aa62a4ee2c649' },
-                { title: 'My Mexico City Kitchen', author: 'Gabriela Cámara', color: '#D4A574', accent: '#3A2518', blurb: 'Sophisticated, accessible Mexican.', url: 'https://bookshop.org/p/books/my-mexico-city-kitchen-recipes-and-convictions-a-cookbook-malena-watrous/11369337' },
-              ].map((book, i) => (
-                <a key={i} href={book.url} target="_blank" rel="noopener noreferrer" style={{
-                  flexShrink: 0, width: 140, scrollSnapAlign: 'start',
-                  textDecoration: 'none', color: 'inherit',
-                }}>
-                  {/* Book cover */}
-                  <div style={{
-                    width: 140, height: 200, borderRadius: 4, overflow: 'hidden',
-                    background: book.color, position: 'relative',
-                    boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
-                    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                    padding: 12, transition: 'transform 0.2s',
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
-                  >
-                    <div style={{ position: 'absolute', top: 10, left: 10, right: 10, borderBottom: `1px solid ${book.accent}40`, paddingBottom: 6 }}>
-                      <p style={{ fontFamily: SERIF, fontSize: 12, fontWeight: 700, color: book.accent, margin: 0, lineHeight: 1.3 }}>{book.title}</p>
-                    </div>
-                    <p style={{ fontFamily: MONO, fontSize: 8, color: book.accent, margin: 0, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1 }}>{book.author}</p>
-                  </div>
-                  {/* Below cover */}
-                  <p style={{ fontFamily: SANS, fontSize: 11, color: C.text2, margin: '8px 0 0', lineHeight: 1.4 }}>{book.blurb}</p>
-                </a>
-              ))}
-            </div>
-          </section>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* MISSION */}
-          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 32, marginTop: 28, textAlign: 'center' }}>
-            <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-              <button style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
-              <button style={{ padding: '9px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -884,6 +1012,9 @@ export default function Home() {
 
       {/* QUICK VIEW MODAL */}
       {quickViewRecipe && <RecipeQuickViewModal recipe={quickViewRecipe} onClose={() => setQuickViewId(null)} isMobile={isMobile} />}
+
+      {/* BOOK DETAIL MODAL */}
+      {selectedBook && <BookDetailModal book={selectedBook} onClose={() => setSelectedBook(null)} />}
 
       {/* FOOTER */}
       <footer style={{ borderTop: `1.5px solid ${C.text}`, marginTop: 24 }}>
