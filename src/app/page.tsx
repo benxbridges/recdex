@@ -511,6 +511,13 @@ function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; o
 
 // ===== COOKBOOK DATA =====
 type BookReview = { id: string; book_key: string; display_name: string; body: string; rating: string | null; created_at: string }
+type BookShelf = { id: string; book_key: string; client_id: string; display_name: string | null; liked: boolean; owned: boolean; favorite_recipe: string | null; created_at: string }
+
+function getClientId(): string {
+  let id = localStorage.getItem('recdex-client-id')
+  if (!id) { id = crypto.randomUUID(); localStorage.setItem('recdex-client-id', id) }
+  return id
+}
 
 const BOOKS = [
   { key: 'salt-fat-acid-heat', title: 'Salt, Fat, Acid, Heat', author: 'Samin Nosrat', isbn: '9781476753836', color: '#E8C170', accent: '#B8862D', blurb: 'The fundamentals, beautifully taught.', url: 'https://bookshop.org/p/books/salt-fat-acid-heat-mastering-the-elements-of-good-cooking-samin-nosrat/688dffb91cf9000a' },
@@ -525,23 +532,76 @@ const BOOKS = [
 
 function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: () => void }) {
   const [reviews, setReviews] = useState<BookReview[]>([])
+  const [shelves, setShelves] = useState<BookShelf[]>([])
+  const [myShelf, setMyShelf] = useState<BookShelf | null>(null)
   const [reviewBody, setReviewBody] = useState('')
+  const [favRecipe, setFavRecipe] = useState('')
   const [posting, setPosting] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [savingFav, setSavingFav] = useState(false)
   const backdropRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    async function fetchReviews() {
+    async function fetchData() {
       setLoading(true)
-      const { data } = await supabase.from('book_reviews').select('*').eq('book_key', book.key).order('created_at', { ascending: false })
-      if (data) setReviews(data)
+      const [reviewsRes, shelvesRes] = await Promise.all([
+        supabase.from('book_reviews').select('*').eq('book_key', book.key).order('created_at', { ascending: false }),
+        supabase.from('book_shelves').select('*').eq('book_key', book.key),
+      ])
+      if (reviewsRes.data) setReviews(reviewsRes.data)
+      if (shelvesRes.data) {
+        setShelves(shelvesRes.data)
+        const clientId = getClientId()
+        const mine = shelvesRes.data.find(s => s.client_id === clientId)
+        if (mine) { setMyShelf(mine); setFavRecipe(mine.favorite_recipe || '') }
+      }
       setLoading(false)
     }
-    fetchReviews()
+    fetchData()
   }, [book.key])
 
   const getDisplayName = () => {
     try { return JSON.parse(localStorage.getItem('recdex-profile') || '{}').displayName || '' } catch { return '' }
+  }
+
+  const toggleLike = async () => {
+    const clientId = getClientId()
+    const displayName = getDisplayName()
+    if (myShelf) {
+      const newLiked = !myShelf.liked
+      await supabase.from('book_shelves').update({ liked: newLiked }).eq('id', myShelf.id)
+      const updated = { ...myShelf, liked: newLiked }
+      setMyShelf(updated)
+      setShelves(prev => prev.map(s => s.id === myShelf.id ? updated : s))
+    } else {
+      const { data } = await supabase.from('book_shelves').insert({ book_key: book.key, client_id: clientId, display_name: displayName || null, liked: true, owned: false }).select()
+      if (data?.[0]) { setMyShelf(data[0]); setShelves(prev => [...prev, data[0]]) }
+    }
+  }
+
+  const toggleOwned = async () => {
+    const clientId = getClientId()
+    const displayName = getDisplayName()
+    if (myShelf) {
+      const newOwned = !myShelf.owned
+      await supabase.from('book_shelves').update({ owned: newOwned }).eq('id', myShelf.id)
+      const updated = { ...myShelf, owned: newOwned }
+      setMyShelf(updated)
+      setShelves(prev => prev.map(s => s.id === myShelf.id ? updated : s))
+    } else {
+      const { data } = await supabase.from('book_shelves').insert({ book_key: book.key, client_id: clientId, display_name: displayName || null, liked: false, owned: true }).select()
+      if (data?.[0]) { setMyShelf(data[0]); setShelves(prev => [...prev, data[0]]) }
+    }
+  }
+
+  const saveFavoriteRecipe = async () => {
+    if (!myShelf) return
+    setSavingFav(true)
+    await supabase.from('book_shelves').update({ favorite_recipe: favRecipe.trim() || null }).eq('id', myShelf.id)
+    const updated = { ...myShelf, favorite_recipe: favRecipe.trim() || null }
+    setMyShelf(updated)
+    setShelves(prev => prev.map(s => s.id === myShelf.id ? updated : s))
+    setSavingFav(false)
   }
 
   const postReview = async () => {
@@ -556,6 +616,11 @@ function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: ()
 
   const displayName = getDisplayName()
   const coverUrl = `https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg`
+  const likeCount = shelves.filter(s => s.liked).length
+  const ownCount = shelves.filter(s => s.owned).length
+  const isLiked = myShelf?.liked || false
+  const isOwned = myShelf?.owned || false
+  const owners = shelves.filter(s => s.owned && s.display_name)
 
   return (
     <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) onClose() }} style={{
@@ -585,8 +650,103 @@ function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: ()
           <button onClick={onClose} style={{ position: 'absolute', right: 16, top: 16, background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.text3, padding: 4 }}>✕</button>
         </div>
 
-        {/* Reviews */}
+        {/* Letterboxd-style action bar */}
+        <div style={{ padding: '14px 24px', borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', gap: 0 }}>
+          {/* Like button */}
+          <button onClick={toggleLike} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={isLiked ? '#E25555' : 'none'} stroke={isLiked ? '#E25555' : C.text3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'all 0.2s' }}>
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: isLiked ? '#E25555' : C.text3, fontWeight: isLiked ? 600 : 400 }}>
+              {likeCount > 0 ? `${likeCount} like${likeCount !== 1 ? 's' : ''}` : 'Like'}
+            </span>
+          </button>
+
+          <div style={{ width: 1, height: 36, background: C.ruleLight }} />
+
+          {/* Own / shelf button */}
+          <button onClick={toggleOwned} style={{
+            flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0',
+          }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill={isOwned ? C.green : 'none'} stroke={isOwned ? C.green : C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transition: 'all 0.2s' }}>
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              {isOwned && <path d="M9 12l2 2 4-4" stroke="#fff" strokeWidth="2" fill="none" />}
+            </svg>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: isOwned ? C.green : C.text3, fontWeight: isOwned ? 600 : 400 }}>
+              {isOwned ? 'On my shelf' : 'I own this'}
+            </span>
+          </button>
+
+          <div style={{ width: 1, height: 36, background: C.ruleLight }} />
+
+          {/* Collection count */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, padding: '6px 0' }}>
+            <span style={{ fontSize: 20, fontFamily: MONO, fontWeight: 700, color: ownCount > 0 ? C.text : C.text3, lineHeight: 1 }}>{ownCount}</span>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
+              {ownCount === 1 ? 'collection' : 'collections'}
+            </span>
+          </div>
+        </div>
+
+        {/* Scrollable content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+
+          {/* Favorite recipe input (shown when owned) */}
+          {isOwned && (
+            <div style={{ marginBottom: 20, padding: '14px 16px', background: C.greenBg, borderRadius: 8, border: `1px solid ${C.green}20` }}>
+              <p style={{ fontSize: 11, fontFamily: MONO, color: C.green, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontWeight: 600 }}>My favorite recipe from this book</p>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={favRecipe}
+                  onChange={e => setFavRecipe(e.target.value)}
+                  placeholder="e.g. The roast chicken on page 142"
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 5, border: `1.5px solid ${C.ruleLight}`, background: '#fff', fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none' }}
+                  onKeyDown={e => { if (e.key === 'Enter') saveFavoriteRecipe() }}
+                />
+                <button onClick={saveFavoriteRecipe} disabled={savingFav} style={{
+                  padding: '8px 14px', borderRadius: 5, border: 'none', cursor: 'pointer',
+                  background: C.green, color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: SANS,
+                  opacity: savingFav ? 0.6 : 1,
+                }}>{savingFav ? '...' : 'Save'}</button>
+              </div>
+            </div>
+          )}
+
+          {/* Who owns this */}
+          {owners.length > 0 && (
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                <h4 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>On the shelf</h4>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{owners.length} {owners.length === 1 ? 'cook' : 'cooks'}</span>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {owners.map(o => (
+                  <div key={o.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+                    borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`,
+                    maxWidth: '100%', minWidth: 0,
+                  }}>
+                    <div style={{ width: 24, height: 24, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{o.display_name!.charAt(0).toUpperCase()}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>@{o.display_name}</span>
+                      {o.favorite_recipe && (
+                        <p style={{ fontSize: 11, fontFamily: SANS, color: C.text2, margin: '2px 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>★ {o.favorite_recipe}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Divider if we showed shelf section */}
+          {owners.length > 0 && <div style={{ height: 1, background: C.ruleLight, margin: '0 0 20px' }} />}
+
+          {/* Reviews section */}
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
             <h4 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: 0 }}>What cooks are saying</h4>
             <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{reviews.length}</span>
@@ -673,6 +833,29 @@ export default function Home() {
   const [view, setView] = useState<'home' | 'browse'>('home')
   const [rotdSaved, setRotdSaved] = useState(false)
   const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null)
+  const [bookStats, setBookStats] = useState<Record<string, { likes: number; owns: number }>>({})
+  const [myBookActions, setMyBookActions] = useState<Record<string, { liked: boolean; owned: boolean }>>({})
+
+  // Fetch book shelf stats
+  useEffect(() => {
+    async function fetchBookStats() {
+      const { data } = await supabase.from('book_shelves').select('*')
+      if (data) {
+        const stats: Record<string, { likes: number; owns: number }> = {}
+        const clientId = getClientId()
+        const myActions: Record<string, { liked: boolean; owned: boolean }> = {}
+        for (const s of data as BookShelf[]) {
+          if (!stats[s.book_key]) stats[s.book_key] = { likes: 0, owns: 0 }
+          if (s.liked) stats[s.book_key].likes++
+          if (s.owned) stats[s.book_key].owns++
+          if (s.client_id === clientId) myActions[s.book_key] = { liked: s.liked, owned: s.owned }
+        }
+        setBookStats(stats)
+        setMyBookActions(myActions)
+      }
+    }
+    fetchBookStats()
+  }, [selectedBook]) // refetch when modal closes to update counts
 
   // Featured recipe slugs
   const FEATURED_SLUGS = ['cacio-e-pepe', 'shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
@@ -900,28 +1083,49 @@ export default function Home() {
               scrollbarWidth: 'none',
             }}>
               <style>{`div::-webkit-scrollbar{display:none}`}</style>
-              {BOOKS.map((book, i) => (
+              {BOOKS.map((book, i) => {
+                const stats = bookStats[book.key] || { likes: 0, owns: 0 }
+                const my = myBookActions[book.key] || { liked: false, owned: false }
+                return (
                 <div key={i} onClick={() => setSelectedBook(book)} style={{
                   flexShrink: 0, width: 130, scrollSnapAlign: 'start',
                   cursor: 'pointer',
                 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`}
-                    alt={book.title}
-                    style={{
-                      width: 130, height: 195, borderRadius: 4, objectFit: 'cover',
-                      background: book.color,
-                      boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
-                      transition: 'transform 0.2s',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
-                  />
+                  <div style={{ position: 'relative', width: 130, height: 195 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`}
+                      alt={book.title}
+                      style={{
+                        width: 130, height: 195, borderRadius: 4, objectFit: 'cover',
+                        background: book.color,
+                        boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
+                        transition: 'transform 0.2s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
+                    />
+                    {/* Letterboxd-style indicators */}
+                    <div style={{ position: 'absolute', bottom: 6, left: 6, right: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      {stats.likes > 0 ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '2px 7px 2px 5px', fontSize: 9, fontFamily: MONO, color: my.liked ? '#FF6B6B' : 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill={my.liked ? '#FF6B6B' : 'none'} stroke={my.liked ? '#FF6B6B' : 'rgba(255,255,255,0.85)'} strokeWidth="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
+                          {stats.likes}
+                        </span>
+                      ) : <span />}
+                      {stats.owns > 0 ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '2px 7px 2px 5px', fontSize: 9, fontFamily: MONO, color: my.owned ? '#7BC47F' : 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill={my.owned ? '#7BC47F' : 'none'} stroke={my.owned ? '#7BC47F' : 'rgba(255,255,255,0.85)'} strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
+                          {stats.owns}
+                        </span>
+                      ) : <span />}
+                    </div>
+                  </div>
                   <p style={{ fontFamily: SERIF, fontSize: 12, fontWeight: 600, color: C.text, margin: '8px 0 2px', lineHeight: 1.3 }}>{book.title}</p>
                   <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: 0 }}>{book.author}</p>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </section>
 
