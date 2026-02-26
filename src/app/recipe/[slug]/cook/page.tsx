@@ -434,7 +434,7 @@ export default function CookModePage() {
 
                     {/* Submit + skip */}
                     <div style={{ padding: '20px 28px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button onClick={() => {
+                      <button onClick={async () => {
                         // Persist cook event to localStorage
                         const cookEvent = {
                           recipeId: recipe.id, recipeSlug: recipe.slug, recipeTitle: recipe.title,
@@ -446,6 +446,23 @@ export default function CookModePage() {
                         const existing = JSON.parse(localStorage.getItem('recdex-cooked') || '[]')
                         existing.unshift(cookEvent)
                         localStorage.setItem('recdex-cooked', JSON.stringify(existing))
+
+                        // Auto-post tip/substitution as a public comment if user has a display name
+                        const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+                        const displayName = profile.displayName
+                        if (displayName && (tip || substitutions)) {
+                          const parts: string[] = []
+                          if (substitutions) parts.push(`🔄 Substitution: ${substitutions}`)
+                          if (tip) parts.push(`💡 Tip: ${tip}`)
+                          const body = parts.join('\n\n')
+                          await supabase.from('comments').insert({
+                            recipe_id: recipe.id,
+                            display_name: displayName,
+                            body,
+                            rating: cookRating || null,
+                          })
+                        }
+
                         setFeedbackSubmitted(true)
                       }} style={{
                         padding: '11px 28px', borderRadius: 6, border: 'none',
@@ -484,7 +501,12 @@ export default function CookModePage() {
                     </p>
                     <p style={{ fontSize: 13, color: C.text2, margin: '0 0 20px', fontFamily: SANS, lineHeight: 1.5 }}>
                       {(substitutions || tip)
-                        ? 'Your notes will help other cooks with this recipe.'
+                        ? (() => {
+                            const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+                            return profile.displayName
+                              ? 'Your notes have been shared as a Community Note on this recipe.'
+                              : 'Your notes will help other cooks with this recipe.'
+                          })()
                         : `${recipe.title} is now in your cook history.`}
                     </p>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>

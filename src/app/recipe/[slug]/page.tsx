@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
@@ -33,6 +33,16 @@ type Recipe = {
   image_url: string | null; servings: number | null; servings_label: string | null
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
+}
+
+type Comment = {
+  id: string; recipe_id: string; display_name: string
+  body: string; rating: string | null
+  created_at: string
+}
+
+type PrivateNote = {
+  recipeId: string; text: string; createdAt: number; updatedAt: number
 }
 
 // ===== HELPERS =====
@@ -422,6 +432,18 @@ export default function RecipePage() {
   const [showShareCard, setShowShareCard] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  // Comments state
+  const [comments, setComments] = useState<Comment[]>([])
+  const [commentsLoading, setCommentsLoading] = useState(true)
+  const [commentBody, setCommentBody] = useState('')
+  const [commentPosting, setCommentPosting] = useState(false)
+  const commentInputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Private notes state
+  const [privateNote, setPrivateNote] = useState('')
+  const [editingNote, setEditingNote] = useState(false)
+  const [noteSaved, setNoteSaved] = useState(false)
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 700)
     check(); window.addEventListener('resize', check)
@@ -444,6 +466,79 @@ export default function RecipePage() {
     const box = JSON.parse(localStorage.getItem('recdex-box') || '[]')
     setSaved(box.includes(recipe.id))
   }, [recipe])
+
+  // Fetch comments from Supabase
+  useEffect(() => {
+    if (!recipe) return
+    async function fetchComments() {
+      setCommentsLoading(true)
+      const { data } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('recipe_id', recipe!.id)
+        .order('created_at', { ascending: false })
+      if (data) setComments(data)
+      setCommentsLoading(false)
+    }
+    fetchComments()
+  }, [recipe])
+
+  // Load private note from localStorage
+  useEffect(() => {
+    if (!recipe) return
+    try {
+      const notes: PrivateNote[] = JSON.parse(localStorage.getItem('recdex-notes') || '[]')
+      const existing = notes.find(n => n.recipeId === recipe.id)
+      if (existing) setPrivateNote(existing.text)
+    } catch { /* ignore */ }
+  }, [recipe])
+
+  // Get display name from profile
+  const getDisplayName = () => {
+    try {
+      const prof = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+      return prof.displayName || ''
+    } catch { return '' }
+  }
+
+  const postComment = async () => {
+    if (!recipe || !commentBody.trim()) return
+    const displayName = getDisplayName()
+    if (!displayName) return
+    setCommentPosting(true)
+    const { data, error } = await supabase.from('comments').insert({
+      recipe_id: recipe.id,
+      display_name: displayName,
+      body: commentBody.trim(),
+    }).select().single()
+    if (data && !error) {
+      setComments(prev => [data, ...prev])
+      setCommentBody('')
+    }
+    setCommentPosting(false)
+  }
+
+  const savePrivateNote = () => {
+    if (!recipe) return
+    try {
+      const notes: PrivateNote[] = JSON.parse(localStorage.getItem('recdex-notes') || '[]')
+      const idx = notes.findIndex(n => n.recipeId === recipe.id)
+      const now = Date.now()
+      if (privateNote.trim()) {
+        if (idx >= 0) {
+          notes[idx] = { ...notes[idx], text: privateNote.trim(), updatedAt: now }
+        } else {
+          notes.push({ recipeId: recipe.id, text: privateNote.trim(), createdAt: now, updatedAt: now })
+        }
+      } else if (idx >= 0) {
+        notes.splice(idx, 1)
+      }
+      localStorage.setItem('recdex-notes', JSON.stringify(notes))
+      setEditingNote(false)
+      setNoteSaved(true)
+      setTimeout(() => setNoteSaved(false), 2000)
+    } catch { /* ignore */ }
+  }
 
   const toggleSave = () => {
     if (!recipe) return
@@ -696,6 +791,187 @@ export default function RecipePage() {
             </div>
           </div>
         )}
+
+        <div style={{ height: 1, background: C.rule }} />
+
+        {/* ===== COMMUNITY NOTES ===== */}
+        <div style={{ paddingTop: 28, paddingBottom: 28 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 20 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: 0 }}>Community Notes</h2>
+            {comments.length > 0 && (
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{comments.length}</span>
+            )}
+          </div>
+
+          {/* Comment input */}
+          {getDisplayName() ? (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%', background: C.accent,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, color: '#fff', fontFamily: SANS,
+                }}>
+                  {getDisplayName().charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: 12, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>@{getDisplayName()}</span>
+              </div>
+              <textarea
+                ref={commentInputRef}
+                value={commentBody}
+                onChange={e => setCommentBody(e.target.value)}
+                placeholder="Share a tip, substitution, or thought about this recipe..."
+                style={{
+                  width: '100%', minHeight: 72, padding: '12px 14px', borderRadius: 8,
+                  border: `1.5px solid ${C.ruleLight}`, background: C.cool, resize: 'vertical',
+                  fontFamily: SANS, fontSize: 14, color: C.text, lineHeight: 1.6,
+                  outline: 'none', transition: 'border-color 0.15s',
+                }}
+                onFocus={e => { e.target.style.borderColor = C.accent }}
+                onBlur={e => { e.target.style.borderColor = C.ruleLight }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+                <button
+                  onClick={postComment}
+                  disabled={!commentBody.trim() || commentPosting}
+                  style={{
+                    padding: '8px 18px', borderRadius: 6, border: 'none',
+                    background: commentBody.trim() ? C.text : C.ruleLight,
+                    color: commentBody.trim() ? '#fff' : C.text3,
+                    fontSize: 12, fontWeight: 600, cursor: commentBody.trim() ? 'pointer' : 'default',
+                    fontFamily: SANS, transition: 'all 0.15s', opacity: commentPosting ? 0.6 : 1,
+                  }}
+                >
+                  {commentPosting ? 'Posting...' : 'Post note'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              padding: '16px 20px', borderRadius: 8, border: `1.5px dashed ${C.rule}`,
+              background: C.cool, marginBottom: 24, textAlign: 'center',
+            }}>
+              <p style={{ fontSize: 13, color: C.text2, fontFamily: SANS, margin: '0 0 8px' }}>
+                Set up your profile to leave a note
+              </p>
+              <button
+                onClick={() => router.push('/profile')}
+                style={{
+                  padding: '7px 16px', borderRadius: 5, border: `1.5px solid ${C.accent}`,
+                  background: C.accentBg, color: C.accent,
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                }}
+              >
+                Set up profile →
+              </button>
+            </div>
+          )}
+
+          {/* Comments list */}
+          {commentsLoading ? (
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS }}>Loading notes...</p>
+          ) : comments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ fontSize: 14, color: C.text3, fontFamily: SERIF, fontStyle: 'italic', margin: '0 0 4px' }}>
+                No notes yet
+              </p>
+              <p style={{ fontSize: 12, color: C.text3, fontFamily: SANS, margin: 0 }}>
+                Be the first to share a tip or thought about this recipe.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {comments.map((c, i) => (
+                <div key={c.id} style={{
+                  padding: '16px 0',
+                  borderTop: i === 0 ? `1px solid ${C.ruleLight}` : 'none',
+                  borderBottom: `1px solid ${C.ruleLight}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', background: C.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
+                    }}>
+                      {c.display_name.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontSize: 12, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
+                      @{c.display_name}
+                    </span>
+                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
+                      {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    {c.rating && <span style={{ fontSize: 13 }}>{c.rating}</span>}
+                  </div>
+                  <p style={{ fontSize: 14, fontFamily: SANS, color: C.text, lineHeight: 1.6, margin: 0, paddingLeft: 30 }}>
+                    {c.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ height: 1, background: C.rule }} />
+
+        {/* ===== YOUR NOTES (Private) ===== */}
+        <div style={{ paddingTop: 24, paddingBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Your Notes</h2>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              private
+            </span>
+          </div>
+          <div style={{
+            padding: '16px 18px', borderRadius: 10,
+            background: 'linear-gradient(135deg, #F8F5EE 0%, #F0EDE6 100%)',
+            border: `1px solid ${C.ruleLight}`,
+          }}>
+            {editingNote || !privateNote ? (
+              <>
+                <textarea
+                  value={privateNote}
+                  onChange={e => setPrivateNote(e.target.value)}
+                  onFocus={() => setEditingNote(true)}
+                  placeholder="Jot down personal notes — adjustments, what worked, what to try next time..."
+                  style={{
+                    width: '100%', minHeight: 64, padding: '10px 12px', borderRadius: 6,
+                    border: `1px solid ${C.ruleLight}`, background: 'rgba(255,255,255,0.7)',
+                    resize: 'vertical', fontFamily: SANS, fontSize: 13, color: C.text,
+                    lineHeight: 1.6, outline: 'none',
+                  }}
+                />
+                {editingNote && (
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+                    <button onClick={() => { setEditingNote(false) }} style={{
+                      padding: '6px 14px', borderRadius: 5, border: `1px solid ${C.rule}`,
+                      background: 'transparent', color: C.text3, fontSize: 11, fontWeight: 500,
+                      cursor: 'pointer', fontFamily: SANS,
+                    }}>Cancel</button>
+                    <button onClick={savePrivateNote} style={{
+                      padding: '6px 14px', borderRadius: 5, border: 'none',
+                      background: C.text, color: '#fff', fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer', fontFamily: SANS,
+                    }}>Save note</button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div onClick={() => setEditingNote(true)} style={{ cursor: 'pointer' }}>
+                <p style={{ fontSize: 14, fontFamily: SANS, color: C.text, lineHeight: 1.65, margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {privateNote}
+                </p>
+                {noteSaved && (
+                  <p style={{ fontSize: 11, fontFamily: MONO, color: C.green, marginTop: 6, marginBottom: 0 }}>✓ Saved</p>
+                )}
+                <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, marginTop: 8, marginBottom: 0 }}>Click to edit</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* FOOTER */}
