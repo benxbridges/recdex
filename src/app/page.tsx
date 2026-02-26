@@ -771,8 +771,58 @@ export default function Home() {
             </div>
           </section>
 
+          {/* ESSENTIAL COOKBOOKS */}
+          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Essential cookbooks</h2>
+              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
+            </div>
+            <div style={{
+              display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12,
+              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+            }}>
+              {[
+                { title: 'Salt, Fat, Acid, Heat', author: 'Samin Nosrat', color: '#E8C170', accent: '#B8862D', blurb: 'The fundamentals, beautifully taught.', url: 'https://bookshop.org/p/books/salt-fat-acid-heat-mastering-the-elements-of-good-cooking-samin-nosrat/688dffb91cf9000a' },
+                { title: 'The Food Lab', author: 'J. Kenji López-Alt', color: '#4A6741', accent: '#fff', blurb: 'Science-driven home cooking.', url: 'https://bookshop.org/p/books/the-food-lab-better-home-cooking-through-science-j-kenji-lopez-alt/16021521' },
+                { title: 'Essentials of Classic Italian Cooking', author: 'Marcella Hazan', color: '#C84A2A', accent: '#FDE8D0', blurb: 'The Italian kitchen bible.', url: 'https://bookshop.org/p/books/essentials-of-classic-italian-cooking-30th-anniversary-edition-a-cookbook-marcella-hazan/ab8a9f657a0275b1' },
+                { title: 'Mastering the Art of French Cooking', author: 'Julia Child', color: '#2C3E6B', accent: '#E0D4B8', blurb: 'Where it all started.', url: 'https://bookshop.org/p/books/mastering-the-art-of-french-cooking-volume-1-a-cookbook-julia-child/b53c1bec7abff872' },
+                { title: 'Ottolenghi Simple', author: 'Yotam Ottolenghi', color: '#F5F0E0', accent: '#1A1A18', blurb: 'Vibrant weeknight cooking.', url: 'https://bookshop.org/p/books/ottolenghi-simple-a-cookbook-yotam-ottolenghi/12838994' },
+                { title: 'Joy of Cooking', author: 'Irma S. Rombauer', color: '#8B2323', accent: '#F5E6C8', blurb: 'The one every kitchen needs.', url: 'https://bookshop.org/p/books/joy-of-cooking-2019-edition-fully-revised-and-updated-irma-s-rombauer/951724' },
+                { title: 'Six Seasons', author: 'Joshua McFadden', color: '#6B8E5A', accent: '#fff', blurb: 'Vegetables at their peak.', url: 'https://bookshop.org/p/books/six-seasons-a-new-way-with-vegetables-joshua-mcfadden/6e6aa62a4ee2c649' },
+                { title: 'My Mexico City Kitchen', author: 'Gabriela Cámara', color: '#D4A574', accent: '#3A2518', blurb: 'Sophisticated, accessible Mexican.', url: 'https://bookshop.org/p/books/my-mexico-city-kitchen-recipes-and-convictions-a-cookbook-malena-watrous/11369337' },
+              ].map((book, i) => (
+                <a key={i} href={book.url} target="_blank" rel="noopener noreferrer" style={{
+                  flexShrink: 0, width: 140, scrollSnapAlign: 'start',
+                  textDecoration: 'none', color: 'inherit',
+                }}>
+                  {/* Book cover */}
+                  <div style={{
+                    width: 140, height: 200, borderRadius: 4, overflow: 'hidden',
+                    background: book.color, position: 'relative',
+                    boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
+                    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                    padding: 12, transition: 'transform 0.2s',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
+                  >
+                    <div style={{ position: 'absolute', top: 10, left: 10, right: 10, borderBottom: `1px solid ${book.accent}40`, paddingBottom: 6 }}>
+                      <p style={{ fontFamily: SERIF, fontSize: 12, fontWeight: 700, color: book.accent, margin: 0, lineHeight: 1.3 }}>{book.title}</p>
+                    </div>
+                    <p style={{ fontFamily: MONO, fontSize: 8, color: book.accent, margin: 0, opacity: 0.7, textTransform: 'uppercase', letterSpacing: 1 }}>{book.author}</p>
+                  </div>
+                  {/* Below cover */}
+                  <p style={{ fontFamily: SANS, fontSize: 11, color: C.text2, margin: '8px 0 0', lineHeight: 1.4 }}>{book.blurb}</p>
+                </a>
+              ))}
+            </div>
+          </section>
+
+          <div style={{ height: 1, background: C.rule }} />
+
           {/* MISSION */}
-          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 32, textAlign: 'center' }}>
+          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 32, marginTop: 28, textAlign: 'center' }}>
             <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
             <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
