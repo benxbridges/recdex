@@ -152,10 +152,9 @@ export default function PantryPage() {
   const needItems = groceryItems.filter(i => !i.checked)
   const gotItems = groceryItems.filter(i => i.checked)
 
-  // Group active items by recipe
+  // Group all items by recipe (checked items stay in-place with strikethrough)
   const needByRecipe: Record<string, { items: GroceryItem[]; indices: number[] }> = {}
   groceryItems.forEach((item, idx) => {
-    if (item.checked) return
     if (!needByRecipe[item.recipeId]) needByRecipe[item.recipeId] = { items: [], indices: [] }
     needByRecipe[item.recipeId].items.push(item)
     needByRecipe[item.recipeId].indices.push(idx)
@@ -285,20 +284,27 @@ export default function PantryPage() {
                 {/* Items still needed — grouped by recipe */}
                 {Object.entries(needByRecipe).map(([recipeId, { items, indices }]) => {
                   const isExpanded = expandedRecipe === recipeId
-                  // Build full ingredient list for this recipe from ALL items (including checked)
-                  const allRecipeItems = groceryItems.filter(item => item.recipeId === recipeId)
+                  const checkedCount = items.filter(i => i.checked).length
+                  const allDone = checkedCount === items.length
 
                   return (
                   <div key={recipeId} style={{ marginBottom: 20 }}>
                     {/* Recipe header */}
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0 4px' }}>
-                      <span style={{
-                        fontSize: 11, fontFamily: SERIF, fontWeight: 700,
-                        color: C.text, textDecoration: 'underline', textDecorationColor: C.rule,
-                        textUnderlineOffset: 3,
-                      }}>
-                        {items[0]?.recipeTitle || 'Recipe'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                          fontSize: 11, fontFamily: SERIF, fontWeight: 700,
+                          color: allDone ? C.text3 : C.text, textDecoration: 'underline', textDecorationColor: C.rule,
+                          textUnderlineOffset: 3, transition: 'color 0.15s',
+                        }}>
+                          {items[0]?.recipeTitle || 'Recipe'}
+                        </span>
+                        {checkedCount > 0 && (
+                          <span style={{ fontSize: 9, fontFamily: MONO, color: allDone ? C.green : C.text3 }}>
+                            {checkedCount}/{items.length}
+                          </span>
+                        )}
+                      </div>
                       <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                         <button onClick={() => setExpandedRecipe(isExpanded ? null : recipeId)} style={{
                           padding: '2px 8px', borderRadius: 4, border: 'none',
@@ -317,7 +323,7 @@ export default function PantryPage() {
                     {isExpanded && (
                       <div style={{ padding: '8px 14px 10px', marginBottom: 4, borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`, animation: 'slideDown 0.2s ease' }}>
                         <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 6px', fontFamily: SANS }}>All ingredients</p>
-                        {allRecipeItems.map((item, i) => (
+                        {items.map((item, i) => (
                           <p key={i} style={{ fontSize: 12, color: item.checked ? C.text3 : C.text, margin: '3px 0', fontFamily: SANS, lineHeight: 1.4, fontStyle: item.checked ? 'italic' : 'normal', textDecoration: item.checked ? 'line-through' : 'none' }}>
                             {item.name}
                             {item.amount && <span style={{ color: C.text3 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
@@ -334,7 +340,7 @@ export default function PantryPage() {
                       </div>
                     )}
 
-                    {/* Clickable items — condensed */}
+                    {/* Clickable items — strikethrough when checked, stay in place */}
                     {items.map((item, i) => {
                       const inPantry = isInPantry(item.name)
                       return (
@@ -343,13 +349,19 @@ export default function PantryPage() {
                           padding: '8px 0',
                           borderBottom: `1px solid ${C.ruleLight}`,
                           cursor: 'pointer',
+                          transition: 'opacity 0.15s',
                         }}>
-                          <span style={{ fontSize: 13, fontFamily: SANS, color: C.text, flex: 1 }}>
+                          <span style={{
+                            fontSize: 13, fontFamily: SANS, flex: 1,
+                            color: item.checked ? C.rule : C.text,
+                            textDecoration: item.checked ? 'line-through' : 'none',
+                            transition: 'all 0.15s',
+                          }}>
                             {item.name}
                             {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
                             {item.notes && <span style={{ color: C.text3, fontSize: 11 }}> ({item.notes})</span>}
                           </span>
-                          {inPantry && (
+                          {!item.checked && inPantry && (
                             <span style={{
                               fontSize: 8, fontWeight: 600, fontFamily: MONO,
                               color: C.green, background: C.greenBg,
@@ -358,9 +370,13 @@ export default function PantryPage() {
                           )}
                           <div style={{
                             width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                            border: `1.5px solid ${C.rule}`, background: 'transparent',
+                            border: `1.5px solid ${item.checked ? C.green : C.rule}`,
+                            background: item.checked ? C.green : 'transparent',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
                             transition: 'all 0.15s',
-                          }} />
+                          }}>
+                            {item.checked && <span style={{ color: '#fff', fontSize: 10, fontWeight: 600 }}>✓</span>}
+                          </div>
                         </div>
                       )
                     })}
@@ -383,57 +399,14 @@ export default function PantryPage() {
                   }}>Clear all</button>
                 </div>
 
-                {/* ===== GOT section — checked items at bottom ===== */}
+                {/* Clear purchased button — only when there are checked items */}
                 {gotItems.length > 0 && (
-                  <div style={{ marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.rule}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, fontWeight: 500 }}>
-                        Purchased ({gotItems.length})
-                      </span>
-                      <button onClick={clearGot} style={{
-                        padding: '4px 10px', borderRadius: 4, border: 'none',
-                        background: 'transparent', fontSize: 10, color: C.text3,
-                        cursor: 'pointer', fontFamily: MONO,
-                      }}>clear</button>
-                    </div>
-                    {gotItems.map((item, i) => {
-                      // Find original index in groceryItems
-                      let checkedSoFar = 0
-                      let actualIdx = -1
-                      for (let j = 0; j < groceryItems.length; j++) {
-                        if (groceryItems[j].checked) {
-                          if (checkedSoFar === i) { actualIdx = j; break }
-                          checkedSoFar++
-                        }
-                      }
-
-                      return (
-                        <div key={i} onClick={() => { if (actualIdx >= 0) toggleItem(actualIdx) }}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 10,
-                            padding: '6px 0',
-                            borderBottom: i < gotItems.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          <span style={{
-                            fontSize: 12, fontFamily: SANS, color: C.rule,
-                            textDecoration: 'line-through', flex: 1,
-                          }}>
-                            {item.name}
-                            {item.amount && <span> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
-                          </span>
-                          <div style={{
-                            width: 20, height: 20, borderRadius: 5, flexShrink: 0,
-                            border: `1.5px solid ${C.green}`, background: C.green,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 0.15s',
-                          }}>
-                            <span style={{ color: '#fff', fontSize: 10, fontWeight: 600 }}>✓</span>
-                          </div>
-                        </div>
-                      )
-                    })}
+                  <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button onClick={clearGot} style={{
+                      padding: '6px 12px', borderRadius: 4, border: `1px solid ${C.ruleLight}`,
+                      background: 'transparent', fontSize: 10, color: C.text3,
+                      cursor: 'pointer', fontFamily: MONO,
+                    }}>clear {gotItems.length} purchased</button>
                   </div>
                 )}
               </>
