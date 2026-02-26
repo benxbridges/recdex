@@ -467,7 +467,7 @@ function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; o
                 </div>
               ))}
               {remainingSteps > 0 && (
-                <p style={{ fontSize: 12, fontFamily: MONO, color: C.text3, margin: '4px 0 0', paddingLeft: 38 }}>+ {remainingSteps} more step{remainingSteps !== 1 ? 's' : ''}...</p>
+                <Link href={`/recipe/${recipe.slug}`} style={{ display: 'block', fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 500, textDecoration: 'none', margin: '8px 0 0', paddingLeft: 38 }}>View full recipe →</Link>
               )}
             </div>
           )}

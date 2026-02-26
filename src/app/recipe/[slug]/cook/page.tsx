@@ -435,7 +435,17 @@ export default function CookModePage() {
                     {/* Submit + skip */}
                     <div style={{ padding: '20px 28px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button onClick={() => {
-                        // TODO: persist feedback to Supabase
+                        // Persist cook event to localStorage
+                        const cookEvent = {
+                          recipeId: recipe.id, recipeSlug: recipe.slug, recipeTitle: recipe.title,
+                          cookedAt: Date.now(),
+                          ...(cookRating && { rating: cookRating }),
+                          ...(substitutions && { substitutions }),
+                          ...(tip && { tip }),
+                        }
+                        const existing = JSON.parse(localStorage.getItem('recdex-cooked') || '[]')
+                        existing.unshift(cookEvent)
+                        localStorage.setItem('recdex-cooked', JSON.stringify(existing))
                         setFeedbackSubmitted(true)
                       }} style={{
                         padding: '11px 28px', borderRadius: 6, border: 'none',
@@ -446,7 +456,17 @@ export default function CookModePage() {
                       }}>
                         {(substitutions || tip) ? 'Submit & mark as cooked' : 'Mark as cooked'}
                       </button>
-                      <button onClick={() => setFeedbackSubmitted(true)} style={{
+                      <button onClick={() => {
+                        // Still record the cook, just without feedback
+                        const cookEvent = {
+                          recipeId: recipe.id, recipeSlug: recipe.slug, recipeTitle: recipe.title,
+                          cookedAt: Date.now(),
+                        }
+                        const existing = JSON.parse(localStorage.getItem('recdex-cooked') || '[]')
+                        existing.unshift(cookEvent)
+                        localStorage.setItem('recdex-cooked', JSON.stringify(existing))
+                        setFeedbackSubmitted(true)
+                      }} style={{
                         padding: '11px 16px', borderRadius: 6, border: 'none',
                         background: 'transparent', color: C.text3,
                         fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
