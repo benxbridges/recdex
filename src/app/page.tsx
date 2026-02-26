@@ -835,6 +835,25 @@ export default function Home() {
   const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null)
   const [bookStats, setBookStats] = useState<Record<string, { likes: number; owns: number }>>({})
   const [myBookActions, setMyBookActions] = useState<Record<string, { liked: boolean; owned: boolean }>>({})
+  const [recentComments, setRecentComments] = useState<{ id: string; display_name: string; body: string; created_at: string; recipe_title?: string; recipe_slug?: string }[]>([])
+
+  // Fetch recent community comments
+  useEffect(() => {
+    async function fetchRecentComments() {
+      const { data: comments } = await supabase.from('comments').select('id, display_name, body, created_at, recipe_id').order('created_at', { ascending: false }).limit(6)
+      if (comments && comments.length > 0) {
+        // Fetch recipe titles for these comments
+        const recipeIds = [...new Set(comments.map(c => c.recipe_id))]
+        const { data: recipes } = await supabase.from('recipes').select('id, title, slug').in('id', recipeIds)
+        const recipeMap = new Map((recipes || []).map(r => [r.id, r]))
+        setRecentComments(comments.map(c => {
+          const recipe = recipeMap.get(c.recipe_id)
+          return { id: c.id, display_name: c.display_name, body: c.body, created_at: c.created_at, recipe_title: recipe?.title, recipe_slug: recipe?.slug }
+        }))
+      }
+    }
+    fetchRecentComments()
+  }, [])
 
   // Fetch book shelf stats
   useEffect(() => {
@@ -1022,8 +1041,8 @@ export default function Home() {
           {/* COMMUNITY PICKS */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Community picks</h2>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>WHAT COOKS ARE LOVING</span>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending recipes</h2>
+              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>THIS WEEK</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
               {featuredRecipes.slice(0, 4).map((r, i) => (
@@ -1050,20 +1069,58 @@ export default function Home() {
 
           <div style={{ height: 1, background: C.rule }} />
 
+          {/* FROM THE COMMUNITY */}
+          {recentComments.length > 0 && (
+            <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>From the community</h2>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>RECENT NOTES</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                {recentComments.slice(0, 4).map((c, i) => (
+                  <Link key={c.id} href={c.recipe_slug ? `/recipe/${c.recipe_slug}` : '#'} style={{ textDecoration: 'none', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
+                    <div style={{
+                      padding: '16px 18px', borderRadius: 10, background: C.warm, border: `1px solid ${C.ruleLight}`,
+                      borderLeft: `3px solid ${C.accent}`, transition: 'transform 0.15s, box-shadow 0.15s',
+                    }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{c.display_name.charAt(0).toUpperCase()}</div>
+                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>@{c.display_name}</span>
+                        {c.recipe_title && (
+                          <>
+                            <span style={{ fontSize: 10, color: C.text3 }}>on</span>
+                            <span style={{ fontSize: 11, fontFamily: SERIF, fontWeight: 600, color: C.text, fontStyle: 'italic' }}>{c.recipe_title}</span>
+                          </>
+                        )}
+                      </div>
+                      <p style={{ fontSize: 13, fontFamily: SANS, color: C.text, lineHeight: 1.55, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{c.body}</p>
+                      <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '8px 0 0' }}>{new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {recentComments.length > 0 && <div style={{ height: 1, background: C.rule }} />}
+
           {/* QUICK MEALS */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
               <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Under 30 minutes</h2>
               <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>QUICK MEALS</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 14, overflow: 'hidden' }}>
               {quickRecipes.map((r, i) => (
-                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.04}s both` }} onClick={() => setQuickViewId(r.id)}>
+                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.04}s both`, overflow: 'hidden' }} onClick={() => setQuickViewId(r.id)}>
                   <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 6 }}>
                     {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
                   </div>
                   <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2, display: 'inline' }}>{r.title}</h3>
-                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, marginLeft: 4 }}>{formatTime(r.time_total)}</span>
                 </div>
               ))}
             </div>
