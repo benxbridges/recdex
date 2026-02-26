@@ -80,6 +80,43 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
 }
 
 
+// ===== EGG POINT SYSTEM =====
+const EGG_TIERS = [
+  { name: 'Home Cook', min: 0, color: C.text3 },
+  { name: 'Line Cook', min: 25, color: C.gold },
+  { name: 'Sous Chef', min: 100, color: C.green },
+  { name: 'Chef', min: 500, color: C.blue },
+  { name: 'Executive Chef', min: 2000, color: C.accent },
+]
+
+function getEggTier(eggs: number) {
+  let tier = EGG_TIERS[0]
+  for (const t of EGG_TIERS) {
+    if (eggs >= t.min) tier = t
+  }
+  return tier
+}
+
+function EggBadge({ eggs, size = 12 }: { eggs: number; size?: number }) {
+  const tier = getEggTier(eggs)
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      padding: '1px 6px 1px 3px', borderRadius: 8,
+      background: `${tier.color}15`,
+    }}>
+      <svg width={size} height={Math.round(size * 1.3)} viewBox="0 0 12 16" fill="none">
+        <path d="M6 0.5C4.2 0.5 1 4.5 1 9.5C1 12.5 3.2 15 6 15C8.8 15 11 12.5 11 9.5C11 4.5 7.8 0.5 6 0.5Z"
+          fill={tier.color} />
+        <ellipse cx="4.5" cy="8.5" rx="1.5" ry="2" fill="white" opacity="0.25" />
+      </svg>
+      <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, color: tier.color, lineHeight: 1 }}>
+        {eggs}
+      </span>
+    </span>
+  )
+}
+
 // ===== MAIN PAGE =====
 export default function ProfilePage() {
   const router = useRouter()
@@ -100,6 +137,7 @@ export default function ProfilePage() {
   const [editingBio, setEditingBio] = useState(false)
   const [bioInput, setBioInput] = useState('')
   const [activityExpanded, setActivityExpanded] = useState(false)
+  const [eggExpanded, setEggExpanded] = useState(false)
   const [editingSocials, setEditingSocials] = useState(false)
   const [favDishRecipes, setFavDishRecipes] = useState<RecipeMin[]>([])
   const [showFavDishPicker, setShowFavDishPicker] = useState<number | null>(null) // which slot index is being picked
@@ -207,6 +245,24 @@ export default function ProfilePage() {
   const dishesList = Object.entries(cookCounts).sort((a, b) => b[1].count - a[1].count)
   const mostCooked = dishesList[0] || null
 
+  // Egg point calculation
+  const eggData = (() => {
+    const breakdown = [
+      { label: 'Recipes cooked', count: cookEvents.length, per: 1 },
+      // Future: { label: 'Recipes contributed', count: 0, per: 100 },
+      // Future: { label: 'Your recipes cooked by others', count: 0, per: 5 },
+      // Future: { label: 'Your recipes saved by others', count: 0, per: 2 },
+      // Future: { label: 'Likes on your comments', count: 0, per: 1 },
+    ]
+    const total = breakdown.reduce((sum, b) => sum + b.count * b.per, 0)
+    return { total, breakdown }
+  })()
+  const eggTier = getEggTier(eggData.total)
+  const nextEggTier = EGG_TIERS.find(t => t.min > eggData.total) || null
+  const eggProgress = nextEggTier
+    ? ((eggData.total - eggTier.min) / (nextEggTier.min - eggTier.min)) * 100
+    : 100
+
   // Activity feed
   type ActivityItem = { type: 'cooked'; event: CookEvent }
   const activityFeed: ActivityItem[] = cookEvents.map(e => ({ type: 'cooked' as const, event: e }))
@@ -230,9 +286,11 @@ export default function ProfilePage() {
                 Recipe Index<EggDot size={9} />
               </h1>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
               <div style={{ width: 1, height: 14, background: C.rule }} />
+              <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
+              <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
               <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
               </Link>
@@ -275,12 +333,15 @@ export default function ProfilePage() {
                     <button type="button" onClick={() => { setEditingName(false); setNameInput(profile.displayName) }} style={{ fontSize: 11, fontFamily: SANS, color: C.text3, background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                   </form>
                 ) : (
-                  <div onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50) }} style={{ cursor: 'pointer' }}>
-                    {profile.displayName ? (
-                      <span style={{ fontFamily: MONO, fontSize: 15, color: C.accent, fontWeight: 600 }}>@{profile.displayName}</span>
-                    ) : (
-                      <span style={{ fontFamily: MONO, fontSize: 15, color: C.text3, fontStyle: 'italic' }}>Pick a display name...</span>
-                    )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <div onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50) }} style={{ cursor: 'pointer' }}>
+                      {profile.displayName ? (
+                        <span style={{ fontFamily: MONO, fontSize: 15, color: C.accent, fontWeight: 600 }}>@{profile.displayName}</span>
+                      ) : (
+                        <span style={{ fontFamily: MONO, fontSize: 15, color: C.text3, fontStyle: 'italic' }}>Pick a display name...</span>
+                      )}
+                    </div>
+                    {profile.displayName && <EggBadge eggs={eggData.total} />}
                   </div>
                 )}
               </div>
@@ -403,6 +464,51 @@ export default function ProfilePage() {
                 <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Following</span>
               </div>
             </div>
+
+            {/* Egg rank — collapsed by default, subtle opt-in */}
+            {profile.displayName && (
+              <div style={{ paddingLeft: 62, marginTop: 12 }}>
+                <div
+                  onClick={() => setEggExpanded(!eggExpanded)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', opacity: 0.6, transition: 'opacity 0.15s ease' }}
+                  onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                  onMouseLeave={e => (e.currentTarget.style.opacity = eggExpanded ? '1' : '0.6')}
+                >
+                  <svg width={10} height={13} viewBox="0 0 12 16" fill="none">
+                    <path d="M6 0.5C4.2 0.5 1 4.5 1 9.5C1 12.5 3.2 15 6 15C8.8 15 11 12.5 11 9.5C11 4.5 7.8 0.5 6 0.5Z" fill={eggTier.color} />
+                  </svg>
+                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>
+                    {eggData.total} egg{eggData.total !== 1 ? 's' : ''} · {eggTier.name}
+                  </span>
+                  <span style={{ fontSize: 8, color: C.text3 }}>{eggExpanded ? '▲' : '▼'}</span>
+                </div>
+                {eggExpanded && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.ruleLight}`, animation: 'fadeIn 0.2s ease' }}>
+                    {nextEggTier && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <div style={{ flex: 1, height: 3, background: C.ruleLight, borderRadius: 2, overflow: 'hidden', maxWidth: 140 }}>
+                          <div style={{ height: '100%', background: eggTier.color, borderRadius: 2, width: `${Math.min(eggProgress, 100)}%`, transition: 'width 0.3s ease' }} />
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3 }}>
+                          {nextEggTier.min - eggData.total} to {nextEggTier.name}
+                        </span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      {eggData.breakdown.filter(b => b.count > 0).map(b => (
+                        <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontFamily: MONO, fontSize: 10, color: eggTier.color, fontWeight: 600, minWidth: 28 }}>+{b.count * b.per}</span>
+                          <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>{b.label}</span>
+                        </div>
+                      ))}
+                      {eggData.total === 0 && (
+                        <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3, fontStyle: 'italic' }}>Cook a recipe to earn your first egg!</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>

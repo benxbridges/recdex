@@ -946,8 +946,8 @@ export default function Home() {
               <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <span style={{ color: C.text2, cursor: 'pointer' }}>about</span>
-              <span style={{ color: C.text2, cursor: 'pointer' }}>contribute</span>
+              <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
+              <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
               <div style={{ width: 1, height: 14, background: C.rule }} />
               <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
                 <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
