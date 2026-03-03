@@ -1239,23 +1239,25 @@ export default function Home() {
                 const tag = THREAD_TAGS[thread.tag] || { color: C.text3, bg: C.cool }
                 return (
                   <div key={thread.id} style={{
-                    padding: '16px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
+                    padding: '10px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
                     cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
                   }}>
-                    {/* Thread header */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      {/* Upvote column */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      {/* Frying pan upvote column */}
                       <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                        padding: '4px 0', minWidth: 36, flexShrink: 0,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                        padding: '2px 0', minWidth: 32, flexShrink: 0,
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round"><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></svg>
-                        <span style={{ fontSize: 13, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
+                          <circle cx="10" cy="12" r="7" />
+                          <line x1="17" y1="5" x2="22" y2="2" />
+                        </svg>
+                        <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
                       </div>
 
                       {/* Content */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                           <span style={{
                             fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
                             padding: '2px 7px', borderRadius: 4, background: tag.bg, color: tag.color,
@@ -1263,25 +1265,15 @@ export default function Home() {
                           <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author} · {thread.timeAgo}</span>
                         </div>
 
-                        <h3 style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.35, margin: '0 0 8px' }}>{thread.title}</h3>
-
-                        {/* Top reply preview */}
-                        {thread.topReply && (
-                          <div style={{ padding: '8px 10px', background: C.cool, borderRadius: 8, borderLeft: `2px solid ${C.ruleLight}` }}>
-                            <p style={{ fontSize: 12, color: C.text2, fontFamily: SANS, lineHeight: 1.4, margin: 0 }}>
-                              {thread.topReply.text}
-                            </p>
-                            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginTop: 4, display: 'inline-block' }}>@{thread.topReply.user}</span>
-                          </div>
-                        )}
+                        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
 
                         {/* Thread meta */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
                           </div>
-                          <span style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
+                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
                         </div>
                       </div>
                     </div>
