@@ -4,20 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-
-// ===== DESIGN TOKENS =====
-const C = {
-  bg: '#FEFDFB', warm: '#F5F2EC', cool: '#F8F6F1',
-  text: '#1A1A18', text2: '#5C5647', text3: '#9C9585',
-  rule: '#D4CDBE', ruleLight: '#E8E4DB',
-  accent: '#C84A2A', accentBg: '#FDF3F0', accentMed: 'rgba(200,74,42,0.2)',
-  green: '#4A6741', greenBg: '#F0F5EE',
-  blue: '#3D6B8E', blueBg: '#EFF5F9',
-  gold: '#A8862A', goldBg: '#FBF7ED',
-}
-const SERIF = "'Source Serif 4', Georgia, serif"
-const SANS = "'DM Sans', system-ui, sans-serif"
-const MONO = "'JetBrains Mono', 'Courier New', monospace"
+import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
 // ===== EGG SYSTEM (shared with profile) =====
 const EGG_TIERS = [

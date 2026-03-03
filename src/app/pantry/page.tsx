@@ -3,18 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
-// ===== DESIGN TOKENS =====
-const C = {
-  bg: '#FEFDFB', warm: '#F5F2EC', cool: '#F8F6F1',
-  text: '#1A1A18', text2: '#5C5647', text3: '#9C9585',
-  rule: '#D4CDBE', ruleLight: '#E8E4DB',
-  accent: '#C84A2A', accentBg: '#FDF3F0', accentMed: 'rgba(200,74,42,0.2)',
-  green: '#4A6741', greenBg: '#F0F5EE',
-  gold: '#A8862A', goldBg: '#FBF7ED',
-}
-const SERIF = "'Source Serif 4', Georgia, serif"
-const SANS = "'DM Sans', system-ui, sans-serif"
-const MONO = "'JetBrains Mono', 'Courier New', monospace"
+import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
 // ===== TYPES =====
 type GroceryItem = {

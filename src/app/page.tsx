@@ -4,21 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-
-// ===== DESIGN TOKENS =====
-const C = {
-  bg: '#FEFDFB', warm: '#F5F2EC', cool: '#F8F6F1',
-  text: '#1A1A18', text2: '#5C5647', text3: '#9C9585',
-  rule: '#D4CDBE', ruleLight: '#E8E4DB',
-  accent: '#C84A2A', accentBg: '#FDF3F0', accentMed: 'rgba(200,74,42,0.2)',
-  green: '#4A6741', greenBg: '#F0F5EE',
-  blue: '#3D6B8E', blueBg: '#EFF5F9',
-  gold: '#A8862A', goldBg: '#FBF7ED',
-  timerBg: '#FDF8F6', timerRing: 'rgba(200,74,42,0.15)',
-}
-const SERIF = "'Source Serif 4', Georgia, serif"
-const SANS = "'DM Sans', system-ui, sans-serif"
-const MONO = "'JetBrains Mono', 'Courier New', monospace"
+import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -325,7 +311,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
               Added — view shopping list
             </button>
           ) : addedCount > 0 ? (
-            <button onClick={addToShoppingList} style={{ width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none', background: C.text, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
+            <button onClick={addToShoppingList} style={{ width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" /></svg>
               {addedCount === items.length ? 'Add all to shopping list' : `Add ${addedCount} item${addedCount !== 1 ? 's' : ''} to shopping list`}
             </button>
@@ -704,7 +690,7 @@ function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: ()
                   value={favRecipe}
                   onChange={e => setFavRecipe(e.target.value)}
                   placeholder="e.g. The roast chicken on page 142"
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 5, border: `1.5px solid ${C.ruleLight}`, background: '#fff', fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none' }}
+                  style={{ flex: 1, padding: '8px 12px', borderRadius: 5, border: `1.5px solid ${C.ruleLight}`, background: C.warm, fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none' }}
                   onKeyDown={e => { if (e.key === 'Enter') saveFavoriteRecipe() }}
                 />
                 <button onClick={saveFavoriteRecipe} disabled={savingFav} style={{
@@ -980,7 +966,7 @@ export default function Home() {
             </svg>
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
               placeholder="Search by recipe, ingredient, or cuisine..."
-              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchFocused ? C.text : C.rule}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: '#fff', boxShadow: searchFocused ? '0 2px 12px rgba(0,0,0,0.06)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
+              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchFocused ? C.text : C.rule}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? '0 2px 12px rgba(0,0,0,0.15)' : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
             {['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking'].map(tag => (
@@ -1263,10 +1249,10 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
               {categories.slice(0, 12).map((cat, i) => (
                 <div key={cat.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.03}s both` }} onClick={() => { setActiveCategory(cat.id); setView('browse') }}>
-                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', position: 'relative', background: C.text }}>
+                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', position: 'relative', background: C.warm }}>
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 10 }}>
-                      <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: '#fff', marginBottom: 1 }}>{cat.name}</h3>
-                      <span style={{ fontSize: 10, fontFamily: MONO, color: 'rgba(255,255,255,0.7)' }}>{cat.recipe_count} recipes</span>
+                      <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 1 }}>{cat.name}</h3>
+                      <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{cat.recipe_count} recipes</span>
                     </div>
                   </div>
                 </div>
@@ -1313,7 +1299,7 @@ export default function Home() {
                   <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1 }}>{activeCategoryName}</h2>
                   <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipes.length} recipe{recipes.length !== 1 ? 's' : ''}{searchQuery && ` matching "${searchQuery}"`}</span>
                 </div>
-                <div style={{ height: 1.5, background: C.text, marginTop: 8 }} />
+                <div style={{ height: 1.5, background: C.rule, marginTop: 8 }} />
               </div>
               {loading && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>Loading recipes...</p></div>}
               {!loading && recipes.length === 0 && <div style={{ padding: '40px 0', textAlign: 'center' }}><p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>{searchQuery ? `No recipes found for "${searchQuery}".` : 'No recipes in this category yet.'}</p></div>}

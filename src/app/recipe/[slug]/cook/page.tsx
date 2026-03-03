@@ -3,18 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-
-const C = {
-  bg: '#FEFDFB', warm: '#F5F2EC', cool: '#F8F6F1',
-  text: '#1A1A18', text2: '#5C5647', text3: '#9C9585',
-  rule: '#D4CDBE', ruleLight: '#E8E4DB',
-  accent: '#C84A2A', accentBg: '#FDF3F0', accentMed: 'rgba(200,74,42,0.2)',
-  green: '#4A6741', greenBg: '#F0F5EE',
-  timerBg: '#FDF8F6', timerRing: 'rgba(200,74,42,0.15)',
-}
-const SERIF = "'Source Serif 4', Georgia, serif"
-const SANS = "'DM Sans', system-ui, sans-serif"
-const MONO = "'JetBrains Mono', 'Courier New', monospace"
+import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
 type Step = { step: number; text: string; timer_minutes: number | null }

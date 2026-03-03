@@ -4,20 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-
-// ===== DESIGN TOKENS =====
-const C = {
-  bg: '#FEFDFB', warm: '#F5F2EC', cool: '#F8F6F1',
-  text: '#1A1A18', text2: '#5C5647', text3: '#9C9585',
-  rule: '#D4CDBE', ruleLight: '#E8E4DB',
-  accent: '#C84A2A', accentBg: '#FDF3F0', accentMed: 'rgba(200,74,42,0.2)',
-  green: '#4A6741', greenBg: '#F0F5EE',
-  gold: '#A8862A', goldBg: '#FBF7ED',
-  eggPoint: '#E8A44A',
-}
-const SERIF = "'Source Serif 4', Georgia, serif"
-const SANS = "'DM Sans', system-ui, sans-serif"
-const MONO = "'JetBrains Mono', 'Courier New', monospace"
+import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -92,19 +79,19 @@ function BrokenEggSVG({ width = 60 }: { width?: number }) {
   const h = width * 0.75
   return (
     <svg width={width} height={h} viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <ellipse cx="100" cy="115" rx="55" ry="18" fill="#E8E4DB" opacity="0.5" />
-      <ellipse cx="100" cy="113" rx="48" ry="14" fill="#F5F2EC" />
+      <ellipse cx="100" cy="115" rx="55" ry="18" fill={C.rule} opacity="0.5" />
+      <ellipse cx="100" cy="113" rx="48" ry="14" fill={C.warm} />
       <g transform="translate(42, 30) rotate(-8)">
-        <path d="M0 50 C0 22, 12 0, 28 0 C44 0, 56 22, 56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill="#F5F2EC" stroke="#D4CDBE" strokeWidth="1.5" />
-        <path d="M8 45 C8 25, 16 8, 28 8 C40 8, 48 25, 48 45" fill="none" stroke="#E8E4DB" strokeWidth="1" />
+        <path d="M0 50 C0 22, 12 0, 28 0 C44 0, 56 22, 56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.warm} stroke={C.rule} strokeWidth="1.5" />
+        <path d="M8 45 C8 25, 16 8, 28 8 C40 8, 48 25, 48 45" fill="none" stroke={C.rule} strokeWidth="1" />
       </g>
       <g transform="translate(102, 35) rotate(12)">
-        <path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22, 36 0, 20 0 C4 0, -8 22, 0 48Z" fill="#F5F2EC" stroke="#D4CDBE" strokeWidth="1.5" />
-        <path d="M8 42 C4 24, 10 8, 20 8 C30 8, 40 24, 40 42" fill="none" stroke="#E8E4DB" strokeWidth="1" />
+        <path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22, 36 0, 20 0 C4 0, -8 22, 0 48Z" fill={C.warm} stroke={C.rule} strokeWidth="1.5" />
+        <path d="M8 42 C4 24, 10 8, 20 8 C30 8, 40 24, 40 42" fill="none" stroke={C.rule} strokeWidth="1" />
       </g>
-      <ellipse cx="100" cy="108" rx="16" ry="12" fill="#E8A44A" opacity="0.3" />
-      <ellipse cx="100" cy="106" rx="13" ry="10" fill="#E8A44A" opacity="0.5" />
-      <ellipse cx="98" cy="104" rx="4" ry="3" fill="#F5F2EC" opacity="0.3" />
+      <ellipse cx="100" cy="108" rx="16" ry="12" fill={C.eggPoint} opacity="0.3" />
+      <ellipse cx="100" cy="106" rx="13" ry="10" fill={C.eggPoint} opacity="0.5" />
+      <ellipse cx="98" cy="104" rx="4" ry="3" fill={C.warm} opacity="0.3" />
     </svg>
   )
 }
@@ -113,9 +100,9 @@ function ContributePhotoCTA() {
   const [hovered, setHovered] = useState(false)
   return (
     <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ width: '100%', height: '100%', background: hovered ? '#F0EDE6' : C.warm, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.15s', gap: 10 }}>
+      style={{ width: '100%', height: '100%', background: hovered ? C.cool : C.warm, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.15s', gap: 10 }}>
       <BrokenEggSVG width={50} />
-      <div style={{ padding: '8px 16px', borderRadius: 6, border: `1.5px dashed ${hovered ? C.accent : C.rule}`, background: hovered ? C.accentBg : 'rgba(255,255,255,0.6)', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ padding: '8px 16px', borderRadius: 6, border: `1.5px dashed ${hovered ? C.accent : C.rule}`, background: hovered ? C.accentBg : C.warm, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 8 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hovered ? C.accent : C.text3} strokeWidth="2" strokeLinecap="round" style={{ transition: 'stroke 0.15s' }}>
           <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
         </svg>
@@ -132,9 +119,9 @@ function RecipeBoxNav() {
         <div style={{ position: 'relative', width: 26, height: 22 }}>
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 14, background: '#D4A574', borderRadius: '2px 2px 3px 3px', border: '1.5px solid #B8956A' }} />
           <div style={{ position: 'absolute', top: 2, left: -1, right: -1, height: 8, background: '#C49660', borderRadius: '3px 3px 0 0', border: '1.5px solid #B8956A', borderBottom: 'none' }} />
-          <div style={{ position: 'absolute', top: 0, left: 4, width: 5, height: 5, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
-          <div style={{ position: 'absolute', top: -1, left: 11, width: 5, height: 6, background: '#fff', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
-          <div style={{ position: 'absolute', top: 1, left: 18, width: 5, height: 4, background: '#F5EDE3', borderRadius: '2px 2px 0 0', border: '1px solid #D4CDBE', borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: 0, left: 4, width: 5, height: 5, background: C.warm, borderRadius: '2px 2px 0 0', border: `1px solid ${C.rule}`, borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: -1, left: 11, width: 5, height: 6, background: C.warm, borderRadius: '2px 2px 0 0', border: `1px solid ${C.rule}`, borderBottom: 'none' }} />
+          <div style={{ position: 'absolute', top: 1, left: 18, width: 5, height: 4, background: C.warm, borderRadius: '2px 2px 0 0', border: `1px solid ${C.rule}`, borderBottom: 'none' }} />
         </div>
         <div>
           <span style={{ fontSize: 11, fontWeight: 600, color: C.text, fontFamily: SANS, lineHeight: 1 }}>Profile</span>
@@ -295,7 +282,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
           ) : addedCount > 0 ? (
             <button onClick={addToShoppingList} style={{
               width: '100%', padding: '12px 16px', borderRadius: 6, border: 'none',
-              background: C.text, color: '#fff',
+              background: C.text, color: C.bg,
               fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             }}>
@@ -361,7 +348,7 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
             <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 600, letterSpacing: 2, color: C.text3, textTransform: 'uppercase' }}>Recipe Index</span>
             <span style={{ fontFamily: MONO, fontSize: 8, color: C.text3 }}>recipeindex.org</span>
           </div>
-          <div style={{ height: 1, background: C.text, marginBottom: 18 }} />
+          <div style={{ height: 1, background: C.rule, marginBottom: 18 }} />
 
           {/* Title & meta */}
           <h2 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.15, letterSpacing: -0.5 }}>{recipe.title}</h2>
@@ -392,7 +379,7 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
             </>
           )}
 
-          <div style={{ height: 1, background: C.text, margin: '14px 0 12px' }} />
+          <div style={{ height: 1, background: C.rule, margin: '14px 0 12px' }} />
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -406,11 +393,11 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
 
         {/* Action buttons below card */}
         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button onClick={copyLink} style={{ flex: 1, padding: '9px 0', border: `1px solid ${linkCopied ? C.green : C.rule}`, borderRadius: 6, background: linkCopied ? C.greenBg : '#fff', color: linkCopied ? C.green : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, transition: 'all 0.15s' }}>
+          <button onClick={copyLink} style={{ flex: 1, padding: '9px 0', border: `1px solid ${linkCopied ? C.green : C.rule}`, borderRadius: 6, background: linkCopied ? C.greenBg : C.warm, color: linkCopied ? C.green : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, transition: 'all 0.15s' }}>
             {linkCopied ? 'Copied!' : 'Copy link'}
           </button>
-          <button style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: '#fff', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save image</button>
-          <button onClick={shareNative} style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: '#fff', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
+          <button style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: C.warm, color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Save image</button>
+          <button onClick={shareNative} style={{ flex: 1, padding: '9px 0', border: `1px solid ${C.rule}`, borderRadius: 6, background: C.warm, color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Share</button>
         </div>
         <button onClick={onClose} style={{ width: '100%', padding: '9px 0', border: 'none', borderRadius: 6, background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, marginTop: 6 }}>Close</button>
       </div>
@@ -939,7 +926,7 @@ export default function RecipePage() {
                   placeholder="Jot down personal notes — adjustments, what worked, what to try next time..."
                   style={{
                     width: '100%', minHeight: 64, padding: '10px 12px', borderRadius: 6,
-                    border: `1px solid ${C.ruleLight}`, background: 'rgba(255,255,255,0.7)',
+                    border: `1px solid ${C.ruleLight}`, background: C.warm,
                     resize: 'vertical', fontFamily: SANS, fontSize: 13, color: C.text,
                     lineHeight: 1.6, outline: 'none',
                   }}
@@ -953,7 +940,7 @@ export default function RecipePage() {
                     }}>Cancel</button>
                     <button onClick={savePrivateNote} style={{
                       padding: '6px 14px', borderRadius: 5, border: 'none',
-                      background: C.text, color: '#fff', fontSize: 11, fontWeight: 600,
+                      background: C.text, color: C.bg, fontSize: 11, fontWeight: 600,
                       cursor: 'pointer', fontFamily: SANS,
                     }}>Save note</button>
                   </div>
