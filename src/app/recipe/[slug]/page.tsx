@@ -406,22 +406,31 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
 }
 
 // ===== KITCHEN CONSENSUS (mock data) =====
-const CONSENSUS_DATA: Record<string, {
+type ConsensusPoint = { label: string; consensus: string; percentage: number; alternative?: string; altPercentage?: number }
+type ConsensusData = {
   recipesAnalyzed: number
   sources: string[]
-  points: { question: string; consensus: string; percentage: number; alternative?: string; altPercentage?: number }[]
+  ingredients: ConsensusPoint[]
+  techniques: ConsensusPoint[]
   differs: { point: string; detail: string }[]
-}> = {
+}
+
+const CONSENSUS_DATA: Record<string, ConsensusData> = {
   'carbonara': {
     recipesAnalyzed: 18,
     sources: ['NYT Cooking', 'Serious Eats', 'Bon Appétit', 'Food Network', 'Allrecipes', 'Epicurious'],
-    points: [
-      { question: 'Cream?', consensus: 'No cream', percentage: 83, alternative: 'Add cream', altPercentage: 17 },
-      { question: 'Pork', consensus: 'Guanciale', percentage: 61, alternative: 'Pancetta', altPercentage: 33 },
-      { question: 'Egg ratio', consensus: 'Whole eggs + extra yolks', percentage: 72, alternative: 'Yolks only', altPercentage: 28 },
-      { question: 'Cheese', consensus: 'Pecorino Romano', percentage: 67, alternative: 'Parm + Pecorino mix', altPercentage: 33 },
-      { question: 'Pasta shape', consensus: 'Spaghetti', percentage: 55, alternative: 'Rigatoni', altPercentage: 30 },
-      { question: 'Pasta water', consensus: 'Yes, save and use it', percentage: 94 },
+    ingredients: [
+      { label: 'Cream?', consensus: 'No cream', percentage: 83, alternative: 'Add cream', altPercentage: 17 },
+      { label: 'Pork', consensus: 'Guanciale', percentage: 61, alternative: 'Pancetta', altPercentage: 33 },
+      { label: 'Eggs', consensus: 'Whole eggs + extra yolks', percentage: 72, alternative: 'Yolks only', altPercentage: 28 },
+      { label: 'Cheese', consensus: 'Pecorino Romano', percentage: 67, alternative: 'Parm + Pecorino mix', altPercentage: 33 },
+      { label: 'Pasta', consensus: 'Spaghetti', percentage: 55, alternative: 'Rigatoni', altPercentage: 30 },
+    ],
+    techniques: [
+      { label: 'When to add eggs?', consensus: 'Off heat completely', percentage: 89, alternative: 'Over low heat', altPercentage: 11 },
+      { label: 'Toast the pepper?', consensus: 'Yes, bloom in rendered fat', percentage: 72, alternative: 'Add at the end', altPercentage: 28 },
+      { label: 'Pasta water?', consensus: 'Save and use ½ cup', percentage: 94 },
+      { label: 'Start guanciale cold?', consensus: 'Yes, cold pan', percentage: 78, alternative: 'Hot pan', altPercentage: 22 },
     ],
     differs: [
       { point: 'Uses a mix of parmesan and pecorino', detail: '67% of recipes go pure Pecorino Romano — this recipe blends both for a milder flavor' },
@@ -430,15 +439,53 @@ const CONSENSUS_DATA: Record<string, {
   'cacio-e-pepe': {
     recipesAnalyzed: 12,
     sources: ['NYT Cooking', 'Serious Eats', 'Bon Appétit', 'Food52', 'Epicurious'],
-    points: [
-      { question: 'Cheese', consensus: 'Pecorino Romano only', percentage: 92 },
-      { question: 'Pepper', consensus: 'Freshly cracked, toasted in pan', percentage: 85, alternative: 'Ground pepper', altPercentage: 15 },
-      { question: 'Pasta', consensus: 'Tonnarelli or spaghetti', percentage: 75, alternative: 'Bucatini', altPercentage: 25 },
-      { question: 'Butter?', consensus: 'No butter', percentage: 70, alternative: 'Small amount', altPercentage: 30 },
-      { question: 'Pasta water technique', consensus: 'Add starchy water gradually', percentage: 88 },
+    ingredients: [
+      { label: 'Cheese', consensus: 'Pecorino Romano only', percentage: 92, alternative: 'Add parmesan', altPercentage: 8 },
+      { label: 'Pepper', consensus: 'Whole black peppercorns', percentage: 85, alternative: 'Pre-ground', altPercentage: 15 },
+      { label: 'Pasta', consensus: 'Tonnarelli or spaghetti', percentage: 75, alternative: 'Bucatini', altPercentage: 25 },
+      { label: 'Butter?', consensus: 'No butter', percentage: 70, alternative: 'Small amount', altPercentage: 30 },
+    ],
+    techniques: [
+      { label: 'Toast the pepper?', consensus: 'Yes, in dry pan first', percentage: 83, alternative: 'Skip toasting', altPercentage: 17 },
+      { label: 'Pasta water method', consensus: 'Add starchy water gradually', percentage: 88 },
+      { label: 'When to add cheese?', consensus: 'Off heat, with pasta water', percentage: 75, alternative: 'Toss over low heat', altPercentage: 25 },
     ],
     differs: [],
   },
+}
+
+function ConsensusBar({ point }: { point: ConsensusPoint }) {
+  return (
+    <div style={{ textAlign: 'center' }}>
+      {/* Centered label */}
+      <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 6px' }}>
+        {point.label}
+      </p>
+      {/* Consensus answer — big and clear */}
+      <p style={{ fontSize: 15, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '0 0 6px' }}>
+        {point.consensus}
+      </p>
+      {/* Bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 280, margin: '0 auto' }}>
+        <div style={{ flex: 1, height: 5, background: C.ruleLight, borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{
+            width: `${point.percentage}%`, height: '100%',
+            background: point.percentage >= 80 ? C.blue : point.percentage >= 60 ? `${C.blue}BB` : `${C.blue}88`,
+            borderRadius: 3,
+          }} />
+        </div>
+        <span style={{ fontSize: 10, fontFamily: MONO, color: C.blue, minWidth: 28 }}>
+          {point.percentage}%
+        </span>
+      </div>
+      {/* Alternative */}
+      {point.alternative && (
+        <p style={{ fontSize: 10, fontFamily: SANS, color: C.text3, margin: '4px 0 0' }}>
+          vs. {point.alternative} ({point.altPercentage}%)
+        </p>
+      )}
+    </div>
+  )
 }
 
 function KitchenConsensus({ slug }: { slug: string }) {
@@ -456,13 +503,12 @@ function KitchenConsensus({ slug }: { slug: string }) {
           style={{
             width: '100%', display: 'flex', alignItems: 'center', gap: 10,
             padding: '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
-            borderLeft: `3px solid ${C.blue}`, borderRadius: 8, cursor: 'pointer',
-            transition: 'background 0.15s',
+            borderLeft: `3px solid ${C.blue}`, borderRadius: expanded ? '8px 8px 0 0' : 8, cursor: 'pointer',
+            transition: 'background 0.15s, border-radius 0.15s',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.warm }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.cool }}
         >
-          {/* Beaker/flask icon */}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 3h6" /><path d="M10 3v6.5L4 20h16l-6-10.5V3" />
             <circle cx="12" cy="16" r="1" fill={C.blue} />
@@ -477,7 +523,6 @@ function KitchenConsensus({ slug }: { slug: string }) {
           }}>
             {data.recipesAnalyzed} recipes analyzed
           </span>
-          {/* Chevron */}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round"
             style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
           >
@@ -488,60 +533,70 @@ function KitchenConsensus({ slug }: { slug: string }) {
         {/* Expanded content */}
         {expanded && (
           <div style={{
-            marginTop: 0, padding: '20px 16px', background: C.cool,
+            padding: '20px 16px', background: C.cool,
             border: `1px solid ${C.ruleLight}`, borderTop: 'none',
             borderLeft: `3px solid ${C.blue}`, borderRadius: '0 0 8px 8px',
             animation: 'fadeIn 0.2s ease',
           }}>
-            <p style={{ fontSize: 11, fontFamily: SANS, color: C.text3, margin: '0 0 16px', lineHeight: 1.4 }}>
-              How does this recipe compare to what most cooks do? We looked at {data.recipesAnalyzed} versions of this dish.
+            <p style={{ fontSize: 11, fontFamily: SANS, color: C.text3, margin: '0 0 20px', lineHeight: 1.4, textAlign: 'center' }}>
+              We compared {data.recipesAnalyzed} versions of this dish. Here&apos;s what most cooks agree on.
             </p>
 
-            {/* Agreement points */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {data.points.map((point, i) => (
-                <div key={i}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                      {point.question}
-                    </span>
-                    <span style={{ fontSize: 12, fontFamily: SANS, fontWeight: 600, color: C.text }}>
-                      {point.consensus}
-                    </span>
+            {/* INGREDIENTS CONSENSUS */}
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
+                Ingredients
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+                {data.ingredients.map((point, i) => (
+                  <div key={i} style={{ padding: '12px 8px', background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}` }}>
+                    <ConsensusBar point={point} />
                   </div>
-                  {/* Progress bar */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ flex: 1, height: 6, background: C.ruleLight, borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{
-                        width: `${point.percentage}%`, height: '100%',
-                        background: point.percentage >= 80 ? C.blue : point.percentage >= 60 ? `${C.blue}CC` : `${C.blue}88`,
-                        borderRadius: 3, transition: 'width 0.4s ease',
-                      }} />
-                    </div>
-                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.blue, minWidth: 32, textAlign: 'right' }}>
-                      {point.percentage}%
-                    </span>
-                  </div>
-                  {/* Alternative */}
-                  {point.alternative && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
-                        vs. {point.alternative}
-                      </span>
-                      <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>
-                        ({point.altPercentage}%)
-                      </span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            {/* TECHNIQUES CONSENSUS */}
+            {data.techniques.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
+                  Technique
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {data.techniques.map((point, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                      background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}`,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 2px' }}>
+                          {point.label}
+                        </p>
+                        <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 600, color: C.text, margin: 0 }}>
+                          {point.consensus}
+                        </p>
+                        {point.alternative && (
+                          <p style={{ fontSize: 10, fontFamily: SANS, color: C.text3, margin: '2px 0 0' }}>
+                            vs. {point.alternative} ({point.altPercentage}%)
+                          </p>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <span style={{ fontSize: 18, fontFamily: MONO, fontWeight: 700, color: C.blue }}>{point.percentage}%</span>
+                        <p style={{ fontSize: 8, fontFamily: MONO, color: C.text3, margin: '2px 0 0' }}>agree</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Where this recipe differs */}
             {data.differs.length > 0 && (
               <div style={{
-                marginTop: 20, padding: '10px 12px', background: C.accentBg,
+                padding: '10px 12px', background: C.accentBg,
                 borderLeft: `3px solid ${C.accent}`, borderRadius: 6,
+                marginBottom: 12,
               }}>
                 <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.accent, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Where this recipe differs
@@ -556,7 +611,7 @@ function KitchenConsensus({ slug }: { slug: string }) {
             )}
 
             {/* Sources footer */}
-            <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '16px 0 0', lineHeight: 1.4 }}>
+            <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '8px 0 0', lineHeight: 1.4, textAlign: 'center' }}>
               Synthesized from {data.recipesAnalyzed} versions across {data.sources.slice(0, 3).join(', ')}, and others.
             </p>
           </div>
