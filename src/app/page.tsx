@@ -20,9 +20,26 @@ type Recipe = {
   image_url: string | null; servings: number | null; servings_label: string | null
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
+  submitted_by?: string | null; source?: string | null
 }
 
 type Category = { id: string; name: string; recipe_count: number }
+
+type CommunitySubmission = {
+  id: string; url: string
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'other'
+  title: string; author_name: string | null; author_url: string | null
+  thumbnail_url: string | null
+  display_name: string; submitter_note: string | null
+  upvote_count: number; related_recipe_slug: string | null
+  status: string; created_at: string
+}
+
+type OEmbedResult = {
+  title?: string; author_name?: string; author_url?: string
+  thumbnail_url?: string; thumbnail_width?: number; thumbnail_height?: number
+  html?: string
+}
 
 // ===== HELPERS =====
 function capitalizeIngredient(name: string): string {
@@ -42,6 +59,45 @@ function formatTime(minutes: number | null): string {
   if (!minutes) return ''
   if (minutes >= 60) { const h = Math.floor(minutes / 60), m = minutes % 60; return m > 0 ? `${h} hr ${m} min` : `${h} hr${h > 1 ? 's' : ''}` }
   return `${minutes} min`
+}
+
+function detectPlatform(url: string): 'tiktok' | 'youtube' | 'instagram' | 'other' {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase()
+    if (hostname.includes('tiktok.com')) return 'tiktok'
+    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'youtube'
+    if (hostname.includes('instagram.com')) return 'instagram'
+  } catch { /* invalid URL */ }
+  return 'other'
+}
+
+async function fetchOembed(url: string): Promise<OEmbedResult | null> {
+  const platform = detectPlatform(url)
+  if (platform === 'tiktok' || platform === 'youtube') {
+    try {
+      const res = await fetch(`/api/oembed?url=${encodeURIComponent(url)}`)
+      if (res.ok) return await res.json()
+    } catch { /* ignore */ }
+  }
+  return null
+}
+
+function timeAgo(dateStr: string): string {
+  const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  return `${weeks}w ago`
+}
+
+function getDisplayName(): string {
+  try { return JSON.parse(localStorage.getItem('recdex-profile') || '{}').displayName || '' }
+  catch { return '' }
 }
 
 // ===== SMALL COMPONENTS =====
@@ -65,6 +121,26 @@ const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string 
 function DifficultyBadge({ difficulty }: { difficulty: string }) {
   const d = DIFFICULTY_MAP[difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
   return <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: d.color, background: d.bg, padding: '2px 7px', borderRadius: 1, fontFamily: MONO }}>{d.label}</span>
+}
+
+const PLATFORM_STYLES: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+  tiktok:    { label: 'TikTok',    color: '#E8F5E9', bg: '#1A231A', icon: '♫' },
+  youtube:   { label: 'YouTube',   color: '#FF6B6B', bg: '#2A1C1C', icon: '▶' },
+  instagram: { label: 'Instagram', color: '#E07BA8', bg: '#2A1C22', icon: '◎' },
+  other:     { label: 'Link',      color: C.blue,    bg: C.blueBg,  icon: '◉' },
+}
+
+function PlatformBadge({ platform }: { platform: string }) {
+  const p = PLATFORM_STYLES[platform] || PLATFORM_STYLES.other
+  return (
+    <span style={{
+      fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+      color: p.color, background: p.bg, padding: '2px 7px', borderRadius: 3,
+      fontFamily: MONO, display: 'inline-flex', alignItems: 'center', gap: 3,
+    }}>
+      <span style={{ fontSize: 8 }}>{p.icon}</span> {p.label}
+    </span>
+  )
 }
 
 // Small broken egg for thumbnails (80×56 browse view)
@@ -843,6 +919,446 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
+// ===== SUBMIT MODAL =====
+function SubmitModal({ onClose, onSubmitted, categories }: {
+  onClose: () => void
+  onSubmitted: (submission?: CommunitySubmission) => void
+  categories: Category[]
+}) {
+  const [tab, setTab] = useState<'link' | 'recipe'>('link')
+  const backdropRef = useRef<HTMLDivElement>(null)
+  const displayName = getDisplayName()
+
+  // Link tab state
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkPlatform, setLinkPlatform] = useState<'tiktok' | 'youtube' | 'instagram' | 'other'>('other')
+  const [oembedData, setOembedData] = useState<OEmbedResult | null>(null)
+  const [oembedLoading, setOembedLoading] = useState(false)
+  const [linkTitle, setLinkTitle] = useState('')
+  const [linkNote, setLinkNote] = useState('')
+  const [linkRelated, setLinkRelated] = useState('')
+  const [linkRelatedSearch, setLinkRelatedSearch] = useState('')
+  const [linkRelatedResults, setLinkRelatedResults] = useState<{ slug: string; title: string }[]>([])
+  const [linkPosting, setLinkPosting] = useState(false)
+  const [linkError, setLinkError] = useState('')
+
+  // Recipe tab state
+  const [recipeTitle, setRecipeTitle] = useState('')
+  const [recipeDesc, setRecipeDesc] = useState('')
+  const [recipeCuisine, setRecipeCuisine] = useState('')
+  const [recipeDifficulty, setRecipeDifficulty] = useState('easy')
+  const [recipeTime, setRecipeTime] = useState('')
+  const [recipeServings, setRecipeServings] = useState('')
+  const [recipeIngredients, setRecipeIngredients] = useState([{ name: '', amount: '', unit: '' }])
+  const [recipeSteps, setRecipeSteps] = useState([''])
+  const [recipeImageUrl, setRecipeImageUrl] = useState('')
+  const [recipePosting, setRecipePosting] = useState(false)
+  const [recipeError, setRecipeError] = useState('')
+  const [similarWarning, setSimilarWarning] = useState('')
+
+  // oEmbed fetch on URL change
+  const oembedTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  useEffect(() => {
+    if (!linkUrl.trim()) { setOembedData(null); setLinkPlatform('other'); return }
+    const platform = detectPlatform(linkUrl)
+    setLinkPlatform(platform)
+    setOembedData(null)
+    if (platform === 'tiktok' || platform === 'youtube') {
+      if (oembedTimer.current) clearTimeout(oembedTimer.current)
+      oembedTimer.current = setTimeout(async () => {
+        setOembedLoading(true)
+        const data = await fetchOembed(linkUrl)
+        if (data) {
+          setOembedData(data)
+          if (data.title) setLinkTitle(data.title)
+        }
+        setOembedLoading(false)
+      }, 400)
+    }
+    return () => { if (oembedTimer.current) clearTimeout(oembedTimer.current) }
+  }, [linkUrl])
+
+  // Related recipe search
+  useEffect(() => {
+    if (!linkRelatedSearch.trim()) { setLinkRelatedResults([]); return }
+    const timer = setTimeout(async () => {
+      const { data } = await supabase.from('recipes').select('slug, title').ilike('title', `%${linkRelatedSearch}%`).eq('status', 'published').limit(5)
+      if (data) setLinkRelatedResults(data)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [linkRelatedSearch])
+
+  // Originality check on recipe title blur
+  const checkOriginality = async () => {
+    if (!recipeTitle.trim()) { setSimilarWarning(''); return }
+    const { data } = await supabase.from('recipes').select('title').ilike('title', `%${recipeTitle.trim()}%`).eq('status', 'published').limit(3)
+    if (data && data.length > 0) {
+      setSimilarWarning(`A recipe for "${data[0].title}" already exists on RecDex. Is yours a different version?`)
+    } else {
+      setSimilarWarning('')
+    }
+  }
+
+  // Submit link
+  const submitLink = async () => {
+    if (!linkUrl.trim() || !linkTitle.trim() || !displayName) return
+    setLinkPosting(true)
+    setLinkError('')
+    const { data, error } = await supabase.from('community_submissions').insert({
+      url: linkUrl.trim(),
+      platform: linkPlatform,
+      title: linkTitle.trim(),
+      author_name: oembedData?.author_name || null,
+      author_url: oembedData?.author_url || null,
+      thumbnail_url: oembedData?.thumbnail_url || null,
+      display_name: displayName,
+      submitter_note: linkNote.trim() || null,
+      related_recipe_slug: linkRelated || null,
+    }).select().single()
+    if (error) {
+      if (error.code === '23505') setLinkError('This link has already been shared!')
+      else setLinkError('Something went wrong. Try again.')
+      setLinkPosting(false)
+      return
+    }
+    setLinkPosting(false)
+    if (data) onSubmitted(data as CommunitySubmission)
+    onClose()
+  }
+
+  // Submit recipe
+  const submitRecipe = async () => {
+    if (!recipeTitle.trim() || !displayName) return
+    const validIngredients = recipeIngredients.filter(i => i.name.trim())
+    const validSteps = recipeSteps.filter(s => s.trim())
+    if (validIngredients.length === 0 || validSteps.length === 0) {
+      setRecipeError('Add at least one ingredient and one step.')
+      return
+    }
+    setRecipePosting(true)
+    setRecipeError('')
+    const slug = recipeTitle.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36)
+    const { error } = await supabase.from('recipes').insert({
+      slug,
+      title: recipeTitle.trim(),
+      description: recipeDesc.trim() || null,
+      cuisine: recipeCuisine || null,
+      difficulty: recipeDifficulty,
+      time_total: recipeTime ? parseInt(recipeTime) : null,
+      servings: recipeServings ? parseInt(recipeServings) : null,
+      image_url: recipeImageUrl.trim() || null,
+      ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim() })),
+      steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: null })),
+      tags: [],
+      status: 'published',
+      submitted_by: displayName,
+      source: 'community',
+    })
+    if (error) {
+      setRecipeError('Something went wrong. Try again.')
+      setRecipePosting(false)
+      return
+    }
+    setRecipePosting(false)
+    onSubmitted()
+    onClose()
+  }
+
+  if (!displayName) {
+    return (
+      <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) onClose() }} style={{
+        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        animation: 'backdropIn 0.2s ease',
+      }}>
+        <div style={{ background: C.warm, borderRadius: 12, padding: '32px 28px', maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: `1px solid ${C.ruleLight}` }}>
+          <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>Set up your profile first</p>
+          <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.5, marginBottom: 16 }}>You need a display name to share recipes with the community.</p>
+          <a href="/profile" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 6, background: C.accent, color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Go to profile</a>
+        </div>
+      </div>
+    )
+  }
+
+  const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`, background: C.cool, fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none' }
+
+  return (
+    <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) onClose() }} style={{
+      position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+      animation: 'backdropIn 0.2s ease',
+    }}>
+      <div style={{
+        background: C.bg, borderRadius: 12, width: '100%', maxWidth: 560,
+        maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: `1px solid ${C.ruleLight}`,
+        animation: 'modalIn 0.25s ease',
+      }}>
+        {/* Header */}
+        <div style={{ padding: '20px 24px 0', borderBottom: `1px solid ${C.ruleLight}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>Contribute</h3>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.text3, padding: 4 }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: 0 }}>
+            {(['link', 'recipe'] as const).map(t => (
+              <button key={t} onClick={() => setTab(t)} style={{
+                padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: SANS, fontSize: 13, fontWeight: tab === t ? 600 : 400,
+                color: tab === t ? C.text : C.text3,
+                borderBottom: tab === t ? `2px solid ${C.accent}` : '2px solid transparent',
+                marginBottom: -1,
+              }}>
+                {t === 'link' ? 'Share a link' : 'Add a recipe'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          {tab === 'link' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Recipe URL</label>
+                <input value={linkUrl} onChange={e => setLinkUrl(e.target.value)} placeholder="Paste a TikTok, YouTube, Instagram, or blog link" style={inputStyle} />
+                {linkUrl.trim() && (
+                  <div style={{ marginTop: 6 }}>
+                    <PlatformBadge platform={linkPlatform} />
+                    {oembedLoading && <span style={{ fontSize: 11, color: C.text3, fontFamily: SANS, marginLeft: 8 }}>Fetching preview...</span>}
+                  </div>
+                )}
+              </div>
+
+              {oembedData && oembedData.thumbnail_url && (
+                <div style={{ display: 'flex', gap: 12, padding: 12, background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={oembedData.thumbnail_url} alt="" style={{ width: 80, height: 60, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{oembedData.title}</p>
+                    {oembedData.author_name && <p style={{ fontFamily: MONO, fontSize: 10, color: C.text3, margin: 0 }}>by {oembedData.author_name}</p>}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>
+                  Title {(linkPlatform === 'instagram' || linkPlatform === 'other') && !oembedData?.title && <span style={{ color: C.accent }}>*</span>}
+                </label>
+                <input value={linkTitle} onChange={e => setLinkTitle(e.target.value)} placeholder={oembedData?.title ? '' : 'What recipe is this?'} style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Your note <span style={{ fontWeight: 400, color: C.text3 }}>(optional)</span></label>
+                <input value={linkNote} onChange={e => setLinkNote(e.target.value.slice(0, 140))} placeholder="Why are you sharing this?" maxLength={140} style={inputStyle} />
+                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, float: 'right', marginTop: 2 }}>{linkNote.length}/140</span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Similar on RecDex <span style={{ fontWeight: 400, color: C.text3 }}>(optional)</span></label>
+                {linkRelated ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: C.warm, borderRadius: 6, border: `1px solid ${C.ruleLight}` }}>
+                    <span style={{ fontSize: 12, fontFamily: SANS, color: C.text, flex: 1 }}>{linkRelatedResults.find(r => r.slug === linkRelated)?.title || linkRelated}</span>
+                    <button onClick={() => { setLinkRelated(''); setLinkRelatedSearch('') }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text3 }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <input value={linkRelatedSearch} onChange={e => setLinkRelatedSearch(e.target.value)} placeholder="Search for a similar recipe..." style={inputStyle} />
+                    {linkRelatedResults.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, marginTop: 4, zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                        {linkRelatedResults.map(r => (
+                          <button key={r.slug} onClick={() => { setLinkRelated(r.slug); setLinkRelatedSearch(''); setLinkRelatedResults([]) }} style={{
+                            display: 'block', width: '100%', padding: '8px 12px', background: 'none', border: 'none',
+                            cursor: 'pointer', textAlign: 'left', fontFamily: SANS, fontSize: 12, color: C.text,
+                          }}
+                            onMouseEnter={e => { (e.target as HTMLElement).style.background = C.cool }}
+                            onMouseLeave={e => { (e.target as HTMLElement).style.background = 'none' }}
+                          >{r.title}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {linkError && <p style={{ fontSize: 12, color: C.accent, fontFamily: SANS, margin: 0 }}>{linkError}</p>}
+            </div>
+          )}
+
+          {tab === 'recipe' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Recipe title <span style={{ color: C.accent }}>*</span></label>
+                <input value={recipeTitle} onChange={e => setRecipeTitle(e.target.value)} onBlur={checkOriginality} placeholder="e.g., Grandma's Chicken Soup" style={inputStyle} />
+                {similarWarning && <p style={{ fontSize: 11, color: C.gold, fontFamily: SANS, margin: '4px 0 0', lineHeight: 1.4 }}>{similarWarning}</p>}
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Description <span style={{ fontWeight: 400, color: C.text3 }}>(optional)</span></label>
+                <textarea value={recipeDesc} onChange={e => setRecipeDesc(e.target.value)} placeholder="A short description of this recipe" rows={2} style={{ ...inputStyle, resize: 'vertical' as const }} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Cuisine</label>
+                  <select value={recipeCuisine} onChange={e => setRecipeCuisine(e.target.value)} style={inputStyle}>
+                    <option value="">Select...</option>
+                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Difficulty</label>
+                  <select value={recipeDifficulty} onChange={e => setRecipeDifficulty(e.target.value)} style={inputStyle}>
+                    <option value="easy">Easy</option>
+                    <option value="medium">Medium</option>
+                    <option value="hard">Advanced</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Total time (min)</label>
+                  <input type="number" value={recipeTime} onChange={e => setRecipeTime(e.target.value)} placeholder="e.g., 45" style={inputStyle} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Servings</label>
+                  <input type="number" value={recipeServings} onChange={e => setRecipeServings(e.target.value)} placeholder="e.g., 4" style={inputStyle} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Ingredients <span style={{ color: C.accent }}>*</span></label>
+                {recipeIngredients.map((ing, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                    <input value={ing.amount} onChange={e => { const next = [...recipeIngredients]; next[i] = { ...next[i], amount: e.target.value }; setRecipeIngredients(next) }} placeholder="Amt" style={{ ...inputStyle, width: 60 }} />
+                    <input value={ing.unit} onChange={e => { const next = [...recipeIngredients]; next[i] = { ...next[i], unit: e.target.value }; setRecipeIngredients(next) }} placeholder="Unit" style={{ ...inputStyle, width: 60 }} />
+                    <input value={ing.name} onChange={e => { const next = [...recipeIngredients]; next[i] = { ...next[i], name: e.target.value }; setRecipeIngredients(next) }} placeholder="Ingredient name" style={{ ...inputStyle, flex: 1 }} />
+                    {recipeIngredients.length > 1 && (
+                      <button onClick={() => setRecipeIngredients(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text3, padding: '0 4px' }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setRecipeIngredients(prev => [...prev, { name: '', amount: '', unit: '' }])} style={{ background: 'none', border: `1px dashed ${C.rule}`, borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 11, fontFamily: SANS, color: C.text3, width: '100%' }}>+ Add ingredient</button>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Steps <span style={{ color: C.accent }}>*</span></label>
+                {recipeSteps.map((step, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 6, alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, paddingTop: 10, flexShrink: 0, width: 20, textAlign: 'right' }}>{i + 1}.</span>
+                    <textarea value={step} onChange={e => { const next = [...recipeSteps]; next[i] = e.target.value; setRecipeSteps(next) }} placeholder={`Step ${i + 1}`} rows={2} style={{ ...inputStyle, flex: 1, resize: 'vertical' as const }} />
+                    {recipeSteps.length > 1 && (
+                      <button onClick={() => setRecipeSteps(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: C.text3, padding: '4px' }}>✕</button>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setRecipeSteps(prev => [...prev, ''])} style={{ background: 'none', border: `1px dashed ${C.rule}`, borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 11, fontFamily: SANS, color: C.text3, width: '100%' }}>+ Add step</button>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.text2, fontFamily: SANS, display: 'block', marginBottom: 4 }}>Image URL <span style={{ fontWeight: 400, color: C.text3 }}>(optional)</span></label>
+                <input value={recipeImageUrl} onChange={e => setRecipeImageUrl(e.target.value)} placeholder="https://..." style={inputStyle} />
+              </div>
+
+              {recipeError && <p style={{ fontSize: 12, color: C.accent, fontFamily: SANS, margin: 0 }}>{recipeError}</p>}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding: '16px 24px', borderTop: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 20, height: 20, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 700, fontFamily: SANS }}>{displayName.charAt(0).toUpperCase()}</div>
+            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>@{displayName}</span>
+          </div>
+          {tab === 'link' ? (
+            <button onClick={submitLink} disabled={linkPosting || !linkUrl.trim() || !linkTitle.trim()} style={{
+              padding: '9px 20px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              background: linkUrl.trim() && linkTitle.trim() ? C.accent : C.ruleLight,
+              color: linkUrl.trim() && linkTitle.trim() ? '#fff' : C.text3,
+              fontSize: 12, fontWeight: 600, fontFamily: SANS, transition: 'all 0.15s',
+            }}>{linkPosting ? 'Sharing...' : 'Share link'}</button>
+          ) : (
+            <button onClick={submitRecipe} disabled={recipePosting || !recipeTitle.trim()} style={{
+              padding: '9px 20px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              background: recipeTitle.trim() ? C.accent : C.ruleLight,
+              color: recipeTitle.trim() ? '#fff' : C.text3,
+              fontSize: 12, fontWeight: 600, fontFamily: SANS, transition: 'all 0.15s',
+            }}>{recipePosting ? 'Adding...' : 'Add recipe'}</button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ===== SUBMISSION CARD =====
+function SubmissionCard({ submission, hasUpvoted, onUpvote, isMobile }: {
+  submission: CommunitySubmission
+  hasUpvoted: boolean
+  onUpvote: () => void
+  isMobile: boolean
+}) {
+  return (
+    <div style={{
+      borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
+      transition: 'transform 0.15s, box-shadow 0.15s',
+    }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+    >
+      <div style={{ display: 'flex', gap: 0 }}>
+        <div style={{ width: isMobile ? 80 : 100, flexShrink: 0, background: C.cool, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {submission.thumbnail_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={submission.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 110 : 130 }} loading="lazy" />
+          ) : (
+            <BrokenEggCard />
+          )}
+        </div>
+        <div style={{ flex: 1, padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 5, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <PlatformBadge platform={submission.platform} />
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round" style={{ opacity: 0.4 }}>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </div>
+          <a href={submission.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{submission.title}</h3>
+          </a>
+          <div style={{ fontSize: 10, fontFamily: MONO, color: C.text3, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+            {submission.author_name && <span>by {submission.author_name}</span>}
+            {submission.author_name && <span style={{ color: C.rule }}>·</span>}
+            <span>shared by <span style={{ color: C.accent }}>@{submission.display_name}</span></span>
+          </div>
+          {submission.submitter_note && (
+            <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+              &ldquo;{submission.submitter_note}&rdquo;
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
+            <button onClick={e => { e.stopPropagation(); onUpvote() }} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 3, padding: '3px 8px', borderRadius: 4,
+              border: `1px solid ${hasUpvoted ? C.accent : C.ruleLight}`, background: hasUpvoted ? C.accentBg : 'transparent',
+              cursor: 'pointer', fontSize: 10, fontFamily: MONO, color: hasUpvoted ? C.accent : C.text3, fontWeight: hasUpvoted ? 600 : 400,
+              transition: 'all 0.15s',
+            }}>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill={hasUpvoted ? C.accent : 'none'} stroke={hasUpvoted ? C.accent : C.text3} strokeWidth="2.5">
+                <path d="M12 4l-8 8h5v8h6v-8h5z" />
+              </svg>
+              {submission.upvote_count}
+            </button>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{timeAgo(submission.created_at)}</span>
+            {submission.related_recipe_slug && (
+              <a href={`/recipe/${submission.related_recipe_slug}`} style={{ fontSize: 10, fontFamily: SANS, color: C.accent, textDecoration: 'none', fontWeight: 500, marginLeft: 'auto' }}>
+                Similar on RecDex →
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===== MAIN PAGE =====
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -860,6 +1376,13 @@ export default function Home() {
   const [bookStats, setBookStats] = useState<Record<string, { likes: number; owns: number }>>({})
   const [myBookActions, setMyBookActions] = useState<Record<string, { liked: boolean; owned: boolean }>>({})
   const [recentComments, setRecentComments] = useState<{ id: string; display_name: string; body: string; created_at: string; recipe_title?: string; recipe_slug?: string; recipe_image?: string | null }[]>([])
+
+  // Community submissions state
+  const [submissions, setSubmissions] = useState<CommunitySubmission[]>([])
+  const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([])
+  const [submissionSort, setSubmissionSort] = useState<'recent' | 'top'>('recent')
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
   // Fetch recent community comments
   useEffect(() => {
@@ -899,6 +1422,66 @@ export default function Home() {
     }
     fetchBookStats()
   }, [selectedBook]) // refetch when modal closes to update counts
+
+  // Fetch community submissions
+  useEffect(() => {
+    async function fetchSubmissions() {
+      const orderCol = submissionSort === 'top' ? 'upvote_count' : 'created_at'
+      const { data } = await supabase.from('community_submissions').select('*').eq('status', 'active').order(orderCol, { ascending: false }).limit(8)
+      if (data) setSubmissions(data as CommunitySubmission[])
+    }
+    fetchSubmissions()
+  }, [submissionSort])
+
+  // Fetch community-submitted recipes
+  useEffect(() => {
+    async function fetchCommunityRecipes() {
+      const { data } = await supabase.from('recipes').select('*').eq('source', 'community').eq('status', 'published').order('created_at', { ascending: false }).limit(6)
+      if (data) setCommunityRecipes(data)
+    }
+    fetchCommunityRecipes()
+  }, [])
+
+  // Load upvote state from localStorage
+  useEffect(() => {
+    try { setUserUpvotes(JSON.parse(localStorage.getItem('recdex-upvotes') || '[]')) } catch { /* ignore */ }
+  }, [])
+
+  // Hydrate upvotes from server
+  useEffect(() => {
+    const dn = getDisplayName()
+    if (!dn || submissions.length === 0) return
+    supabase.from('submission_upvotes').select('submission_id').eq('display_name', dn).in('submission_id', submissions.map(s => s.id))
+      .then(({ data }) => {
+        if (data) {
+          const serverIds = data.map(d => d.submission_id)
+          setUserUpvotes(prev => {
+            const merged = [...new Set([...prev, ...serverIds])]
+            localStorage.setItem('recdex-upvotes', JSON.stringify(merged))
+            return merged
+          })
+        }
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submissions])
+
+  const toggleUpvote = async (submissionId: string) => {
+    const dn = getDisplayName()
+    if (!dn) return
+    const already = userUpvotes.includes(submissionId)
+    if (already) {
+      setUserUpvotes(prev => { const next = prev.filter(id => id !== submissionId); localStorage.setItem('recdex-upvotes', JSON.stringify(next)); return next })
+      setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, upvote_count: Math.max(0, s.upvote_count - 1) } : s))
+      await supabase.rpc('remove_upvote', { p_submission_id: submissionId, p_display_name: dn })
+    } else {
+      setUserUpvotes(prev => { const next = [...prev, submissionId]; localStorage.setItem('recdex-upvotes', JSON.stringify(next)); return next })
+      setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, upvote_count: s.upvote_count + 1 } : s))
+      const { data: success } = await supabase.rpc('upvote_submission', { p_submission_id: submissionId, p_display_name: dn })
+      if (!success) {
+        setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, upvote_count: s.upvote_count - 1 } : s))
+      }
+    }
+  }
 
   // Fallback slugs (used when no activity data exists)
   const FALLBACK_SLUGS = ['shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
@@ -1236,92 +1819,111 @@ export default function Home() {
 
           <div style={{ height: 1, background: C.rule }} />
 
-          {/* FROM AROUND THE WEB — external recipe cards */}
+          {/* FROM AROUND THE WEB — community submissions */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
               <div>
                 <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From around the web</h2>
                 <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Recipes people are cooking from other sites</p>
               </div>
-              <button style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 12px', color: C.text2, fontSize: 10, fontFamily: MONO, cursor: 'pointer' }}>+ Add a recipe</button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 0, border: `1px solid ${C.ruleLight}`, borderRadius: 5, overflow: 'hidden' }}>
+                  {(['recent', 'top'] as const).map(s => (
+                    <button key={s} onClick={() => setSubmissionSort(s)} style={{
+                      padding: '4px 10px', background: submissionSort === s ? C.accent : 'transparent', border: 'none',
+                      color: submissionSort === s ? '#fff' : C.text3, fontSize: 10, fontFamily: MONO, cursor: 'pointer',
+                      fontWeight: submissionSort === s ? 600 : 400, textTransform: 'capitalize',
+                    }}>{s === 'recent' ? 'New' : 'Top'}</button>
+                  ))}
+                </div>
+                <button onClick={() => setShowSubmitModal(true)} style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 12px', color: C.text2, fontSize: 10, fontFamily: MONO, cursor: 'pointer' }}>+ Share a recipe</button>
+              </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
-              {EXTERNAL_RECIPES.map((ext, i) => {
-                const src = SOURCES[ext.source] || { color: C.text3, bg: C.cool }
-                return (
-                  <div key={ext.id} style={{
-                    borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
-                    cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                    animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                  >
-                    <div style={{ display: 'flex', gap: 0 }}>
-                      {/* Thumbnail */}
-                      <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
-                        <img src={ext.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
-                      </div>
 
-                      {/* Content */}
-                      <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                        {/* Source badge */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{
-                            fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5,
-                            padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color,
-                            textTransform: 'uppercase',
-                          }}>{ext.source}</span>
-                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round" style={{ opacity: 0.4 }}>
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                          </svg>
+            {/* User-submitted links */}
+            {submissions.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12, marginTop: 14 }}>
+                {submissions.map((sub, i) => (
+                  <div key={sub.id} style={{ animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
+                    <SubmissionCard submission={sub} hasUpvoted={userUpvotes.includes(sub.id)} onUpvote={() => toggleUpvote(sub.id)} isMobile={isMobile} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* Fallback: show mock external recipes while no submissions exist */
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14, marginTop: 14 }}>
+                {EXTERNAL_RECIPES.map((ext, i) => {
+                  const src = SOURCES[ext.source] || { color: C.text3, bg: C.cool }
+                  return (
+                    <div key={ext.id} style={{
+                      borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
+                      cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                      animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                    }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                    >
+                      <div style={{ display: 'flex', gap: 0 }}>
+                        <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={ext.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
                         </div>
-
-                        {/* Title */}
-                        <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{ext.title}</h3>
-
-                        {/* Meta + rating */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>
-                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time}</span>
-                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                          <StarRating rating={ext.rating} />
-                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.rating}</span>
-                        </div>
-
-                        {/* Top review (clickable) */}
-                        {ext.topReview && (
-                          <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
-                            <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
-                              &ldquo;{ext.topReview.text}&rdquo;
-                            </p>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{ext.topReview.user}</span>
-                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{ext.reviews} reviews →</span>
-                            </div>
+                        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color, textTransform: 'uppercase' }}>{ext.source}</span>
                           </div>
-                        )}
-
-                        {/* Similar on RecDex nudge */}
-                        {ext.similar && (
-                          <Link href={`/recipe/${ext.similar.slug}`} onClick={e => e.stopPropagation()}
-                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: C.cool, border: `1px solid ${C.ruleLight}`, textDecoration: 'none', transition: 'background 0.15s', marginTop: 'auto' }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}15` }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.cool }}
-                          >
-                            <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
-                            <span style={{ fontSize: 9, fontFamily: SANS, color: C.text3, lineHeight: 1.2 }}>
-                              Similar on RecDex: <span style={{ color: C.text2, fontWeight: 600 }}>{ext.similar.title}</span>
-                            </span>
-                          </Link>
-                        )}
+                          <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{ext.title}</h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>
+                            <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time}</span>
+                            <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                            <StarRating rating={ext.rating} />
+                            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.rating}</span>
+                          </div>
+                          {ext.topReview && (
+                            <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
+                              <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>&ldquo;{ext.topReview.text}&rdquo;</p>
+                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{ext.topReview.user}</span>
+                            </div>
+                          )}
+                          {ext.similar && (
+                            <Link href={`/recipe/${ext.similar.slug}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: C.cool, border: `1px solid ${C.ruleLight}`, textDecoration: 'none', marginTop: 'auto' }}>
+                              <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
+                              <span style={{ fontSize: 9, fontFamily: SANS, color: C.text3 }}>Similar on RecDex: <span style={{ color: C.text2, fontWeight: 600 }}>{ext.similar.title}</span></span>
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Community recipes */}
+            {communityRecipes.length > 0 && (
+              <div style={{ marginTop: 20 }}>
+                <p style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 }}>Community recipes</p>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 12 }}>
+                  {communityRecipes.map((r, i) => (
+                    <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => setQuickViewId(r.id)}>
+                      <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: C.cool, marginBottom: 8 }}>
+                        {r.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.image_url} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                        ) : (
+                          <BrokenEggCard />
+                        )}
+                      </div>
+                      <DifficultyBadge difficulty={r.difficulty} />
+                      <h3 style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, margin: '4px 0 2px', lineHeight: 1.25 }}>{r.title}</h3>
+                      {r.submitted_by && <span style={{ fontSize: 10, fontFamily: MONO, color: C.accent }}>by @{r.submitted_by}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
 
           <div style={{ height: 1, background: C.rule }} />
@@ -1429,7 +2031,7 @@ export default function Home() {
             <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
             <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-              <button style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
+              <button onClick={() => setShowSubmitModal(true)} style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Contribute a recipe</button>
               <button style={{ padding: '9px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
             </div>
           </div>
@@ -1513,6 +2115,17 @@ export default function Home() {
       {/* BOOK DETAIL MODAL */}
       {selectedBook && <BookDetailModal book={selectedBook} onClose={() => setSelectedBook(null)} />}
 
+      {/* SUBMIT MODAL */}
+      {showSubmitModal && <SubmitModal
+        onClose={() => setShowSubmitModal(false)}
+        onSubmitted={(sub) => {
+          if (sub) setSubmissions(prev => [sub, ...prev])
+          supabase.from('recipes').select('*').eq('source', 'community').eq('status', 'published').order('created_at', { ascending: false }).limit(6)
+            .then(({ data }) => { if (data) setCommunityRecipes(data) })
+        }}
+        categories={categories}
+      />}
+
       {/* FOOTER */}
       <footer style={{ borderTop: `1.5px solid ${C.text}`, marginTop: 24 }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px clamp(16px,4vw,24px)' }}>
@@ -1524,7 +2137,7 @@ export default function Home() {
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
               <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} categories</p>
               <p style={{ margin: '0 0 4px' }}>updated daily</p>
-              <p style={{ margin: 0 }}><span style={{ color: C.accent, cursor: 'pointer' }}>Contribute</span> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
+              <p style={{ margin: 0 }}><span style={{ color: C.accent, cursor: 'pointer' }} onClick={() => setShowSubmitModal(true)}>Contribute</span> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

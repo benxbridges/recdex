@@ -20,6 +20,7 @@ type Recipe = {
   image_url: string | null; servings: number | null; servings_label: string | null
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
+  submitted_by?: string | null; source?: string | null
 }
 
 type Comment = {
@@ -371,6 +372,12 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
 
           {/* Title & meta */}
           <h2 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.15, letterSpacing: -0.5 }}>{recipe.title}</h2>
+          {recipe.submitted_by && (
+            <p style={{ fontFamily: SANS, fontSize: 11, color: C.blue, margin: '2px 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 2, background: C.blueBg, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: MONO, color: C.blue }}>Community</span>
+              <span>by @{recipe.submitted_by}</span>
+            </p>
+          )}
           {recipe.cuisine && <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: '0 0 2px' }}>{recipe.cuisine}</p>}
           {recipe.description && <p style={{ fontFamily: SERIF, fontSize: 12, color: C.text2, margin: '4px 0 0', fontStyle: 'italic', lineHeight: 1.5 }}>{recipe.description}</p>}
 
