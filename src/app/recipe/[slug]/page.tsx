@@ -52,6 +52,25 @@ function formatTime(minutes: number | null): string {
   return `${minutes} min`
 }
 
+function scaleAmount(amount: string, multiplier: number): string {
+  if (!amount || multiplier === 1) return amount
+  // Parse the number — handle fractions like "1/2", "1.5", etc.
+  const num = parseFloat(amount)
+  if (isNaN(num)) return amount
+  const scaled = num * multiplier
+  // Nice rounding: show fractions for common cooking amounts
+  if (scaled === Math.floor(scaled)) return String(scaled)
+  // Round to nearest quarter
+  const rounded = Math.round(scaled * 4) / 4
+  if (rounded === Math.floor(rounded)) return String(rounded)
+  // Show as decimal with 1 place if clean, otherwise as fraction
+  const frac = rounded - Math.floor(rounded)
+  const whole = Math.floor(rounded)
+  const fracs: Record<number, string> = { 0.25: '¼', 0.5: '½', 0.75: '¾' }
+  if (fracs[frac]) return whole > 0 ? `${whole} ${fracs[frac]}` : fracs[frac]
+  return String(Math.round(scaled * 10) / 10)
+}
+
 // ===== SMALL COMPONENTS =====
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
@@ -651,6 +670,7 @@ export default function RecipePage() {
   const [showGroceryList, setShowGroceryList] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [servingsMultiplier, setServingsMultiplier] = useState(1)
 
   // Comments state
   const [comments, setComments] = useState<Comment[]>([])
@@ -939,16 +959,59 @@ export default function RecipePage() {
         {/* Ingredients */}
         {hasIngredients ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.05s both' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
               <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: 0 }}>Ingredients</h2>
-              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>serves {recipe.servings || 4}{recipe.servings_label ? ` ${recipe.servings_label}` : ''}</span>
+              {/* Servings adjuster */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: C.cool, borderRadius: 6, border: `1px solid ${C.ruleLight}`, overflow: 'hidden' }}>
+                <button
+                  onClick={() => {
+                    const base = recipe.servings || 4
+                    const current = Math.round(base * servingsMultiplier)
+                    if (current > 1) setServingsMultiplier((current - 1) / base)
+                  }}
+                  style={{ width: 30, height: 30, border: 'none', background: 'none', color: C.text2, fontSize: 16, cursor: 'pointer', fontFamily: MONO, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.warm }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                >−</button>
+                <span style={{
+                  minWidth: 60, textAlign: 'center', fontSize: 11, fontFamily: MONO,
+                  color: servingsMultiplier !== 1 ? C.accent : C.text2, fontWeight: servingsMultiplier !== 1 ? 700 : 400,
+                  padding: '0 4px', borderLeft: `1px solid ${C.ruleLight}`, borderRight: `1px solid ${C.ruleLight}`,
+                  lineHeight: '30px',
+                }}>
+                  {Math.round((recipe.servings || 4) * servingsMultiplier)} servings
+                </span>
+                <button
+                  onClick={() => {
+                    const base = recipe.servings || 4
+                    const current = Math.round(base * servingsMultiplier)
+                    setServingsMultiplier((current + 1) / base)
+                  }}
+                  style={{ width: 30, height: 30, border: 'none', background: 'none', color: C.text2, fontSize: 16, cursor: 'pointer', fontFamily: MONO, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.warm }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                >+</button>
+                {servingsMultiplier !== 1 && (
+                  <button
+                    onClick={() => setServingsMultiplier(1)}
+                    style={{ width: 26, height: 30, border: 'none', borderLeft: `1px solid ${C.ruleLight}`, background: 'none', color: C.text3, fontSize: 11, cursor: 'pointer', fontFamily: MONO, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.accent }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.text3 }}
+                    title="Reset to original"
+                  >↺</button>
+                )}
+              </div>
             </div>
             <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '16px 20px', background: C.cool }}>
               <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
                 {ingredientItems.map((item, i) => (
                   <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
                     {item.name}
-                    {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
+                    {item.amount && (
+                      <span style={{ color: servingsMultiplier !== 1 ? C.accent : C.text3, fontWeight: servingsMultiplier !== 1 ? 600 : 400, transition: 'color 0.15s' }}>
+                        {' / '}{scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}
+                      </span>
+                    )}
                     {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
                   </p>
                 ))}
@@ -1104,33 +1167,94 @@ export default function RecipePage() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {comments.map((c, i) => (
+              {[...comments]
+                .sort((a, b) => {
+                  // Sort by likes (stored in localStorage), then by date
+                  const likesA = parseInt(localStorage.getItem(`recdex-note-likes-${a.id}`) || '0')
+                  const likesB = parseInt(localStorage.getItem(`recdex-note-likes-${b.id}`) || '0')
+                  if (likesB !== likesA) return likesB - likesA
+                  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                })
+                .map((c, i, sorted) => {
+                const likes = parseInt(localStorage.getItem(`recdex-note-likes-${c.id}`) || '0')
+                const isTop = i === 0 && likes >= 5
+                return (
                 <div key={c.id} style={{
-                  padding: '16px 0',
+                  padding: '14px 0',
                   borderTop: i === 0 ? `1px solid ${C.ruleLight}` : 'none',
                   borderBottom: `1px solid ${C.ruleLight}`,
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <div style={{
-                      width: 22, height: 22, borderRadius: '50%', background: C.accent,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 10, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
-                    }}>
-                      {c.display_name.charAt(0).toUpperCase()}
+                  {/* Top tip badge */}
+                  {isTop && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', background: C.goldBg, borderRadius: 4, marginBottom: 8 }}>
+                      <span style={{ fontSize: 10 }}>⭐</span>
+                      <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, color: C.gold, textTransform: 'uppercase', letterSpacing: 0.5 }}>Top tip</span>
                     </div>
-                    <span style={{ fontSize: 12, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
-                      @{c.display_name}
-                    </span>
-                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
-                      {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </span>
-                    {c.rating && <span style={{ fontSize: 13 }}>{c.rating}</span>}
+                  )}
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    {/* Upvote column */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, paddingTop: 2, flexShrink: 0 }}>
+                      <button
+                        onClick={() => {
+                          const key = `recdex-note-likes-${c.id}`
+                          const likedKey = `recdex-note-liked-${c.id}`
+                          const alreadyLiked = localStorage.getItem(likedKey) === '1'
+                          const current = parseInt(localStorage.getItem(key) || '0')
+                          if (alreadyLiked) {
+                            localStorage.setItem(key, String(Math.max(0, current - 1)))
+                            localStorage.removeItem(likedKey)
+                          } else {
+                            localStorage.setItem(key, String(current + 1))
+                            localStorage.setItem(likedKey, '1')
+                          }
+                          // Force re-render
+                          setComments([...comments])
+                        }}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', padding: 2,
+                          opacity: localStorage.getItem(`recdex-note-liked-${c.id}`) === '1' ? 1 : 0.5,
+                          transition: 'opacity 0.15s',
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                          stroke={localStorage.getItem(`recdex-note-liked-${c.id}`) === '1' ? C.accent : C.text3}
+                          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ transform: 'rotate(-30deg)' }}
+                        >
+                          <circle cx="10" cy="12" r="7" />
+                          <line x1="17" y1="5" x2="22" y2="2" />
+                        </svg>
+                      </button>
+                      <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: likes > 0 ? C.text2 : C.text3 }}>
+                        {likes || ''}
+                      </span>
+                    </div>
+                    {/* Comment content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <div style={{
+                          width: 20, height: 20, borderRadius: '50%', background: C.accent,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
+                        }}>
+                          {c.display_name.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
+                          @{c.display_name}
+                        </span>
+                        <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>
+                          {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        {c.rating && <span style={{ fontSize: 12 }}>{c.rating}</span>}
+                      </div>
+                      <p style={{ fontSize: 14, fontFamily: SANS, color: C.text, lineHeight: 1.55, margin: 0 }}>
+                        {c.body}
+                      </p>
+                    </div>
                   </div>
-                  <p style={{ fontSize: 14, fontFamily: SANS, color: C.text, lineHeight: 1.6, margin: 0, paddingLeft: 30 }}>
-                    {c.body}
-                  </p>
                 </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
