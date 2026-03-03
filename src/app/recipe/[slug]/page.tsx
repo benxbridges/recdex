@@ -490,12 +490,8 @@ function IngredientEggCard({ point }: { point: ConsensusPoint }) {
   return (
     <div style={{ textAlign: 'center', padding: '14px 8px 10px' }}>
       <EggChart percentage={point.percentage} size={52} />
-      {/* Label */}
-      <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.6, margin: '8px 0 3px' }}>
-        {point.label}
-      </p>
       {/* Consensus answer */}
-      <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '0 0 2px', lineHeight: 1.2 }}>
+      <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '8px 0 2px', lineHeight: 1.2 }}>
         {point.consensus}
       </p>
       {/* Alternative */}
