@@ -805,6 +805,50 @@ const TIPS: Record<string, { user: string; text: string }> = {
   'fried-rice': { user: 'lu_chen', text: 'Day-old rice is non-negotiable.' },
 }
 
+// ===== EXTERNAL RECIPES (mock data) =====
+const SOURCES: Record<string, { color: string; bg: string }> = {
+  'NYT Cooking': { color: '#E87B5A', bg: C.accentBg },
+  'Bon Appétit': { color: '#D4A24E', bg: C.goldBg },
+  'Serious Eats': { color: '#5A9ABF', bg: C.blueBg },
+}
+// ===== DISCUSSION THREADS (mock data) =====
+const THREAD_TAGS: Record<string, { color: string; bg: string }> = {
+  'Cookware': { color: C.blue, bg: C.blueBg },
+  'Technique': { color: C.green, bg: C.greenBg },
+  'Discussion': { color: C.gold, bg: C.goldBg },
+  'Rec me': { color: C.accent, bg: C.accentBg },
+}
+const THREADS = [
+  { id: 't1', title: 'Best Dutch oven under $100?', tag: 'Cookware', author: 'sarah_m', replies: 14, upvotes: 32, timeAgo: '3h', topReply: { user: 'marco_r', text: 'Lodge 6qt. Not even close for the price.' } },
+  { id: 't2', title: 'How do you actually get a good sear without setting off the smoke alarm?', tag: 'Technique', author: 'jake_w', replies: 23, upvotes: 47, timeAgo: '5h', topReply: { user: 'priya_s', text: 'Avocado oil + make sure the steak is bone dry. Pat it like you mean it.' } },
+  { id: 't3', title: 'What\'s a dish you were afraid to try but turned out easy?', tag: 'Discussion', author: 'nina_k', replies: 41, upvotes: 89, timeAgo: '8h', topReply: { user: 'alex_r', text: 'Fresh pasta. Literally flour + eggs. I was so intimidated for years.' } },
+  { id: 't4', title: 'Need a weeknight dinner that impresses guests but takes <45 min', tag: 'Rec me', author: 'foodie_j', replies: 19, upvotes: 28, timeAgo: '12h', topReply: { user: 'ben_c', text: 'Miso salmon + quick pickled cucumbers. Looks restaurant-level, takes 25 min.' } },
+]
+
+const EXTERNAL_RECIPES = [
+  { id: 'ext-1', title: 'Crispy Salt and Pepper Chicken Thighs', source: 'NYT Cooking', cuisine: 'American', time: '45 min', rating: 4.5, reviews: 23, image: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=300&h=200&fit=crop', topReview: { user: 'sarah_m', text: 'Made this 3 times this month. The pepper ratio is perfect.' }, similar: { title: 'Chicken Tikka Masala', slug: 'chicken-tikka-masala' } },
+  { id: 'ext-2', title: "BA's Best Bolognese", source: 'Bon Appétit', cuisine: 'Italian', time: '3 hr', rating: 4.8, reviews: 41, image: 'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=300&h=200&fit=crop', topReview: { user: 'marco_r', text: 'Worth every minute of the 3 hours. Sunday sauce energy.' }, similar: { title: 'Classic Ragù', slug: 'classic-ragu' } },
+  { id: 'ext-3', title: 'Halal Cart-Style Chicken and Rice', source: 'Serious Eats', cuisine: 'American', time: '1 hr', rating: 4.7, reviews: 18, image: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=300&h=200&fit=crop', topReview: { user: 'foodie_j', text: 'The white sauce recipe here is the real secret.' }, similar: null },
+  { id: 'ext-4', title: 'Tangy Pomegranate Chicken', source: 'NYT Cooking', cuisine: 'Middle Eastern', time: '50 min', rating: 4.3, reviews: 9, image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&h=200&fit=crop', topReview: { user: 'nina_k', text: 'Added sumac. Game changer.' }, similar: { title: 'Chicken Shawarma', slug: 'chicken-shawarma' } },
+]
+
+function StarRating({ rating }: { rating: number }) {
+  const full = Math.floor(rating)
+  const half = rating % 1 >= 0.3
+  return (
+    <span style={{ display: 'inline-flex', gap: 1, alignItems: 'center' }}>
+      {[...Array(5)].map((_, i) => (
+        <svg key={i} width="12" height="12" viewBox="0 0 24 24" fill={i < full ? C.gold : i === full && half ? `url(#half-${rating})` : 'none'} stroke={i < full || (i === full && half) ? C.gold : C.rule} strokeWidth="2">
+          {i === full && half && (
+            <defs><linearGradient id={`half-${rating}`}><stop offset="50%" stopColor={C.gold} /><stop offset="50%" stopColor="transparent" /></linearGradient></defs>
+          )}
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+      ))}
+    </span>
+  )
+}
+
 // ===== MAIN PAGE =====
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([])
@@ -1030,24 +1074,60 @@ export default function Home() {
               <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending recipes</h2>
               <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>THIS WEEK</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
               {featuredRecipes.slice(0, 4).map((r, i) => (
-                <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => setQuickViewId(r.id)}>
-                  <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 8 }}>
-                    {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggCard />}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
-                    <DifficultyBadge difficulty={r.difficulty} />
-                    <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                  </div>
-                  <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, marginBottom: 4, lineHeight: 1.25, display: 'inline' }}>{r.title}</h3>
-                  {TIPS[r.slug] && (
-                    <div style={{ padding: '6px 10px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}` }}>
-                      <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.4, margin: 0 }}>
-                        <span style={{ fontWeight: 600, color: C.text3 }}>@{TIPS[r.slug].user}</span> {TIPS[r.slug].text}
-                      </p>
+                <div key={r.id} style={{
+                  borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
+                  cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                  animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                }}
+                  onClick={() => setQuickViewId(r.id)}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                >
+                  <div style={{ display: 'flex', gap: 0 }}>
+                    {/* Thumbnail */}
+                    <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
+                      {r.image_url ? (
+                        <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', minHeight: isMobile ? 140 : 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BrokenEggSmall /></div>
+                      )}
                     </div>
-                  )}
+
+                    {/* Content */}
+                    <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                      {/* Title */}
+                      <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{r.title}</h3>
+
+                      {/* Meta */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                        <DifficultyBadge difficulty={r.difficulty} />
+                        <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
+                        {r.cuisine && <>
+                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{r.cuisine}</span>
+                        </>}
+                      </div>
+
+                      {/* Community tip */}
+                      {TIPS[r.slug] && (
+                        <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
+                          <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+                            &ldquo;{TIPS[r.slug].text}&rdquo;
+                          </p>
+                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginTop: 3, display: 'inline-block' }}>@{TIPS[r.slug].user}</span>
+                        </div>
+                      )}
+
+                      {/* CTA */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
+                        <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook this</span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1055,80 +1135,163 @@ export default function Home() {
 
           <div style={{ height: 1, background: C.rule }} />
 
-          {/* FROM THE COMMUNITY — recipe recommendation cards */}
-          {recentComments.length > 0 && (
-            <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>From the community</h2>
-                <Link href="/leaderboard" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
+          {/* POPULAR ELSEWHERE — external recipe cards */}
+          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>Popular elsewhere</h2>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Recipes people are cooking from around the web</p>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 14 }}>
-                {recentComments.slice(0, 4).map((c, i) => (
-                  <Link key={c.id} href={c.recipe_slug ? `/recipe/${c.recipe_slug}` : '#'} style={{ textDecoration: 'none', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
-                    <div style={{
-                      display: 'flex', gap: 14, padding: '14px 16px', borderRadius: 12,
-                      background: C.warm, border: `1px solid ${C.ruleLight}`,
-                      transition: 'transform 0.15s, box-shadow 0.15s',
-                    }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.06)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                    >
-                      {/* Recipe thumbnail */}
-                      <div style={{
-                        width: isMobile ? 56 : 72, height: isMobile ? 56 : 72, borderRadius: 8, flexShrink: 0,
-                        background: c.recipe_image ? 'transparent' : C.cool,
-                        border: c.recipe_image ? 'none' : `1px solid ${C.ruleLight}`,
-                        overflow: 'hidden',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {c.recipe_image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={c.recipe_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                        ) : (
-                          <BrokenEggSmall />
+              <button style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 12px', color: C.text2, fontSize: 10, fontFamily: MONO, cursor: 'pointer' }}>+ Add a recipe</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
+              {EXTERNAL_RECIPES.map((ext, i) => {
+                const src = SOURCES[ext.source] || { color: C.text3, bg: C.cool }
+                return (
+                  <div key={ext.id} style={{
+                    borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
+                    cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                    animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                  >
+                    <div style={{ display: 'flex', gap: 0 }}>
+                      {/* Thumbnail */}
+                      <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
+                        <img src={ext.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                        {/* Source badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{
+                            fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5,
+                            padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color,
+                            textTransform: 'uppercase',
+                          }}>{ext.source}</span>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round" style={{ opacity: 0.4 }}>
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </div>
+
+                        {/* Title */}
+                        <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{ext.title}</h3>
+
+                        {/* Meta + rating */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>
+                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time}</span>
+                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
+                          <StarRating rating={ext.rating} />
+                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.rating}</span>
+                        </div>
+
+                        {/* Top review (clickable) */}
+                        {ext.topReview && (
+                          <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
+                            <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+                              &ldquo;{ext.topReview.text}&rdquo;
+                            </p>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{ext.topReview.user}</span>
+                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{ext.reviews} reviews →</span>
+                            </div>
+                          </div>
                         )}
+
+                        {/* Similar on RecDex nudge */}
+                        {ext.similar && (
+                          <Link href={`/recipe/${ext.similar.slug}`} onClick={e => e.stopPropagation()}
+                            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: C.cool, border: `1px solid ${C.ruleLight}`, textDecoration: 'none', transition: 'background 0.15s', marginTop: 'auto' }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = `${C.accent}15` }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.cool }}
+                          >
+                            <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
+                            <span style={{ fontSize: 9, fontFamily: SANS, color: C.text3, lineHeight: 1.2 }}>
+                              Similar on RecDex: <span style={{ color: C.text2, fontWeight: 600 }}>{ext.similar.title}</span>
+                            </span>
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          <div style={{ height: 1, background: C.rule }} />
+
+          {/* FROM THE COMMUNITY — discussion threads */}
+          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From the community</h2>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Cooking talk, gear recs, and kitchen wisdom</p>
+              </div>
+              <Link href="/leaderboard" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {THREADS.map((thread, i) => {
+                const tag = THREAD_TAGS[thread.tag] || { color: C.text3, bg: C.cool }
+                return (
+                  <div key={thread.id} style={{
+                    padding: '16px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
+                    cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                  }}>
+                    {/* Thread header */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      {/* Upvote column */}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+                        padding: '4px 0', minWidth: 36, flexShrink: 0,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round"><path d="M12 19V5" /><path d="M5 12l7-7 7 7" /></svg>
+                        <span style={{ fontSize: 13, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
                       </div>
 
                       {/* Content */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        {/* Recipe title — the hero */}
-                        <h3 style={{
-                          fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text,
-                          margin: '0 0 4px', lineHeight: 1.25,
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {c.recipe_title || 'Recipe'}
-                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{
+                            fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
+                            padding: '2px 7px', borderRadius: 4, background: tag.bg, color: tag.color,
+                          }}>{thread.tag}</span>
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author} · {thread.timeAgo}</span>
+                        </div>
 
-                        {/* The note — social proof quote */}
-                        <p style={{
-                          fontSize: 12, fontFamily: SANS, color: C.text2, lineHeight: 1.5, margin: '0 0 6px',
-                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                          fontStyle: 'italic',
-                        }}>
-                          &ldquo;{c.body}&rdquo;
-                        </p>
+                        <h3 style={{ fontFamily: SANS, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.35, margin: '0 0 8px' }}>{thread.title}</h3>
 
-                        {/* Attribution */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <div style={{
-                            width: 16, height: 16, borderRadius: '50%', background: C.accent,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#fff', fontSize: 8, fontWeight: 700, fontFamily: SANS, flexShrink: 0,
-                          }}>
-                            {c.display_name.charAt(0).toUpperCase()}
+                        {/* Top reply preview */}
+                        {thread.topReply && (
+                          <div style={{ padding: '8px 10px', background: C.cool, borderRadius: 8, borderLeft: `2px solid ${C.ruleLight}` }}>
+                            <p style={{ fontSize: 12, color: C.text2, fontFamily: SANS, lineHeight: 1.4, margin: 0 }}>
+                              {thread.topReply.text}
+                            </p>
+                            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginTop: 4, display: 'inline-block' }}>@{thread.topReply.user}</span>
                           </div>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{c.display_name}</span>
+                        )}
+
+                        {/* Thread meta */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
+                          </div>
+                          <span style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
                         </div>
                       </div>
                     </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
+                  </div>
+                )
+              })}
+            </div>
+          </section>
 
-          {recentComments.length > 0 && <div style={{ height: 1, background: C.rule }} />}
+          <div style={{ height: 1, background: C.rule }} />
 
           {/* BROWSE LISTS */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
