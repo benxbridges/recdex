@@ -454,33 +454,53 @@ const CONSENSUS_DATA: Record<string, ConsensusData> = {
   },
 }
 
-function ConsensusBar({ point }: { point: ConsensusPoint }) {
+function EggChart({ percentage, size = 48 }: { percentage: number; size?: number }) {
+  const w = size
+  const h = size * 1.35
+  const cx = w / 2
+  // Egg path: classic egg shape using cubic beziers — narrow top, wide bottom
+  const eggPath = `M${cx},${h * 0.04} C${w * 0.18},${h * 0.04} ${w * 0.05},${h * 0.38} ${w * 0.05},${h * 0.56} C${w * 0.05},${h * 0.8} ${w * 0.25},${h * 0.97} ${cx},${h * 0.97} C${w * 0.75},${h * 0.97} ${w * 0.95},${h * 0.8} ${w * 0.95},${h * 0.56} C${w * 0.95},${h * 0.38} ${w * 0.82},${h * 0.04} ${cx},${h * 0.04}Z`
+  const fillY = h * (1 - percentage / 100)
+  const color = percentage >= 80 ? C.blue : percentage >= 60 ? `${C.blue}CC` : `${C.blue}88`
+  const id = `egg-${Math.random().toString(36).slice(2, 8)}`
+
   return (
-    <div style={{ textAlign: 'center' }}>
-      {/* Centered label */}
-      <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.8, margin: '0 0 6px' }}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block', margin: '0 auto' }}>
+      <defs>
+        <clipPath id={id}>
+          <path d={eggPath} />
+        </clipPath>
+      </defs>
+      {/* Egg background */}
+      <path d={eggPath} fill={C.warm} stroke={C.rule} strokeWidth="1.5" />
+      {/* Fill from bottom */}
+      <rect x="0" y={fillY} width={w} height={h - fillY} fill={color} clipPath={`url(#${id})`} opacity="0.8" />
+      {/* Egg outline on top */}
+      <path d={eggPath} fill="none" stroke={C.ruleLight} strokeWidth="1" />
+      {/* Percentage text */}
+      <text x={cx} y={h * 0.55} textAnchor="middle" dominantBaseline="central"
+        style={{ fontSize: size * 0.24, fontFamily: MONO, fontWeight: 700, fill: C.text }}>
+        {percentage}%
+      </text>
+    </svg>
+  )
+}
+
+function IngredientEggCard({ point }: { point: ConsensusPoint }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '14px 8px 10px' }}>
+      <EggChart percentage={point.percentage} size={52} />
+      {/* Label */}
+      <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.6, margin: '8px 0 3px' }}>
         {point.label}
       </p>
-      {/* Consensus answer — big and clear */}
-      <p style={{ fontSize: 15, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '0 0 6px' }}>
+      {/* Consensus answer */}
+      <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '0 0 2px', lineHeight: 1.2 }}>
         {point.consensus}
       </p>
-      {/* Bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: 280, margin: '0 auto' }}>
-        <div style={{ flex: 1, height: 5, background: C.ruleLight, borderRadius: 3, overflow: 'hidden' }}>
-          <div style={{
-            width: `${point.percentage}%`, height: '100%',
-            background: point.percentage >= 80 ? C.blue : point.percentage >= 60 ? `${C.blue}BB` : `${C.blue}88`,
-            borderRadius: 3,
-          }} />
-        </div>
-        <span style={{ fontSize: 10, fontFamily: MONO, color: C.blue, minWidth: 28 }}>
-          {point.percentage}%
-        </span>
-      </div>
       {/* Alternative */}
       {point.alternative && (
-        <p style={{ fontSize: 10, fontFamily: SANS, color: C.text3, margin: '4px 0 0' }}>
+        <p style={{ fontSize: 9, fontFamily: SANS, color: C.text3, margin: '3px 0 0' }}>
           vs. {point.alternative} ({point.altPercentage}%)
         </p>
       )}
@@ -514,8 +534,9 @@ function KitchenConsensus({ slug }: { slug: string }) {
             <circle cx="12" cy="16" r="1" fill={C.blue} />
             <circle cx="10" cy="14" r="0.5" fill={C.blue} />
           </svg>
-          <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, flex: 1, textAlign: 'left' }}>
-            Kitchen Consensus
+          <span style={{ flex: 1, textAlign: 'left' }}>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text }}>Kitchen Consensus</span>
+            <span style={{ fontFamily: SERIF, fontSize: 12, fontStyle: 'italic', color: C.text3, marginLeft: 8 }}>how most cooks make this dish</span>
           </span>
           <span style={{
             fontSize: 9, fontFamily: MONO, color: C.blue, padding: '2px 8px',
@@ -547,10 +568,10 @@ function KitchenConsensus({ slug }: { slug: string }) {
               <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
                 Ingredients
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
                 {data.ingredients.map((point, i) => (
-                  <div key={i} style={{ padding: '12px 8px', background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}` }}>
-                    <ConsensusBar point={point} />
+                  <div key={i} style={{ background: C.warm, borderRadius: 10, border: `1px solid ${C.ruleLight}` }}>
+                    <IngredientEggCard point={point} />
                   </div>
                 ))}
               </div>
