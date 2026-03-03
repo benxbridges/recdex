@@ -1,0 +1,6 @@
+# Ignore all generated pipeline data (can be large, contains API responses)
+*.json
+
+# Keep the directory structure
+!.gitignore
+!.gitkeep
