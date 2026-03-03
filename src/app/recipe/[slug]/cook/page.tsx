@@ -101,7 +101,14 @@ export default function CookModePage() {
   const [substitutions, setSubstitutions] = useState('')
   const [tip, setTip] = useState('')
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [checkedIngredients, setCheckedIngredients] = useState<Record<number, boolean>>({})
+  const [timerAlerts, setTimerAlerts] = useState<{ key: string; label: string }[]>([])
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  const toggleIngredient = (index: number) => {
+    setCheckedIngredients(prev => ({ ...prev, [index]: !prev[index] }))
+  }
+  const checkedCount = Object.values(checkedIngredients).filter(Boolean).length
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 820)
@@ -119,21 +126,31 @@ export default function CookModePage() {
     if (slug) fetchRecipe()
   }, [slug])
 
-  // Timer tick
+  // Timer tick with completion detection
   useEffect(() => {
     const hasActive = Object.values(timers).some(t => t.active && t.remaining > 0)
     if (!hasActive) return
     const interval = setInterval(() => {
       setTimers(prev => {
         const next = { ...prev }
-        Object.keys(next).forEach(k => { if (next[k].active && next[k].remaining > 0) next[k] = { ...next[k], remaining: next[k].remaining - 1 } })
+        Object.keys(next).forEach(k => {
+          if (next[k].active && next[k].remaining > 0) {
+            const newRemaining = next[k].remaining - 1
+            next[k] = { ...next[k], remaining: newRemaining }
+            if (newRemaining === 0) {
+              setTimerAlerts(alerts => [...alerts, { key: k, label: next[k].label }])
+            }
+          }
+        })
         return next
       })
     }, 1000)
     return () => clearInterval(interval)
   }, [timers])
 
-  const startTimer = (key: string, seconds: number, label: string) => setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, label } }))
+  const startTimer = useCallback((key: string, seconds: number, label: string) => {
+    setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, label } }))
+  }, [])
 
   const goToStep = useCallback((step: number) => {
     setActiveStep(step)
@@ -142,6 +159,47 @@ export default function CookModePage() {
       stepRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 50)
   }, [])
+
+  // Screen wake lock — prevent phone from sleeping during cooking
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await (navigator as Navigator & { wakeLock: { request: (type: string) => Promise<WakeLockSentinel> } }).wakeLock.request('screen')
+        }
+      } catch { /* Wake lock can fail silently — not critical */ }
+    }
+    requestWakeLock()
+    const handleVisibility = () => { if (document.visibilityState === 'visible') requestWakeLock() }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => { wakeLock?.release(); document.removeEventListener('visibilitychange', handleVisibility) }
+  }, [])
+
+  // Keyboard shortcuts: ←/→ for steps, Space for timer
+  useEffect(() => {
+    if (!recipe) return
+    const total = recipe.steps.length
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return
+      if (e.key === 'ArrowRight' && activeStep < total) {
+        goToStep(activeStep + 1)
+      } else if (e.key === 'ArrowLeft' && activeStep > 0) {
+        goToStep(activeStep - 1)
+      } else if (e.key === ' ' && activeStep < total) {
+        e.preventDefault()
+        const currentStep = recipe.steps[activeStep]
+        if (currentStep?.timer_minutes) {
+          const timerKey = `${recipe.id}-${activeStep}`
+          if (!timers[timerKey]?.active) {
+            startTimer(timerKey, currentStep.timer_minutes * 60, `Step ${activeStep + 1}`)
+          }
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeStep, recipe, timers, goToStep, startTimer])
 
   if (loading) {
     return (
@@ -220,13 +278,70 @@ export default function CookModePage() {
         </div>
       </div>
 
+      {/* Active timer strip — shows running timers when on a different step */}
+      {(() => {
+        const activeTimers = Object.entries(timers).filter(([, t]) => t.active && t.remaining > 0)
+        if (activeTimers.length === 0) return null
+        return (
+          <div style={{ padding: '6px 24px', background: C.warm, borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 4 }}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /></svg>
+            {activeTimers.map(([key, timer]) => {
+              const stepIndex = parseInt(key.split('-').pop() || '0')
+              return (
+                <button key={key} onClick={() => goToStep(stepIndex)} style={{
+                  display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 4,
+                  border: `1px solid ${C.accentMed}`, background: C.accentBg, cursor: 'pointer', whiteSpace: 'nowrap' as const, fontFamily: MONO,
+                }}>
+                  <span style={{ fontSize: 9, color: C.accent }}>Step {stepIndex + 1}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{formatTimerDisplay(timer.remaining)}</span>
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
+
+      {/* Timer completion alerts */}
+      {timerAlerts.length > 0 && (
+        <div style={{ padding: '0 24px', flexShrink: 0 }}>
+          {timerAlerts.map((alert, i) => {
+            const stepIndex = parseInt(alert.key.split('-').pop() || '0')
+            return (
+              <div key={`${alert.key}-${i}`} style={{
+                padding: '8px 14px', marginTop: 6, background: C.accentBg, border: `1.5px solid ${C.accent}`,
+                borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, animation: 'slideUp 0.2s ease',
+              }}>
+                <span style={{ fontSize: 14 }}>✓</span>
+                <span style={{ flex: 1, fontSize: 12, fontFamily: SANS, color: C.text }}>{alert.label} timer is done!</span>
+                <button onClick={() => { goToStep(stepIndex); setTimerAlerts(a => a.filter((_, j) => j !== i)) }} style={{
+                  padding: '4px 10px', borderRadius: 4, border: `1px solid ${C.accent}`, background: 'transparent',
+                  color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                }}>Go to step</button>
+                <button onClick={() => setTimerAlerts(a => a.filter((_, j) => j !== i))} style={{
+                  padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent',
+                  color: C.text3, fontSize: 14, cursor: 'pointer',
+                }}>×</button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Mobile ingredients panel */}
       {isMobile && showIngredientsMobile && ingredientItems.length > 0 && (
         <div style={{ padding: '14px 24px', background: C.warm, borderBottom: `1px solid ${C.rule}`, flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
-          <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px', fontFamily: SANS }}>Ingredients · serves {recipe.servings || 4}</p>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+            <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients · serves {recipe.servings || 4}</p>
+            {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length} used</span>}
+          </div>
           <div style={{ columns: 2, columnGap: 20 }}>
             {ingredientItems.map((item, i) => (
-              <p key={i} style={{ fontSize: 12, color: C.text, margin: '2px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
+              <p key={i} onClick={() => toggleIngredient(i)} style={{
+                fontSize: 12, color: checkedIngredients[i] ? C.text3 : C.text, margin: '2px 0', fontFamily: SANS, lineHeight: 1.5,
+                breakInside: 'avoid' as const, cursor: 'pointer', userSelect: 'none' as const,
+                textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
+                opacity: checkedIngredients[i] ? 0.45 : 1, transition: 'all 0.15s',
+              }}>
                 {item.name}
                 {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
                 {item.notes && <span style={{ color: C.text3 }}> ({item.notes})</span>}
@@ -246,11 +361,19 @@ export default function CookModePage() {
             overflowY: 'auto', padding: '24px 24px 40px',
             background: C.warm,
           }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 4px', fontFamily: SANS }}>Ingredients</p>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+              <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+              {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length}</span>}
+            </div>
             <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 14px' }}>serves {recipe.servings || 4}</p>
             <div style={{ height: 1, background: C.rule, marginBottom: 14 }} />
             {ingredientItems.map((item, i) => (
-              <p key={i} style={{ fontSize: 13, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.55 }}>
+              <p key={i} onClick={() => toggleIngredient(i)} style={{
+                fontSize: 13, color: checkedIngredients[i] ? C.text3 : C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.55,
+                cursor: 'pointer', userSelect: 'none' as const,
+                textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
+                opacity: checkedIngredients[i] ? 0.45 : 1, transition: 'all 0.15s',
+              }}>
                 {item.name}
                 {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
                 {item.notes && <span style={{ color: C.text3, fontSize: 12 }}> ({item.notes})</span>}
@@ -315,9 +438,20 @@ export default function CookModePage() {
                         <InlineTimer minutes={s.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
                       )}
 
-                      {/* Next step button — only on the active step */}
+                      {/* Navigation buttons — only on the active step */}
                       {isActive && (
-                        <div style={{ marginTop: 16, animation: 'slideUp 0.25s ease 0.1s both' }}>
+                        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', animation: 'slideUp 0.25s ease 0.1s both' }}>
+                          {activeStep > 0 && (
+                            <button onClick={e => { e.stopPropagation(); goToStep(activeStep - 1) }} style={{
+                              padding: '11px 18px', borderRadius: 6,
+                              border: `1.5px solid ${C.rule}`, background: 'transparent',
+                              color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                              display: 'flex', alignItems: 'center', gap: 6,
+                            }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+                              Back
+                            </button>
+                          )}
                           {!isLastStep ? (
                             <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
                               padding: '11px 28px', borderRadius: 6, border: 'none',
@@ -422,7 +556,8 @@ export default function CookModePage() {
                     </div>
 
                     {/* Submit + skip */}
-                    <div style={{ padding: '20px 28px', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ padding: '20px 28px', textAlign: 'center' }}>
+                      <p style={{ fontSize: 11, color: C.text3, margin: '0 0 12px', fontFamily: SANS, fontStyle: 'italic' }}>Community tips help other cooks nail this recipe.</p>
                       <button onClick={async () => {
                         // Persist cook event to localStorage
                         const cookEvent = {
@@ -454,15 +589,15 @@ export default function CookModePage() {
 
                         setFeedbackSubmitted(true)
                       }} style={{
-                        padding: '11px 28px', borderRadius: 6, border: 'none',
+                        width: '100%', padding: '13px 28px', borderRadius: 6, border: 'none',
                         background: (cookRating || substitutions || tip) ? C.green : C.ruleLight,
                         color: (cookRating || substitutions || tip) ? '#fff' : C.text3,
-                        fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                        fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
                         transition: 'all 0.15s',
                       }}>
                         {(substitutions || tip) ? 'Submit & mark as cooked' : 'Mark as cooked'}
                       </button>
-                      <button onClick={() => {
+                      <p onClick={() => {
                         // Still record the cook, just without feedback
                         const cookEvent = {
                           recipeId: recipe.id, recipeSlug: recipe.slug, recipeTitle: recipe.title,
@@ -473,12 +608,11 @@ export default function CookModePage() {
                         localStorage.setItem('recdex-cooked', JSON.stringify(existing))
                         setFeedbackSubmitted(true)
                       }} style={{
-                        padding: '11px 16px', borderRadius: 6, border: 'none',
-                        background: 'transparent', color: C.text3,
-                        fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                        marginTop: 12, fontSize: 11, color: C.text3, cursor: 'pointer', fontFamily: SANS,
+                        textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 3,
                       }}>
-                        Skip
-                      </button>
+                        Just mark as cooked, skip feedback
+                      </p>
                     </div>
                   </div>
                 ) : (

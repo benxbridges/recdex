@@ -478,14 +478,8 @@ function RecipeQuickViewModal({ recipe, onClose, isMobile }: { recipe: Recipe; o
               {saved ? 'Saved' : 'Save'}
             </button>
           </div>
-          {/* Cook mode */}
-          {hasSteps && (
-            <button onClick={() => router.push(`/recipe/${recipe.slug}/cook`)} style={{ width: '100%', padding: '13px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS, marginBottom: 8 }}>Cook mode →</button>
-          )}
           {/* View full recipe */}
-          <div style={{ textAlign: 'center' }}>
-            <Link href={`/recipe/${recipe.slug}`} style={{ fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 500, textDecoration: 'none' }}>View full recipe →</Link>
-          </div>
+          <Link href={`/recipe/${recipe.slug}`} style={{ display: 'block', width: '100%', padding: '13px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS, textDecoration: 'none', textAlign: 'center', boxSizing: 'border-box' }}>View full recipe →</Link>
         </div>
       </div>
 
@@ -906,9 +900,10 @@ export default function Home() {
     fetchBookStats()
   }, [selectedBook]) // refetch when modal closes to update counts
 
-  // Featured recipe slugs
-  const FEATURED_SLUGS = ['cacio-e-pepe', 'shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
+  // Fallback slugs (used when no activity data exists)
+  const FALLBACK_SLUGS = ['shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
   const QUICK_SLUGS = ['guacamole', 'hummus', 'scrambled-eggs', 'aglio-e-olio', 'fried-rice', 'pesto-alla-genovese']
+  const ROTD_SLUG = 'cacio-e-pepe'
 
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([])
   const [quickRecipes, setQuickRecipes] = useState<Recipe[]>([])
@@ -918,14 +913,60 @@ export default function Home() {
   useEffect(() => { supabase.from('categories').select('*').order('sort_order').then(({ data }) => { if (data) setCategories(data) }) }, [])
   useEffect(() => { supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('status', 'published').then(({ count }) => { if (count) setTotalCount(count) }) }, [])
 
-  // Fetch homepage data
+  // Fetch homepage data with dynamic trending
   useEffect(() => {
     async function fetchHomepage() {
-      const { data: feat } = await supabase.from('recipes').select('*').in('slug', FEATURED_SLUGS).eq('status', 'published')
-      if (feat) {
-        setFeaturedRecipes(feat.filter(r => r.slug !== 'cacio-e-pepe'))
-        setRotdRecipe(feat.find(r => r.slug === 'cacio-e-pepe') || feat[0])
+      // 1. Fetch all published recipes
+      const { data: allRecipes } = await supabase.from('recipes').select('*').eq('status', 'published')
+      if (!allRecipes) return
+
+      // Set Recipe of the Day
+      setRotdRecipe(allRecipes.find(r => r.slug === ROTD_SLUG) || allRecipes[0])
+
+      // 2. Get comment counts per recipe from Supabase
+      const { data: commentData } = await supabase.from('comments').select('recipe_id')
+      const commentCounts: Record<string, number> = {}
+      if (commentData) {
+        for (const c of commentData) {
+          commentCounts[c.recipe_id] = (commentCounts[c.recipe_id] || 0) + 1
+        }
       }
+
+      // 3. Get local activity data (saves + cooks)
+      let savedIds: string[] = []
+      let cookedSlugs: Record<string, number> = {}
+      try {
+        const box = localStorage.getItem('recdex-box')
+        if (box) savedIds = JSON.parse(box)
+        const cooked = localStorage.getItem('recdex-cooked')
+        if (cooked) {
+          const events = JSON.parse(cooked) as { recipeSlug: string }[]
+          for (const e of events) {
+            cookedSlugs[e.recipeSlug] = (cookedSlugs[e.recipeSlug] || 0) + 1
+          }
+        }
+      } catch { /* ignore localStorage errors */ }
+
+      // 4. Score each recipe: comments×3 + saves×2 + cooks×1
+      const scored = allRecipes
+        .filter(r => r.slug !== ROTD_SLUG) // exclude Recipe of the Day
+        .map(r => ({
+          recipe: r,
+          score: (commentCounts[r.id] || 0) * 3
+            + (savedIds.includes(String(r.id)) ? 2 : 0)
+            + (cookedSlugs[r.slug] || 0),
+        }))
+        .sort((a, b) => b.score - a.score)
+
+      // 5. Use scored results if there's any activity, otherwise fallback
+      const hasActivity = scored.some(s => s.score > 0)
+      if (hasActivity) {
+        setFeaturedRecipes(scored.slice(0, 5).map(s => s.recipe))
+      } else {
+        setFeaturedRecipes(allRecipes.filter(r => FALLBACK_SLUGS.includes(r.slug)))
+      }
+
+      // Quick meals
       const { data: quick } = await supabase.from('recipes').select('*').in('slug', QUICK_SLUGS).eq('status', 'published')
       if (quick) setQuickRecipes(quick)
     }

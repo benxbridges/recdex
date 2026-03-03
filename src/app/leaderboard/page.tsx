@@ -264,7 +264,7 @@ export default function LeaderboardPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {/* Column headers */}
                     <div style={{
-                      display: 'grid', gridTemplateColumns: '40px 1fr 80px',
+                      display: 'grid', gridTemplateColumns: isMobile ? '32px 1fr 60px' : '40px 1fr 80px',
                       padding: '0 14px 8px', gap: 8,
                     }}>
                       <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase' }}>#</span>
@@ -274,7 +274,7 @@ export default function LeaderboardPage() {
 
                     {contributors.map((c, i) => (
                       <div key={c.display_name} style={{
-                        display: 'grid', gridTemplateColumns: '40px 1fr 80px',
+                        display: 'grid', gridTemplateColumns: isMobile ? '32px 1fr 60px' : '40px 1fr 80px',
                         padding: '12px 14px', gap: 8, alignItems: 'center',
                         background: i < 3 ? `${MEDAL[i]}08` : (i % 2 === 0 ? C.warm : 'transparent'),
                         borderRadius: 8, animation: `fadeIn 0.3s ease ${i * 0.03}s both`,

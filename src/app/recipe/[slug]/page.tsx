@@ -424,54 +424,8 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
   )
 }
 
-// ===== KITCHEN CONSENSUS (mock data) =====
-type ConsensusPoint = { label: string; consensus: string; percentage: number; alternative?: string; altPercentage?: number }
-type ConsensusData = {
-  recipesAnalyzed: number
-  sources: string[]
-  ingredients: ConsensusPoint[]
-  techniques: ConsensusPoint[]
-  differs: { point: string; detail: string }[]
-}
-
-const CONSENSUS_DATA: Record<string, ConsensusData> = {
-  'carbonara': {
-    recipesAnalyzed: 18,
-    sources: ['NYT Cooking', 'Serious Eats', 'Bon Appétit', 'Food Network', 'Allrecipes', 'Epicurious'],
-    ingredients: [
-      { label: 'Cream?', consensus: 'No cream', percentage: 83, alternative: 'Add cream', altPercentage: 17 },
-      { label: 'Pork', consensus: 'Guanciale', percentage: 61, alternative: 'Pancetta', altPercentage: 33 },
-      { label: 'Eggs', consensus: 'Whole eggs + extra yolks', percentage: 72, alternative: 'Yolks only', altPercentage: 28 },
-      { label: 'Cheese', consensus: 'Pecorino Romano', percentage: 67, alternative: 'Parm + Pecorino mix', altPercentage: 33 },
-      { label: 'Pasta', consensus: 'Spaghetti', percentage: 55, alternative: 'Rigatoni', altPercentage: 30 },
-    ],
-    techniques: [
-      { label: 'When to add eggs?', consensus: 'Off heat completely', percentage: 89, alternative: 'Over low heat', altPercentage: 11 },
-      { label: 'Toast the pepper?', consensus: 'Yes, bloom in rendered fat', percentage: 72, alternative: 'Add at the end', altPercentage: 28 },
-      { label: 'Pasta water?', consensus: 'Save and use ½ cup', percentage: 94 },
-      { label: 'Start guanciale cold?', consensus: 'Yes, cold pan', percentage: 78, alternative: 'Hot pan', altPercentage: 22 },
-    ],
-    differs: [
-      { point: 'Uses a mix of parmesan and pecorino', detail: '67% of recipes go pure Pecorino Romano — this recipe blends both for a milder flavor' },
-    ],
-  },
-  'cacio-e-pepe': {
-    recipesAnalyzed: 12,
-    sources: ['NYT Cooking', 'Serious Eats', 'Bon Appétit', 'Food52', 'Epicurious'],
-    ingredients: [
-      { label: 'Cheese', consensus: 'Pecorino Romano only', percentage: 92, alternative: 'Add parmesan', altPercentage: 8 },
-      { label: 'Pepper', consensus: 'Whole black peppercorns', percentage: 85, alternative: 'Pre-ground', altPercentage: 15 },
-      { label: 'Pasta', consensus: 'Tonnarelli or spaghetti', percentage: 75, alternative: 'Bucatini', altPercentage: 25 },
-      { label: 'Butter?', consensus: 'No butter', percentage: 70, alternative: 'Small amount', altPercentage: 30 },
-    ],
-    techniques: [
-      { label: 'Toast the pepper?', consensus: 'Yes, in dry pan first', percentage: 83, alternative: 'Skip toasting', altPercentage: 17 },
-      { label: 'Pasta water method', consensus: 'Add starchy water gradually', percentage: 88 },
-      { label: 'When to add cheese?', consensus: 'Off heat, with pasta water', percentage: 75, alternative: 'Toss over low heat', altPercentage: 25 },
-    ],
-    differs: [],
-  },
-}
+// ===== KITCHEN CONSENSUS =====
+import { CONSENSUS_DATA, type ConsensusPoint } from '@/app/recipe/consensus-data'
 
 function EggChart({ percentage, size = 48 }: { percentage: number; size?: number }) {
   const w = size
@@ -523,7 +477,7 @@ function IngredientEggCard({ point }: { point: ConsensusPoint }) {
   )
 }
 
-function KitchenConsensus({ slug }: { slug: string }) {
+function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const data = CONSENSUS_DATA[slug]
   if (!data) return null
@@ -536,8 +490,8 @@ function KitchenConsensus({ slug }: { slug: string }) {
         <button
           onClick={() => setExpanded(!expanded)}
           style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
+            width: '100%', display: 'flex', flexWrap: isMobile ? 'wrap' : 'nowrap', alignItems: 'center', gap: isMobile ? 6 : 10,
+            padding: isMobile ? '10px 14px' : '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
             borderLeft: `3px solid ${C.blue}`, borderRadius: expanded ? '8px 8px 0 0' : 8, cursor: 'pointer',
             transition: 'background 0.15s, border-radius 0.15s',
           }}
@@ -549,10 +503,10 @@ function KitchenConsensus({ slug }: { slug: string }) {
             <circle cx="12" cy="16" r="1" fill={C.blue} />
             <circle cx="10" cy="14" r="0.5" fill={C.blue} />
           </svg>
-          <span style={{ flex: 1, textAlign: 'left' }}>
-            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text }}>Kitchen Consensus</span>
-            <span style={{ fontFamily: SERIF, fontSize: 12, fontStyle: 'italic', color: C.text3, marginLeft: 8 }}>how most cooks make this dish</span>
-          </span>
+          <span style={{ flex: 1, textAlign: 'left', fontFamily: SERIF, fontSize: isMobile ? 14 : 16, fontWeight: 600, color: C.text }}>Kitchen Consensus</span>
+          {!isMobile && (
+            <span style={{ fontFamily: SERIF, fontSize: 12, fontStyle: 'italic', color: C.text3 }}>how most cooks make this dish</span>
+          )}
           <span style={{
             fontSize: 9, fontFamily: MONO, color: C.blue, padding: '2px 8px',
             background: C.blueBg, borderRadius: 4,
@@ -564,6 +518,11 @@ function KitchenConsensus({ slug }: { slug: string }) {
           >
             <polyline points="6 9 12 15 18 9" />
           </svg>
+          {isMobile && (
+            <div style={{ width: '100%', paddingLeft: 28, marginTop: -2 }}>
+              <span style={{ fontFamily: SERIF, fontSize: 11, fontStyle: 'italic', color: C.text3 }}>how most cooks make this dish</span>
+            </div>
+          )}
         </button>
 
         {/* Expanded content */}
@@ -583,9 +542,9 @@ function KitchenConsensus({ slug }: { slug: string }) {
               <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
                 Ingredients
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
                 {data.ingredients.map((point, i) => (
-                  <div key={i} style={{ background: C.warm, borderRadius: 10, border: `1px solid ${C.ruleLight}` }}>
+                  <div key={i} style={{ background: C.warm, borderRadius: 10, border: `1px solid ${C.ruleLight}`, width: data.ingredients.length <= 3 ? `${Math.floor(100 / data.ingredients.length) - 2}%` : data.ingredients.length <= 6 ? 'calc(33.33% - 8px)' : 'calc(25% - 9px)', minWidth: 110 }}>
                     <IngredientEggCard point={point} />
                   </div>
                 ))}
@@ -627,7 +586,7 @@ function KitchenConsensus({ slug }: { slug: string }) {
               </div>
             )}
 
-            {/* Where this recipe differs */}
+            {/* Helpful hints */}
             {data.differs.length > 0 && (
               <div style={{
                 padding: '10px 12px', background: C.accentBg,
@@ -635,7 +594,7 @@ function KitchenConsensus({ slug }: { slug: string }) {
                 marginBottom: 12,
               }}>
                 <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.accent, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Where this recipe differs
+                  Helpful hints
                 </p>
                 {data.differs.map((d, i) => (
                   <div key={i} style={{ marginTop: i > 0 ? 8 : 0 }}>
@@ -913,8 +872,8 @@ export default function RecipePage() {
           {/* Action buttons: Grocery list · Share · Save */}
           <div style={{ display: 'flex', gap: 8 }}>
             {hasIngredients && (
-              <button onClick={() => setShowGroceryList(true)} style={{
-                flex: 1, padding: '12px 16px', borderRadius: 6,
+              <button onClick={() => setShowGroceryList(true)} aria-label="Grocery list" style={{
+                flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
                 border: `1.5px solid ${C.rule}`, background: 'transparent',
                 color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -923,11 +882,11 @@ export default function RecipePage() {
                   <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                   <rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" />
                 </svg>
-                Grocery list
+                {!isMobile && 'Grocery list'}
               </button>
             )}
-            <button onClick={handleShare} style={{
-              flex: 1, padding: '12px 16px', borderRadius: 6,
+            <button onClick={handleShare} aria-label="Share" style={{
+              flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
               border: `1.5px solid ${C.rule}`, background: 'transparent',
               color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
@@ -936,10 +895,10 @@ export default function RecipePage() {
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              Share
+              {!isMobile && 'Share'}
             </button>
-            <button onClick={toggleSave} style={{
-              flex: 1, padding: '12px 16px', borderRadius: 6,
+            <button onClick={toggleSave} aria-label={saved ? 'Saved' : 'Save'} style={{
+              flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
               border: `1.5px solid ${saved ? C.accent : C.rule}`,
               background: saved ? C.accentBg : 'transparent',
               color: saved ? C.accent : C.text2,
@@ -949,7 +908,7 @@ export default function RecipePage() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
               </svg>
-              {saved ? 'Saved' : 'Save'}
+              {!isMobile && (saved ? 'Saved' : 'Save')}
             </button>
           </div>
         </div>
@@ -991,15 +950,6 @@ export default function RecipePage() {
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.warm }}
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 >+</button>
-                {servingsMultiplier !== 1 && (
-                  <button
-                    onClick={() => setServingsMultiplier(1)}
-                    style={{ width: 26, height: 30, border: 'none', borderLeft: `1px solid ${C.ruleLight}`, background: 'none', color: C.text3, fontSize: 11, cursor: 'pointer', fontFamily: MONO, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = C.accent }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = C.text3 }}
-                    title="Reset to original"
-                  >↺</button>
-                )}
               </div>
             </div>
             <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '16px 20px', background: C.cool }}>
@@ -1078,7 +1028,7 @@ export default function RecipePage() {
         <div style={{ height: 1, background: C.rule }} />
 
         {/* ===== KITCHEN CONSENSUS ===== */}
-        <KitchenConsensus slug={slug} />
+        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         {/* ===== COMMUNITY NOTES ===== */}
         <div style={{ paddingTop: 28, paddingBottom: 28 }}>
