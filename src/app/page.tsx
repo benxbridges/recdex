@@ -1071,7 +1071,7 @@ export default function Home() {
           {/* COMMUNITY PICKS */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending recipes</h2>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending on RecDex</h2>
               <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>THIS WEEK</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
@@ -1135,12 +1135,72 @@ export default function Home() {
 
           <div style={{ height: 1, background: C.rule }} />
 
-          {/* POPULAR ELSEWHERE — external recipe cards */}
+          {/* FROM THE COMMUNITY — discussion threads */}
           <section style={{ paddingTop: 28, paddingBottom: 28 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
               <div>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>Popular elsewhere</h2>
-                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Recipes people are cooking from around the web</p>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From the community</h2>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Cooking talk, gear recs, and kitchen wisdom</p>
+              </div>
+              <Link href="/leaderboard" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {THREADS.map((thread, i) => {
+                const tag = THREAD_TAGS[thread.tag] || { color: C.text3, bg: C.cool }
+                return (
+                  <div key={thread.id} style={{
+                    padding: '10px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
+                    cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                      {/* Frying pan upvote column */}
+                      <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                        padding: '2px 0', minWidth: 32, flexShrink: 0,
+                      }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
+                          <circle cx="10" cy="12" r="7" />
+                          <line x1="17" y1="5" x2="22" y2="2" />
+                        </svg>
+                        <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                          <span style={{
+                            fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
+                            padding: '2px 7px', borderRadius: 4, background: tag.bg, color: tag.color,
+                          }}>{thread.tag}</span>
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author} · {thread.timeAgo}</span>
+                        </div>
+
+                        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
+
+                        {/* Thread meta */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
+                          </div>
+                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+
+          <div style={{ height: 1, background: C.rule }} />
+
+          {/* FROM AROUND THE WEB — external recipe cards */}
+          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From around the web</h2>
+                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Recipes people are cooking from other sites</p>
               </div>
               <button style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 12px', color: C.text2, fontSize: 10, fontFamily: MONO, cursor: 'pointer' }}>+ Add a recipe</button>
             </div>
@@ -1215,66 +1275,6 @@ export default function Home() {
                             </span>
                           </Link>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* FROM THE COMMUNITY — discussion threads */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From the community</h2>
-                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Cooking talk, gear recs, and kitchen wisdom</p>
-              </div>
-              <Link href="/leaderboard" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {THREADS.map((thread, i) => {
-                const tag = THREAD_TAGS[thread.tag] || { color: C.text3, bg: C.cool }
-                return (
-                  <div key={thread.id} style={{
-                    padding: '10px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                    cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      {/* Frying pan upvote column */}
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                        padding: '2px 0', minWidth: 32, flexShrink: 0,
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
-                          <circle cx="10" cy="12" r="7" />
-                          <line x1="17" y1="5" x2="22" y2="2" />
-                        </svg>
-                        <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                          <span style={{
-                            fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
-                            padding: '2px 7px', borderRadius: 4, background: tag.bg, color: tag.color,
-                          }}>{thread.tag}</span>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author} · {thread.timeAgo}</span>
-                        </div>
-
-                        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
-
-                        {/* Thread meta */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
-                          </div>
-                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
-                        </div>
                       </div>
                     </div>
                   </div>
