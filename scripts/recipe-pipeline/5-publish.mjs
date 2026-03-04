@@ -36,6 +36,9 @@ function prepareForPublish(recipe) {
     ...recipeData
   } = recipe
 
+  // For recipes exported from Supabase via Stage 0, restore preserved fields
+  const existing = recipeData._existing || {}
+
   // Ensure all required fields have valid values
   return {
     slug: recipeData.slug,
@@ -44,15 +47,18 @@ function prepareForPublish(recipe) {
     cuisine: recipeData.cuisine || null,
     difficulty: recipeData.difficulty || 'medium',
     time_total: recipeData.time_total || null,
-    time_active: recipeData.time_active || null,
-    time_passive: recipeData.time_passive || null,
-    time_passive_label: recipeData.time_passive_label || null,
-    image_url: recipeData.image_url || null,
+    time_active: recipeData.time_active || existing.time_active || null,
+    time_passive: recipeData.time_passive || existing.time_passive || null,
+    time_passive_label: recipeData.time_passive_label || existing.time_passive_label || null,
+    image_url: recipeData.image_url || existing.image_url || null,
     servings: recipeData.servings || null,
-    servings_label: recipeData.servings_label || null,
-    tags: recipeData.tags || [],
+    servings_label: recipeData.servings_label || existing.servings_label || null,
+    tags: recipeData.tags || existing.tags || [],
     ingredients: recipeData.ingredients || [],
     steps: recipeData.steps || [],
+    // Preserve category and source classification for existing recipes
+    ...(existing.category_id ? { category_id: existing.category_id } : {}),
+    ...(existing.submitted_by ? { submitted_by: existing.submitted_by } : {}),
   }
 }
 

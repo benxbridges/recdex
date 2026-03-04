@@ -15,7 +15,7 @@
  * Output: pipeline-data/synthesized/{slug}.json
  */
 
-import { writeFileSync, readFileSync, readdirSync, existsSync } from 'fs'
+import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'fs'
 import {
   ANTHROPIC_API_KEY, SOURCED_DIR, SYNTHESIZED_DIR,
   BRAND_VOICE_SYSTEM, sleep, parseArgs
@@ -69,26 +69,48 @@ async function callClaude(systemPrompt, userPrompt, retries = 2) {
 // --- Build the synthesis prompt from sourced data ---
 
 function buildSynthesisPrompt(sourced) {
-  const { recipeName, consensus, rawSources } = sourced
+  const { recipeName, consensus } = sourced
 
-  // Build ingredient consensus summary
-  const ingredientSummary = consensus.ingredients
-    .filter(ing => ing.consensusPercentage >= 30)  // Only ingredients in 30%+ of sources
-    .map(ing => {
-      const amt = ing.medianAmount ? `${ing.medianAmount} ${ing.units[0] || ''}`.trim() : 'amount varies'
-      return `- ${ing.name}: ${amt} (found in ${ing.consensusPercentage}% of ${ing.outOf} sources)`
-    })
-    .join('\n')
+  // Build ingredient consensus summary — handle both Stage 0 and Stage 1 formats
+  let ingredientSummary
+  if (consensus.ingredients.length === 0) {
+    ingredientSummary = '(no existing ingredient data — generate from your knowledge of this dish)'
+  } else if (consensus.ingredients[0].consensusPercentage !== undefined) {
+    // Stage 1 format: consensusPercentage, medianAmount, units[]
+    ingredientSummary = consensus.ingredients
+      .filter(ing => ing.consensusPercentage >= 30)
+      .map(ing => {
+        const amt = ing.medianAmount ? `${ing.medianAmount} ${(ing.units || [])[0] || ''}`.trim() : 'amount varies'
+        return `- ${ing.name}: ${amt} (found in ${ing.consensusPercentage}% of ${ing.outOf} sources)`
+      })
+      .join('\n')
+  } else {
+    // Stage 0 format: amount, unit, frequency
+    ingredientSummary = consensus.ingredients
+      .map(ing => {
+        const amt = ing.amount ? `${ing.amount} ${ing.unit || ''}`.trim() : 'amount varies'
+        const notes = ing.notes ? ` — ${ing.notes}` : ''
+        return `- ${ing.name}: ${amt}${notes}`
+      })
+      .join('\n')
+  }
 
-  // Build techniques from raw sources
-  const allSteps = rawSources.flatMap(s => s.steps.map(st => st.text)).filter(Boolean)
-  const techniqueSample = allSteps.slice(0, 15).map((s, i) => `${i + 1}. ${s}`).join('\n')
+  // Build technique steps — handle both Stage 0 (techniqueSample) and Stage 1 (rawSources) formats
+  let allSteps = []
+  if (sourced.techniqueSample) {
+    // Stage 0 format: techniqueSample is an array of step arrays
+    allSteps = (sourced.techniqueSample || []).flat().filter(Boolean)
+  } else if (sourced.rawSources) {
+    // Stage 1 format: rawSources is an array of source objects
+    allSteps = sourced.rawSources.flatMap(s => (s.steps || []).map(st => st.text)).filter(Boolean)
+  }
+  const techniqueSample = allSteps.length > 0
+    ? allSteps.slice(0, 15).map((s, i) => `${i + 1}. ${s}`).join('\n')
+    : '(no existing step data — write steps from your knowledge of this dish)'
 
   // Nutrition reference
-  const nutritionSamples = rawSources
-    .filter(s => s.nutrition)
-    .map(s => `Calories: ${s.nutrition.calories}, Protein: ${s.nutrition.protein_g}g, Fat: ${s.nutrition.fat_g}g`)
-    .slice(0, 3)
+  const rawNutrition = sourced.nutritionSamples || []
+  const nutritionSamples = rawNutrition.slice(0, 3)
 
   return `Synthesize a recipe for "${recipeName}" based on the following real-world data from ${sourced.sourceCount} independent cooking sources.
 
@@ -166,8 +188,8 @@ function parseRecipeJSON(text) {
     throw new Error('Ingredients must be a non-empty array')
   }
   for (const ing of recipe.ingredients) {
-    if (!ing.name || !ing.amount || ing.unit === undefined) {
-      throw new Error(`Invalid ingredient: ${JSON.stringify(ing)}`)
+    if (!ing.name) {
+      throw new Error(`Invalid ingredient (missing name): ${JSON.stringify(ing)}`)
     }
   }
 
@@ -210,6 +232,8 @@ async function synthesizeOne(sourcedPath) {
     // Attach pipeline metadata (not part of the recipe itself, used for tracking)
     return {
       ...recipe,
+      // Preserve _existing from Stage 0 exports so Stage 5 can restore Supabase fields
+      ...(sourced._existing ? { _existing: sourced._existing } : {}),
       _pipeline: {
         synthesizedAt: new Date().toISOString(),
         sourceCount: sourced.sourceCount,
@@ -236,6 +260,9 @@ async function main() {
     process.exit(1)
   }
 
+  // Ensure output dir exists
+  if (!existsSync(SYNTHESIZED_DIR)) mkdirSync(SYNTHESIZED_DIR, { recursive: true })
+
   // Find sourced files to process
   let sourcedFiles
   if (targetSlug) {
@@ -259,6 +286,14 @@ async function main() {
   let synthesized = 0, skipped = 0, failed = 0
 
   for (const filePath of sourcedFiles) {
+    // Skip already-synthesized files (allows restarts)
+    const slug = filePath.split('/').pop().replace('.json', '')
+    const outPath = `${SYNTHESIZED_DIR}${slug}.json`
+    if (!dryRun && existsSync(outPath) && !flags.force) {
+      skipped++
+      continue
+    }
+
     try {
       const result = await synthesizeOne(filePath)
       if (!result) {
@@ -266,10 +301,10 @@ async function main() {
         continue
       }
 
-      const outPath = `${SYNTHESIZED_DIR}${result.slug}.json`
+      const finalPath = `${SYNTHESIZED_DIR}${result.slug}.json`
       if (!dryRun) {
-        writeFileSync(outPath, JSON.stringify(result, null, 2))
-        console.log(`  ✓ Saved: ${outPath}`)
+        writeFileSync(finalPath, JSON.stringify(result, null, 2))
+        console.log(`  ✓ Saved: ${finalPath}`)
         console.log(`    ${result.ingredients.length} ingredients, ${result.steps.length} steps`)
       } else {
         console.log(`  [dry-run] "${result.title}" — ${result.ingredients.length} ingredients, ${result.steps.length} steps`)
