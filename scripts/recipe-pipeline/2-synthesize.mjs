@@ -17,7 +17,7 @@
 
 import { writeFileSync, readFileSync, readdirSync, existsSync, mkdirSync } from 'fs'
 import {
-  ANTHROPIC_API_KEY, SOURCED_DIR, SYNTHESIZED_DIR,
+  ANTHROPIC_API_KEY, SOURCED_DIR, SYNTHESIZED_DIR, VALIDATED_DIR,
   BRAND_VOICE_SYSTEM, sleep, parseArgs
 } from './config.mjs'
 
@@ -68,7 +68,7 @@ async function callClaude(systemPrompt, userPrompt, retries = 2) {
 
 // --- Build the synthesis prompt from sourced data ---
 
-function buildSynthesisPrompt(sourced) {
+function buildSynthesisPrompt(sourced, corrections = null) {
   const { recipeName, consensus } = sourced
 
   // Build ingredient consensus summary — handle both Stage 0 and Stage 1 formats
@@ -112,7 +112,11 @@ function buildSynthesisPrompt(sourced) {
   const rawNutrition = sourced.nutritionSamples || []
   const nutritionSamples = rawNutrition.slice(0, 3)
 
-  return `Synthesize a recipe for "${recipeName}" based on the following real-world data from ${sourced.sourceCount} independent cooking sources.
+  const correctionsSection = corrections?.length > 0
+    ? `\n## ⚠️ CORRECTIONS REQUIRED (from previous failed validation)\nA previous version of this recipe failed quality review. You MUST fix these issues:\n${corrections.map(c => `- [${c.severity.toUpperCase()}] ${c.description}`).join('\n')}\n`
+    : ''
+
+  return `Synthesize a recipe for "${recipeName}" based on the following real-world data from ${sourced.sourceCount} independent cooking sources.${correctionsSection}
 
 ## Ingredient Consensus (from ${sourced.sourceCount} sources)
 ${ingredientSummary}
@@ -208,7 +212,7 @@ function parseRecipeJSON(text) {
 
 // --- Main ---
 
-async function synthesizeOne(sourcedPath) {
+async function synthesizeOne(sourcedPath, corrections = null) {
   const sourced = JSON.parse(readFileSync(sourcedPath, 'utf-8'))
 
   if (sourced._needsManualSourcing) {
@@ -221,9 +225,10 @@ async function synthesizeOne(sourcedPath) {
     return null
   }
 
-  console.log(`\n→ Synthesizing: "${sourced.recipeName}" (${sourced.sourceCount} sources)`)
+  const correctionNote = corrections?.length ? ` [${corrections.length} correction(s)]` : ''
+  console.log(`\n→ Synthesizing: "${sourced.recipeName}" (${sourced.sourceCount} sources)${correctionNote}`)
 
-  const prompt = buildSynthesisPrompt(sourced)
+  const prompt = buildSynthesisPrompt(sourced, corrections)
   const response = await callClaude(BRAND_VOICE_SYSTEM, prompt)
 
   try {
@@ -253,6 +258,7 @@ async function main() {
   const flags = parseArgs(process.argv)
   const dryRun = flags['dry-run'] || false
   const targetSlug = flags.slug || null
+  const correctMode = flags['correct'] || false  // Re-synthesize only needs-review recipes with corrections
 
   if (!ANTHROPIC_API_KEY) {
     console.error('Error: ANTHROPIC_API_KEY environment variable is required')
@@ -263,39 +269,73 @@ async function main() {
   // Ensure output dir exists
   if (!existsSync(SYNTHESIZED_DIR)) mkdirSync(SYNTHESIZED_DIR, { recursive: true })
 
-  // Find sourced files to process
+  // In --correct mode: build map of existingId → LLM corrections from validated files
+  // then find matching sourced files to re-synthesize
+  let correctionsBySourcedSlug = new Map()
   let sourcedFiles
-  if (targetSlug) {
+
+  if (correctMode) {
+    // Build id → corrections map from validated files
+    const idToCorrections = new Map()
+    if (existsSync(VALIDATED_DIR)) {
+      for (const f of readdirSync(VALIDATED_DIR).filter(f => f.endsWith('.json'))) {
+        const v = JSON.parse(readFileSync(`${VALIDATED_DIR}${f}`, 'utf-8'))
+        if (v._validation?.status === 'needs-review' && v._existing?.id) {
+          const issues = v._validation?.llmReview?.issues?.filter(i => i.severity !== 'suggestion') || []
+          idToCorrections.set(v._existing.id, issues)
+        }
+      }
+    }
+
+    // Match to sourced files
+    const matched = []
+    for (const f of readdirSync(SOURCED_DIR).filter(f => f.endsWith('.json'))) {
+      const s = JSON.parse(readFileSync(`${SOURCED_DIR}${f}`, 'utf-8'))
+      if (s._existing?.id && idToCorrections.has(s._existing.id)) {
+        const slug = f.replace('.json', '')
+        correctionsBySourcedSlug.set(slug, idToCorrections.get(s._existing.id))
+        matched.push(`${SOURCED_DIR}${f}`)
+        idToCorrections.delete(s._existing.id)
+      }
+    }
+    sourcedFiles = matched
+    console.log(`✍️  Stage 2: Re-synthesize with corrections`)
+    console.log(`   Recipes: ${sourcedFiles.length}`)
+  } else if (targetSlug) {
     const path = `${SOURCED_DIR}${targetSlug}.json`
     if (!existsSync(path)) {
       console.error(`Sourced file not found: ${path}`)
       process.exit(1)
     }
     sourcedFiles = [path]
+    console.log(`✍️  Stage 2: Synthesize Recipes`)
+    console.log(`   Files: 1 (targeted)`)
   } else {
     sourcedFiles = readdirSync(SOURCED_DIR)
       .filter(f => f.endsWith('.json'))
       .map(f => `${SOURCED_DIR}${f}`)
+    console.log(`✍️  Stage 2: Synthesize Recipes`)
+    console.log(`   Files: ${sourcedFiles.length}`)
   }
 
-  console.log(`✍️  Stage 2: Synthesize Recipes`)
-  console.log(`   Files: ${sourcedFiles.length}`)
   console.log(`   Mode: ${dryRun ? 'DRY RUN' : 'LIVE'}`)
   console.log(`   Model: ${CLAUDE_MODEL}`)
 
   let synthesized = 0, skipped = 0, failed = 0
 
   for (const filePath of sourcedFiles) {
-    // Skip already-synthesized files (allows restarts)
+    // In correct mode, always force-overwrite. Otherwise skip already-synthesized.
     const slug = filePath.split('/').pop().replace('.json', '')
     const outPath = `${SYNTHESIZED_DIR}${slug}.json`
-    if (!dryRun && existsSync(outPath) && !flags.force) {
+    if (!correctMode && !dryRun && existsSync(outPath) && !flags.force) {
       skipped++
       continue
     }
 
+    const corrections = correctionsBySourcedSlug.get(slug) || null
+
     try {
-      const result = await synthesizeOne(filePath)
+      const result = await synthesizeOne(filePath, corrections)
       if (!result) {
         skipped++
         continue

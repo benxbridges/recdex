@@ -128,12 +128,28 @@ async function main() {
     const prepared = prepareForPublish(recipe)
     prepared.status = status
 
+    // Prefer update-by-id for existing Supabase recipes (from Stage 0 exports)
+    // so we don't create duplicates when Claude generates a different slug
+    const existingId = recipe._existing?.id
+
     if (!dryRun) {
-      // Upsert by slug — update existing or insert new
-      const { data, error } = await supabase
-        .from('recipes')
-        .upsert(prepared, { onConflict: 'slug' })
-        .select('id, slug')
+      let data, error
+
+      if (existingId) {
+        // Update the exact Supabase row — strip slug to preserve original URL
+        const { slug: _omitSlug, ...preparedWithoutSlug } = prepared
+        ;({ data, error } = await supabase
+          .from('recipes')
+          .update(preparedWithoutSlug)
+          .eq('id', existingId)
+          .select('id, slug'))
+      } else {
+        // New recipe (from Stage 1) — upsert by slug
+        ;({ data, error } = await supabase
+          .from('recipes')
+          .upsert(prepared, { onConflict: 'slug' })
+          .select('id, slug'))
+      }
 
       if (error) {
         console.log(`  ✗ DB error: ${error.message}`)
@@ -148,9 +164,10 @@ async function main() {
         continue
       }
 
-      console.log(`  ✓ ${status.toUpperCase()} — ${data?.[0]?.id || 'upserted'}`)
+      console.log(`  ✓ ${status.toUpperCase()} — id:${existingId || data?.[0]?.id || 'new'}`)
     } else {
-      console.log(`  [dry-run] Would ${status}: ${recipe.slug}`)
+      const mode = existingId ? `UPDATE id:${existingId}` : `UPSERT slug:${recipe.slug}`
+      console.log(`  [dry-run] ${status.toUpperCase()} via ${mode}`)
     }
 
     // Save publish record

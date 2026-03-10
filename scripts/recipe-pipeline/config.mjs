@@ -12,7 +12,8 @@ import { createClient } from '@supabase/supabase-js'
 // --- Supabase ---
 export const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
 export const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
-export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+// Pass SUPABASE_SERVICE_KEY env var to bypass RLS (never commit this key)
+export const supabase = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY)
 
 // --- API Keys ---
 export const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || ''
