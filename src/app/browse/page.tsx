@@ -166,6 +166,96 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
   )
 }
 
+// ===== RECIPE ROW (list view) =====
+function RecipeRow({ recipe, matchedIngredient, onClick }: {
+  recipe: Recipe
+  matchedIngredient: string | null
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 16,
+        padding: '10px 12px',
+        borderRadius: 6,
+        cursor: 'pointer',
+        background: hovered ? C.warm : 'transparent',
+        borderBottom: `1px solid ${C.ruleLight}`,
+        transition: 'background 0.1s ease',
+      }}
+    >
+      {/* Thumbnail */}
+      <div style={{ width: 72, height: 50, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {recipe.image_url
+          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+          : <svg width="24" height="18" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.3 }}>
+              <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="3"/></g>
+              <g transform="translate(102,35) rotate(12)"><path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22,36 0,20 0 C4 0,-8 22,0 48Z" fill={C.cool} stroke={C.rule} strokeWidth="3"/></g>
+              <ellipse cx="100" cy="106" rx="13" ry="10" fill="#E8A44A" opacity="0.35"/>
+            </svg>
+        }
+      </div>
+
+      {/* Title + description */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25 }}>{recipe.title}</span>
+          {recipe.cuisine && <span style={{ fontSize: 11, color: C.text3, fontFamily: SANS, flexShrink: 0 }}>{normalizeCuisine(recipe.cuisine)}</span>}
+        </div>
+        {recipe.description && (
+          <p style={{ fontSize: 12, color: C.text2, margin: '2px 0 0', fontFamily: SANS, lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {recipe.description}
+          </p>
+        )}
+        {matchedIngredient && (
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '1px 7px', borderRadius: 3, letterSpacing: '0.04em', marginTop: 3, display: 'inline-block' }}>
+            ◆ {matchedIngredient}
+          </span>
+        )}
+      </div>
+
+      {/* Meta: difficulty + time */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+        <DifficultyBadge difficulty={recipe.difficulty} />
+        {recipe.time_total && (
+          <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, minWidth: 52, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ===== VIEW TOGGLE ICONS =====
+function GridIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="1" width="6" height="6" rx="1" fill={active ? C.accent : C.text3} />
+      <rect x="9" y="1" width="6" height="6" rx="1" fill={active ? C.accent : C.text3} />
+      <rect x="1" y="9" width="6" height="6" rx="1" fill={active ? C.accent : C.text3} />
+      <rect x="9" y="9" width="6" height="6" rx="1" fill={active ? C.accent : C.text3} />
+    </svg>
+  )
+}
+
+function ListIcon({ active }: { active: boolean }) {
+  const col = active ? C.accent : C.text3
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <rect x="1" y="2" width="4" height="3" rx="0.5" fill={col} />
+      <rect x="7" y="2.5" width="8" height="2" rx="1" fill={col} />
+      <rect x="1" y="6.5" width="4" height="3" rx="0.5" fill={col} />
+      <rect x="7" y="7" width="8" height="2" rx="1" fill={col} />
+      <rect x="1" y="11" width="4" height="3" rx="0.5" fill={col} />
+      <rect x="7" y="11.5" width="8" height="2" rx="1" fill={col} />
+    </svg>
+  )
+}
+
 // ===== CUISINE SECTION HEADER =====
 function SectionHeader({ cuisine, count }: { cuisine: string; count: number }) {
   return (
@@ -186,6 +276,7 @@ function BrowseContent() {
   const [activeCuisine, setActiveCuisine] = useState<string>('all')
   const [activeTime, setActiveTime] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Load all recipes once
@@ -431,10 +522,10 @@ function BrowseContent() {
             </button>
           </div>
         ) : isSearching ? (
-          /* FLAT GRID — search/filter active */
+          /* FLAT VIEW — search/filter active */
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 24, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 16 }}>
-              <p style={{ fontFamily: SERIF, fontSize: 20, color: C.text, margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, borderBottom: `1px solid ${C.ruleLight}`, paddingBottom: 16 }}>
+              <p style={{ fontFamily: SERIF, fontSize: 20, color: C.text, margin: 0, flex: 1 }}>
                 {searchResultLabel}
               </p>
               {(query.trim() || activeCuisine !== 'all' || activeTime !== 'all') && (
@@ -442,34 +533,60 @@ function BrowseContent() {
                   clear
                 </button>
               )}
+              {/* View toggle */}
+              <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <GridIcon active={viewMode === 'grid'} />
+                </button>
+                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <ListIcon active={viewMode === 'list'} />
+                </button>
+              </div>
             </div>
-            <div style={gridStyle}>
-              {filtered.map(recipe => (
-                <RecipeCard
-                  key={recipe.id}
-                  recipe={recipe}
-                  matchedIngredient={matchMap.get(recipe.id) || null}
-                  onClick={() => handleCardClick(recipe)}
-                />
-              ))}
-            </div>
+            {viewMode === 'grid' ? (
+              <div style={gridStyle}>
+                {filtered.map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
+                {filtered.map(recipe => (
+                  <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
+                ))}
+              </div>
+            )}
           </>
         ) : (
           /* GROUPED BY CUISINE — default cookbook view */
           <>
+            {/* View toggle for default state */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <GridIcon active={viewMode === 'grid'} />
+                </button>
+                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <ListIcon active={viewMode === 'list'} />
+                </button>
+              </div>
+            </div>
             {grouped?.map(([cuisine, items]) => (
               <div key={cuisine}>
                 <SectionHeader cuisine={cuisine} count={items.length} />
-                <div style={gridStyle}>
-                  {items.map(recipe => (
-                    <RecipeCard
-                      key={recipe.id}
-                      recipe={recipe}
-                      matchedIngredient={null}
-                      onClick={() => handleCardClick(recipe)}
-                    />
-                  ))}
-                </div>
+                {viewMode === 'grid' ? (
+                  <div style={gridStyle}>
+                    {items.map(recipe => (
+                      <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
+                    {items.map(recipe => (
+                      <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </>
