@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
 
   // Call Claude
   try {
+    console.log('[extract] platform:', platform, 'content length:', content.length)
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -142,18 +143,21 @@ export async function POST(req: NextRequest) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20251001',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 2048,
         messages: [{ role: 'user', content: EXTRACTION_PROMPT(platform, content) }],
       }),
     })
 
     if (!res.ok) {
+      const errBody = await res.text()
+      console.error('[extract] Claude API error:', res.status, errBody)
       return NextResponse.json({ error: 'extraction_failed' }, { status: 500 })
     }
 
     const claudeData = await res.json()
     const text: string = claudeData.content?.[0]?.text || ''
+    console.log('[extract] Claude response length:', text.length)
 
     // Strip any accidental markdown fences
     const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
