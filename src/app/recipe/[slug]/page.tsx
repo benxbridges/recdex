@@ -21,6 +21,7 @@ type Recipe = {
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
   submitted_by?: string | null; source?: string | null
+  video_url?: string | null; creator_name?: string | null; creator_url?: string | null
 }
 
 type Comment = {
@@ -70,6 +71,66 @@ function scaleAmount(amount: string, multiplier: number): string {
   const fracs: Record<number, string> = { 0.25: '¼', 0.5: '½', 0.75: '¾' }
   if (fracs[frac]) return whole > 0 ? `${whole} ${fracs[frac]}` : fracs[frac]
   return String(Math.round(scaled * 10) / 10)
+}
+
+// ===== VIDEO EMBED =====
+function detectVideoPlatform(url: string): 'youtube' | 'tiktok' | 'instagram' | null {
+  try {
+    const h = new URL(url).hostname.toLowerCase()
+    if (h.includes('youtube.com') || h.includes('youtu.be')) return 'youtube'
+    if (h.includes('tiktok.com')) return 'tiktok'
+    if (h.includes('instagram.com')) return 'instagram'
+  } catch { /* invalid */ }
+  return null
+}
+
+function getEmbedUrl(url: string, platform: 'youtube' | 'tiktok' | 'instagram'): string | null {
+  try {
+    if (platform === 'youtube') {
+      const parsed = new URL(url)
+      const id = parsed.hostname.includes('youtu.be')
+        ? parsed.pathname.slice(1).split('?')[0]
+        : parsed.searchParams.get('v') || parsed.pathname.split('/').filter(Boolean).pop() || ''
+      return id ? `https://www.youtube.com/embed/${id}?rel=0` : null
+    }
+    if (platform === 'tiktok') {
+      const match = new URL(url).pathname.match(/\/video\/(\d+)/)
+      return match ? `https://www.tiktok.com/embed/v2/${match[1]}` : null
+    }
+    if (platform === 'instagram') {
+      const match = new URL(url).pathname.match(/\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/)
+      return match ? `https://www.instagram.com/p/${match[1]}/embed/` : null
+    }
+  } catch { /* invalid */ }
+  return null
+}
+
+function VideoEmbed({ url }: { url: string }) {
+  const platform = detectVideoPlatform(url)
+  if (!platform) return null
+  const embedUrl = getEmbedUrl(url, platform)
+  if (!embedUrl) return null
+
+  return (
+    <div style={{ paddingTop: 24, paddingBottom: 24 }}>
+      <div style={{
+        position: 'relative', width: '100%',
+        aspectRatio: platform === 'tiktok' ? '9/16' : '16/9',
+        maxHeight: platform === 'tiktok' ? 560 : undefined,
+        maxWidth: platform === 'tiktok' ? 320 : undefined,
+        borderRadius: 8, overflow: 'hidden', background: C.warm,
+      }}>
+        <iframe
+          src={embedUrl}
+          style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+          title="Recipe video"
+        />
+      </div>
+    </div>
+  )
 }
 
 // ===== SMALL COMPONENTS =====
@@ -876,6 +937,27 @@ export default function RecipePage() {
             </p>
           )}
 
+          {/* Creator attribution (video-sourced recipes) */}
+          {recipe.creator_name && recipe.video_url && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 12px', borderRadius: 6, background: C.cool, border: `1px solid ${C.ruleLight}` }}>
+              <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>Recipe by</span>
+              {recipe.creator_url ? (
+                <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2, textDecoration: 'none' }}>
+                  {recipe.creator_name}
+                </a>
+              ) : (
+                <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2 }}>{recipe.creator_name}</span>
+              )}
+              <span style={{ color: C.rule }}>·</span>
+              <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, color: C.text3, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                Watch original
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+              </a>
+            </div>
+          )}
+
           {/* Action buttons: Grocery list · Share · Save */}
           <div style={{ display: 'flex', gap: 8 }}>
             {hasIngredients && (
@@ -921,6 +1003,9 @@ export default function RecipePage() {
         </div>
 
         <div style={{ height: 1, background: C.rule }} />
+
+        {/* Video embed (video-sourced recipes) */}
+        {recipe.video_url && <VideoEmbed url={recipe.video_url} />}
 
         {/* Ingredients */}
         {hasIngredients ? (
