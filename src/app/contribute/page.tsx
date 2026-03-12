@@ -303,42 +303,47 @@ function ContributeInner() {
 
     const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36)
 
-    const { error } = await supabase.from('recipes').insert({
-      slug,
-      title: title.trim(),
-      description: description.trim() || null,
-      cuisine: cuisine.trim() || null,
-      difficulty,
-      time_total: timeTotal ? parseInt(timeTotal) : null,
-      time_active: timeActive ? parseInt(timeActive) : null,
-      servings: servings ? parseInt(servings) : null,
-      ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim(), notes: i.notes?.trim() || '' })),
-      steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: extracted?.steps?.[i]?.timer_minutes ?? null })),
-      tags: [],
-      status: 'published',
-      submitted_by: displayName,
-      source: 'community',
-      video_url: mode === 'video' ? url.trim() : null,
-      creator_name: mode === 'video' ? (oembed?.author_name || null) : null,
-      creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
-    })
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            title: title.trim(),
+            description: description.trim() || null,
+            cuisine: cuisine.trim() || null,
+            difficulty,
+            time_total: timeTotal ? parseInt(timeTotal) : null,
+            time_active: timeActive ? parseInt(timeActive) : null,
+            servings: servings ? parseInt(servings) : null,
+            ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim(), notes: i.notes?.trim() || '' })),
+            steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: extracted?.steps?.[i]?.timer_minutes ?? null })),
+            video_url: mode === 'video' ? url.trim() : null,
+            creator_name: mode === 'video' ? (oembed?.author_name || null) : null,
+            creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
+            image_url: mode === 'video' ? (oembed?.thumbnail_url || null) : null,
+          },
+          submission: mode === 'video' ? {
+            url: url.trim(), platform,
+            title: oembed?.title || title.trim(),
+            author_name: oembed?.author_name || null,
+            author_url: oembed?.author_url || null,
+            thumbnail_url: oembed?.thumbnail_url || null,
+            display_name: displayName,
+          } : null,
+        }),
+      })
 
-    if (error) {
+      if (!res.ok) {
+        setFlowStep('review')
+        setPublishError('Something went wrong publishing. Try again.')
+        return
+      }
+    } catch {
       setFlowStep('review')
       setPublishError('Something went wrong publishing. Try again.')
       return
-    }
-
-    if (mode === 'video') {
-      await supabase.from('community_submissions').insert({
-        url: url.trim(), platform,
-        title: oembed?.title || title.trim(),
-        author_name: oembed?.author_name || null,
-        author_url: oembed?.author_url || null,
-        thumbnail_url: oembed?.thumbnail_url || null,
-        display_name: displayName,
-        related_recipe_slug: slug,
-      })
     }
 
     setPublishedSlug(slug)
