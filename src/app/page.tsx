@@ -1390,6 +1390,9 @@ export default function Home() {
   // Community threads state
   const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }[]>([])
 
+  // External recipes state
+  const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
+
   // Fetch recent community comments
   useEffect(() => {
     async function fetchRecentComments() {
@@ -1413,6 +1416,14 @@ export default function Home() {
     supabase.from('threads').select('id, title, tag, author_display_name, reply_count, upvote_count, created_at')
       .order('created_at', { ascending: false }).limit(4)
       .then(({ data }) => { if (data) setCommunityThreads(data) })
+  }, [])
+
+  // Fetch external recipes
+  useEffect(() => {
+    supabase.from('external_recipes').select('id, title, source_name, source_url, cuisine, time_estimate, matched_recipe_slug')
+      .eq('status', 'active')
+      .order('created_at', { ascending: false }).limit(8)
+      .then(({ data }) => { if (data) setExternalRecipes(data) })
   }, [])
 
   // Fetch book shelf stats
@@ -1884,7 +1895,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* User-submitted links */}
+            {/* User-submitted links + external recipes */}
             {submissions.length > 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12, marginTop: 14 }}>
                 {submissions.map((sub, i) => (
@@ -1894,52 +1905,38 @@ export default function Home() {
                 ))}
               </div>
             ) : (
-              /* Fallback: show mock external recipes while no submissions exist */
+              /* External recipe links — from DB or mock fallback */
               <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14, marginTop: 14 }}>
-                {EXTERNAL_RECIPES.map((ext, i) => {
-                  const src = SOURCES[ext.source] || { color: C.text3, bg: C.cool }
+                {(externalRecipes.length > 0 ? externalRecipes : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))).map((ext, i) => {
+                  const src = SOURCES[ext.source_name] || { color: C.text3, bg: C.cool }
                   return (
-                    <div key={ext.id} style={{
-                      borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
-                      cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                      animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                    }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                    >
-                      <div style={{ display: 'flex', gap: 0 }}>
-                        <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ext.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
+                    <a key={ext.id} href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <div style={{
+                        borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
+                        cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
+                        animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                        padding: '14px 16px',
+                      }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color, textTransform: 'uppercase' }}>{ext.source_name}</span>
+                          {ext.cuisine && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
+                          {ext.time_estimate && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span></>}
                         </div>
-                        <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color, textTransform: 'uppercase' }}>{ext.source}</span>
-                          </div>
-                          <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{ext.title}</h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>
-                            <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time}</span>
-                            <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                            <StarRating rating={ext.rating} />
-                            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.rating}</span>
-                          </div>
-                          {ext.topReview && (
-                            <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
-                              <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>&ldquo;{ext.topReview.text}&rdquo;</p>
-                              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{ext.topReview.user}</span>
-                            </div>
-                          )}
-                          {ext.similar && (
-                            <Link href={`/recipe/${ext.similar.slug}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 8px', borderRadius: 5, background: C.cool, border: `1px solid ${C.ruleLight}`, textDecoration: 'none', marginTop: 'auto' }}>
+                        <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 8px' }}>{ext.title}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>View on {ext.source_name} →</span>
+                          {ext.matched_recipe_slug && (
+                            <Link href={`/recipe/${ext.matched_recipe_slug}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
                               <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
-                              <span style={{ fontSize: 9, fontFamily: SANS, color: C.text3 }}>Similar on RecDex: <span style={{ color: C.text2, fontWeight: 600 }}>{ext.similar.title}</span></span>
+                              <span style={{ fontSize: 9, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Similar on RecDex</span>
                             </Link>
                           )}
                         </div>
                       </div>
-                    </div>
+                    </a>
                   )
                 })}
               </div>

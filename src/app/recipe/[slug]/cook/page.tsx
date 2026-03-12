@@ -17,6 +17,7 @@ type Recipe = {
   time_total: number | null; servings: number | null
   ingredients: RawIngredients; steps: Step[]
   video_url?: string | null; submitted_by?: string | null; source_attribution?: string | null
+  creator_name?: string | null; creator_url?: string | null
 }
 
 function capitalizeIngredient(name: string): string {
@@ -261,13 +262,27 @@ export default function CookModePage() {
               {recipe.title}<EggDot size={6} />
             </h2>
             {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
-              <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`}
-                style={{ fontSize: 10, color: C.text3, textDecoration: 'none', fontFamily: SANS, transition: 'color 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.color = C.accent)}
-                onMouseLeave={e => (e.currentTarget.style.color = C.text3)}
-              >
-                Something wrong? Edit recipe →
-              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {recipe.creator_name && (
+                  <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
+                    Recipe by{' '}
+                    {recipe.creator_url ? (
+                      <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+                        {recipe.creator_name}
+                      </a>
+                    ) : (
+                      <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
+                    )}
+                  </span>
+                )}
+                <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`}
+                  style={{ fontSize: 10, color: C.text3, textDecoration: 'none', fontFamily: SANS, transition: 'color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = C.accent)}
+                  onMouseLeave={e => (e.currentTarget.style.color = C.text3)}
+                >
+                  Something wrong? Edit recipe →
+                </a>
+              </div>
             )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

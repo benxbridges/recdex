@@ -68,16 +68,25 @@ async function fetchTikTokCaption(url: string): Promise<string | null> {
 // ===== EXTRACTION PROMPT =====
 
 const EXTRACTION_PROMPT = (platform: string, content: string) => `
-You are extracting a recipe from social media content. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description and/or spoken transcript)' : 'caption'}:
+You are extracting FACTUAL recipe information from social media content and rewriting it in clear, original instructional language. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description and/or spoken transcript)' : 'caption'}:
 
 ---
 ${content.slice(0, 8000)}
 ---
 
-Extract the recipe and return a single JSON object with exactly these fields:
+Your task: Identify the factual elements of the recipe (ingredients, quantities, temperatures, times, and cooking techniques), then write the recipe in your own neutral, instructional voice.
+
+CRITICAL COPYRIGHT RULES:
+- Extract ONLY factual information: ingredient names, amounts, temperatures, cooking times, and techniques
+- REWRITE all instructions entirely in your own words using plain, neutral instructional language
+- NEVER copy or closely paraphrase the creator's distinctive phrasing, personality, stories, or creative descriptions
+- The description field should be YOUR brief factual summary of the dish, not the creator's words
+- Step text must be YOUR original instructional writing based on the cooking process described — not a transcription
+
+Return a single JSON object with exactly these fields:
 {
-  "title": string,
-  "description": string (1-2 sentence description of the dish — flavors, origin, what makes it special),
+  "title": string (simple dish name — no clickbait, no creator's branding),
+  "description": string (1-2 sentence FACTUAL description — what the dish is, key flavors, cuisine origin),
   "cuisine": string (e.g. "Italian", "Mexican", "American" — one word or short phrase),
   "difficulty": "easy" | "medium" | "advanced",
   "time_total": number (total minutes including passive time) | null,
@@ -92,7 +101,8 @@ Rules:
 - "amount" must be a number string like "2" or "1/2" — never include the unit in amount
 - "unit" is the measurement unit like "cups", "tbsp", "oz", "g" — or "" if none
 - "notes" is optional info like "room temperature", "divided", "or to taste"
-- Steps must be clear imperative sentences, numbered from 1
+- Steps must be clear imperative sentences in neutral instructional tone, numbered from 1
+- Write steps as you would for a general cooking reference — direct, concise, no personality or flair
 - confidence "high" = complete recipe with exact measurements, "medium" = most measurements present, "low" = reconstructed from transcript or minimal info
 
 IMPORTANT — handling spoken transcripts:

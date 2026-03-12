@@ -179,6 +179,7 @@ function ContributeInner() {
   const [steps, setSteps] = useState<string[]>([''])
   const [publishError, setPublishError] = useState('')
   const [similarWarning, setSimilarWarning] = useState('')
+  const [copyrightCertified, setCopyrightCertified] = useState(false)
 
   // Success
   const [publishedSlug, setPublishedSlug] = useState('')
@@ -508,7 +509,7 @@ function ContributeInner() {
                         <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text }}>Paste the recipe</span>
                       </div>
                       <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 12px', lineHeight: 1.5 }}>
-                        Copy the ingredients and steps from the video, its comments, or description — Claude will structure it into a clean recipe.
+                        Paste the ingredient list and basic steps from the video description. Claude will extract the factual recipe information and rewrite it in clear, original language.
                       </p>
                       <textarea
                         value={pastedText}
@@ -734,6 +735,25 @@ function ContributeInner() {
                   </div>
                 </div>
 
+                {/* Copyright certification */}
+                <div style={{
+                  marginTop: 24, padding: '16px 18px', background: C.warm,
+                  border: `1px solid ${C.ruleLight}`, borderRadius: 10,
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={copyrightCertified}
+                      onChange={e => setCopyrightCertified(e.target.checked)}
+                      style={{ marginTop: 2, accentColor: C.accent, width: 16, height: 16, flexShrink: 0 }}
+                    />
+                    <span style={{ fontFamily: SANS, fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
+                      I certify that this recipe contains only factual cooking information (ingredients, quantities, temperatures, times, and techniques) and does not copy creative expression, personal stories, or distinctive language from another source. I have reviewed and accept the{' '}
+                      <Link href="/terms" target="_blank" style={{ color: C.accent, textDecoration: 'underline' }}>Terms of Use</Link>.
+                    </span>
+                  </label>
+                </div>
+
                 {publishError && (
                   <div style={{ marginTop: 16, padding: '12px 16px', background: C.accentBg, borderRadius: 8, border: `1px solid rgba(232,123,90,0.2)` }}>
                     <p style={{ fontFamily: SANS, fontSize: 13, color: C.accent, margin: 0 }}>{publishError}</p>
@@ -742,13 +762,13 @@ function ContributeInner() {
 
                 <button
                   onClick={handlePublish}
-                  disabled={flowStep === 'publishing'}
+                  disabled={flowStep === 'publishing' || !copyrightCertified}
                   style={{
                     width: '100%', padding: '15px 24px', borderRadius: 8, border: 'none',
-                    background: flowStep === 'publishing' ? C.rule : C.accent,
-                    color: flowStep === 'publishing' ? C.text3 : '#fff',
-                    fontSize: 15, fontWeight: 700, cursor: flowStep === 'publishing' ? 'default' : 'pointer',
-                    fontFamily: SANS, marginTop: 28, letterSpacing: '-0.01em',
+                    background: (flowStep === 'publishing' || !copyrightCertified) ? C.rule : C.accent,
+                    color: (flowStep === 'publishing' || !copyrightCertified) ? C.text3 : '#fff',
+                    fontSize: 15, fontWeight: 700, cursor: (flowStep === 'publishing' || !copyrightCertified) ? 'default' : 'pointer',
+                    fontFamily: SANS, marginTop: 16, letterSpacing: '-0.01em',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                   }}
                 >

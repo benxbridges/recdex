@@ -960,15 +960,33 @@ export default function RecipePage() {
             </div>
           )}
 
-          {/* AI-extracted badge for video-sourced recipes */}
+          {/* AI-extracted badge + creator credit for video-sourced recipes */}
           {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '5px 12px', borderRadius: 6, background: C.accentBg, border: `1px solid ${C.accentMed}` }}>
-              <span style={{ fontSize: 12 }}>🤖</span>
-              <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>AI-extracted from video</span>
-              <span style={{ color: C.rule }}>·</span>
-              <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
-                Verify or edit
-              </a>
+            <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 6, background: C.accentBg, border: `1px solid ${C.accentMed}`, alignSelf: 'flex-start' }}>
+                <span style={{ fontSize: 12 }}>🤖</span>
+                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>AI-extracted from video</span>
+                <span style={{ color: C.rule }}>·</span>
+                <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+                  Verify or edit
+                </a>
+              </div>
+              {recipe.creator_name && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontFamily: SANS, color: C.text3 }}>
+                  <span>Recipe by</span>
+                  {recipe.creator_url ? (
+                    <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+                      {recipe.creator_name}
+                    </a>
+                  ) : (
+                    <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
+                  )}
+                  <span style={{ color: C.text3 }}>·</span>
+                  <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'none' }}>
+                    Watch original →
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
