@@ -122,15 +122,20 @@ export async function POST(req: NextRequest) {
     const { videoId: yt, description } = await fetchYouTubeContent(url)
     videoId = yt
 
-    // Always try to get transcript for richer extraction
+    // Try to get transcript (YouTube often blocks server-side, but worth trying)
     let transcriptText = (transcript && typeof transcript === 'string') ? transcript : null
     if (!transcriptText && videoId) {
       try {
-        const { YoutubeTranscript } = await import('youtube-transcript')
-        const items = await YoutubeTranscript.fetchTranscript(videoId)
-        if (items?.length) {
-          transcriptText = items.map(i => i.text).join(' ')
-          console.log('[extract] Got server-side transcript, length:', transcriptText.length)
+        const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+        const tRes = await fetch(`${origin}/api/youtube-transcript`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoId }),
+        })
+        const tData = await tRes.json()
+        if (tData.transcript) {
+          transcriptText = tData.transcript
+          console.log('[extract] Got transcript, length:', transcriptText?.length)
         }
       } catch (err) {
         console.log('[extract] Transcript fetch failed:', err)

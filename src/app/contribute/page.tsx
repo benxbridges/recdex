@@ -215,13 +215,14 @@ export default function ContributePage() {
 
       if (data.error === 'insufficient_content') {
         setFlowStep('url')
-        setExtractError("No written recipe found in this video's description. You can paste the recipe text below and we'll try again.")
+        setExtractError('')
         setShowPasteBox(true)
         return
       }
       if (data.error || !data.recipe) {
         setFlowStep('url')
-        setExtractError('Extraction failed. Try again, or check that the video has a written recipe.')
+        setExtractError('Extraction failed — try again, or paste the recipe text below.')
+        setShowPasteBox(true)
         return
       }
 
@@ -466,33 +467,48 @@ export default function ContributePage() {
                   {extractError && (
                     <div style={{ padding: '12px 16px', background: C.accentBg, borderRadius: 8, border: `1px solid rgba(232,123,90,0.2)`, marginBottom: 12 }}>
                       <p style={{ fontFamily: SANS, fontSize: 13, color: C.accent, margin: 0, lineHeight: 1.5 }}>{extractError}</p>
-                      {showPasteBox && (
-                        <div style={{ marginTop: 12 }}>
-                          <textarea
-                            value={pastedText}
-                            onChange={e => setPastedText(e.target.value)}
-                            placeholder="Paste the recipe text here — ingredients, steps, anything you can copy from the video or its comments..."
-                            rows={5}
-                            style={{
-                              width: '100%', fontFamily: SANS, fontSize: 14, background: C.warm,
-                              color: C.text, border: `1px solid ${C.rule}`, borderRadius: 6,
-                              padding: '10px 12px', resize: 'vertical', boxSizing: 'border-box',
-                            }}
-                          />
-                          <button
-                            onClick={handleExtract}
-                            disabled={!pastedText.trim()}
-                            style={{
-                              marginTop: 8, fontFamily: SANS, fontSize: 13, fontWeight: 600,
-                              background: pastedText.trim() ? C.accent : C.rule,
-                              color: pastedText.trim() ? '#fff' : C.text3,
-                              border: 'none', borderRadius: 6, padding: '8px 20px', cursor: pastedText.trim() ? 'pointer' : 'default',
-                            }}
-                          >
-                            Try Again with Pasted Text
-                          </button>
-                        </div>
-                      )}
+                    </div>
+                  )}
+
+                  {showPasteBox && (
+                    <div style={{ padding: '20px', background: C.warm, borderRadius: 10, border: `1px solid ${C.ruleLight}`, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text2} strokeWidth="2" strokeLinecap="round">
+                          <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+                          <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                        </svg>
+                        <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text }}>Paste the recipe</span>
+                      </div>
+                      <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 12px', lineHeight: 1.5 }}>
+                        Copy the ingredients and steps from the video, its comments, or description — Claude will structure it into a clean recipe.
+                      </p>
+                      <textarea
+                        value={pastedText}
+                        onChange={e => setPastedText(e.target.value)}
+                        placeholder={"e.g.\n2 cups flour\n1 egg\nSalt to taste\n\nMix flour and egg, knead for 5 min..."}
+                        rows={6}
+                        autoFocus
+                        style={{
+                          width: '100%', fontFamily: SANS, fontSize: 14, background: C.cool,
+                          color: C.text, border: `1px solid ${C.rule}`, borderRadius: 6,
+                          padding: '12px 14px', resize: 'vertical', boxSizing: 'border-box',
+                          lineHeight: 1.55,
+                        }}
+                      />
+                      <button
+                        onClick={handleExtract}
+                        disabled={!pastedText.trim()}
+                        style={{
+                          marginTop: 10, fontFamily: SANS, fontSize: 14, fontWeight: 700,
+                          background: pastedText.trim() ? C.accent : C.rule,
+                          color: pastedText.trim() ? '#fff' : C.text3,
+                          border: 'none', borderRadius: 6, padding: '11px 24px',
+                          cursor: pastedText.trim() ? 'pointer' : 'default',
+                          letterSpacing: '-0.01em',
+                        }}
+                      >
+                        Extract Recipe →
+                      </button>
                     </div>
                   )}
 
