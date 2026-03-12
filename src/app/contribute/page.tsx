@@ -680,7 +680,26 @@ function ContributeInner() {
                         <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 1.2fr 24px', gap: 6, alignItems: 'center' }}>
                           <input value={ing.name} onChange={e => updateIngredient(i, 'name', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="e.g. flour" />
                           <input value={ing.amount} onChange={e => updateIngredient(i, 'amount', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="2" />
-                          <input value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="cups" />
+                          <select value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 10px', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', paddingRight: 24 }}>
+                            <option value="">—</option>
+                            <option value="cups">cups</option>
+                            <option value="tbsp">tbsp</option>
+                            <option value="tsp">tsp</option>
+                            <option value="oz">oz</option>
+                            <option value="lbs">lbs</option>
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            <option value="pinch">pinch</option>
+                            <option value="cloves">cloves</option>
+                            <option value="slices">slices</option>
+                            <option value="sprigs">sprigs</option>
+                            <option value="whole">whole</option>
+                            <option value="can">can</option>
+                            <option value="bunch">bunch</option>
+                            <option value="pkg">pkg</option>
+                          </select>
                           <button onClick={() => setIngredients(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.text3, cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, textAlign: 'center' }}>×</button>
                         </div>
                       ))}
