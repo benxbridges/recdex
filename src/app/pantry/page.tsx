@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type GroceryItem = {
@@ -207,6 +209,7 @@ export default function PantryPage() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
+              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -603,7 +606,7 @@ export default function PantryPage() {
               <p style={{ fontSize: 11, color: C.text3, margin: 0, maxWidth: 320, lineHeight: 1.5, fontFamily: SANS }}>Recipes are free to read, use, and share. No ads. No paywalls. Always.</p>
             </div>
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO }}>
-              <p style={{ margin: 0 }}><span style={{ color: C.accent, cursor: 'pointer' }} onClick={() => router.push('/')}>Home</span> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
+              <p style={{ margin: 0 }}><Link href="/" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Home</Link> · <Link href="/about" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>About</Link></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

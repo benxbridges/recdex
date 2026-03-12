@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -834,7 +835,7 @@ function BookDetailModal({ book, onClose }: { book: typeof BOOKS[0]; onClose: ()
             </div>
           ) : (
             <div style={{ padding: '12px 16px', borderRadius: 6, background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 20, fontSize: 12, color: C.text2, fontFamily: SANS }}>
-              <a href="/profile" style={{ color: C.accent, fontWeight: 600 }}>Set up your profile</a> to share your thoughts on this book.
+              <Link href="/profile" style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}>Set up your profile</Link> to share your thoughts on this book.
             </div>
           )}
 
@@ -1074,7 +1075,7 @@ function SubmitModal({ onClose, onSubmitted, categories }: {
         <div style={{ background: C.warm, borderRadius: 12, padding: '32px 28px', maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: `1px solid ${C.ruleLight}` }}>
           <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>Set up your profile first</p>
           <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.5, marginBottom: 16 }}>You need a display name to share recipes with the community.</p>
-          <a href="/profile" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 6, background: C.accent, color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Go to profile</a>
+          <Link href="/profile" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 6, background: C.accent, color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Go to profile</Link>
         </div>
       </div>
     )
@@ -1348,9 +1349,9 @@ function SubmissionCard({ submission, hasUpvoted, onUpvote, isMobile }: {
             </button>
             <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{timeAgo(submission.created_at)}</span>
             {submission.related_recipe_slug && (
-              <a href={`/recipe/${submission.related_recipe_slug}`} style={{ fontSize: 10, fontFamily: SANS, color: C.accent, textDecoration: 'none', fontWeight: 500, marginLeft: 'auto' }}>
+              <Link href={`/recipe/${submission.related_recipe_slug}`} style={{ fontSize: 10, fontFamily: SANS, color: C.accent, textDecoration: 'none', fontWeight: 500, marginLeft: 'auto' }}>
                 Similar on RecDex →
-              </a>
+              </Link>
             )}
           </div>
         </div>
@@ -1386,6 +1387,9 @@ export default function Home() {
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
+  // Community threads state
+  const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }[]>([])
+
   // Fetch recent community comments
   useEffect(() => {
     async function fetchRecentComments() {
@@ -1402,6 +1406,13 @@ export default function Home() {
       }
     }
     fetchRecentComments()
+  }, [])
+
+  // Fetch community threads
+  useEffect(() => {
+    supabase.from('threads').select('id, title, tag, author_display_name, reply_count, upvote_count, created_at')
+      .order('created_at', { ascending: false }).limit(4)
+      .then(({ data }) => { if (data) setCommunityThreads(data) })
   }, [])
 
   // Fetch book shelf stats
@@ -1605,7 +1616,7 @@ export default function Home() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
+              <Link href="/community" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
               <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
               <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
               <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
@@ -1616,6 +1627,7 @@ export default function Home() {
               <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
                 <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
               </Link>
+              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -1727,52 +1739,56 @@ export default function Home() {
                 <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From the community</h2>
                 <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Cooking talk, gear recs, and kitchen wisdom</p>
               </div>
-              <Link href="/leaderboard" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
+              <Link href="/community" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {THREADS.map((thread, i) => {
-                const tag = THREAD_TAGS[thread.tag] || { color: C.text3, bg: C.cool }
+              {(communityThreads.length > 0 ? communityThreads : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '' }))).map((thread, i, arr) => {
+                const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
                 return (
-                  <div key={thread.id} style={{
-                    padding: '10px 0', borderBottom: i < THREADS.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                    cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                      {/* Frying pan upvote column */}
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                        padding: '2px 0', minWidth: 32, flexShrink: 0,
-                      }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
-                          <circle cx="10" cy="12" r="7" />
-                          <line x1="17" y1="5" x2="22" y2="2" />
-                        </svg>
-                        <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvotes}</span>
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                          <span style={{
-                            fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
-                            padding: '2px 7px', borderRadius: 4, background: tag.bg, color: tag.color,
-                          }}>{thread.tag}</span>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author} · {thread.timeAgo}</span>
+                  <Link key={thread.id} href={communityThreads.length > 0 ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{
+                      padding: '10px 0', borderBottom: i < arr.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
+                      cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        {/* Frying pan upvote column */}
+                        <div style={{
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
+                          padding: '2px 0', minWidth: 32, flexShrink: 0,
+                        }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
+                            <circle cx="10" cy="12" r="7" />
+                            <line x1="17" y1="5" x2="22" y2="2" />
+                          </svg>
+                          <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvote_count}</span>
                         </div>
 
-                        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
-
-                        {/* Thread meta */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.replies}</span>
+                        {/* Content */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                            {thread.tag && (
+                              <span style={{
+                                fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
+                                padding: '2px 7px', borderRadius: 4, background: tagStyle.bg, color: tagStyle.color,
+                              }}>{thread.tag}</span>
+                            )}
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name} · {thread.created_at ? timeAgo(thread.created_at) : ''}</span>
                           </div>
-                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
+
+                          <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
+
+                          {/* Thread meta */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
+                            </div>
+                            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
@@ -2142,7 +2158,7 @@ export default function Home() {
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
               <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} categories</p>
               <p style={{ margin: '0 0 4px' }}>updated daily</p>
-              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Contribute</Link> · <Link href="/trending" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Trending</Link> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
+              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Contribute</Link> · <Link href="/trending" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Trending</Link> · <Link href="/about" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>About</Link></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

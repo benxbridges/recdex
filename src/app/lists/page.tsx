@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type Recipe = {
@@ -292,8 +293,9 @@ export default function ListsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
               <div style={{ width: 1, height: 14, background: C.rule }} />
-              <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
+              <Link href="/community" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
               <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
             </div>
           </div>
         </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
 type Step = { step: number; text: string; timer_minutes: number | null }
@@ -278,6 +279,7 @@ export default function CookModePage() {
             <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
               {activeStep + 1}/{total}
             </span>
+            <ThemeToggle />
           </div>
         </div>
         {/* Progress bar */}

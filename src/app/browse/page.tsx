@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -405,7 +406,7 @@ function BrowseContent() {
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, fontFamily: MONO, letterSpacing: 0.3 }}>Browse</span>
-            <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
+            <Link href="/community" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
             <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
             <div style={{ width: 1, height: 14, background: C.rule }} />
             <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -416,6 +417,7 @@ function BrowseContent() {
               <RecipeBoxIcon />
               {!isMobile && <span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>}
             </Link>
+            <ThemeToggle />
           </div>
         </div>
       </header>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== EGG SYSTEM (shared with profile) =====
 const EGG_TIERS = [
@@ -207,6 +208,7 @@ export default function LeaderboardPage() {
               <div style={{ width: 1, height: 14, background: C.rule }} />
               <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
               <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
             </div>
           </div>
         </div>

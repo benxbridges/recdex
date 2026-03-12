@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type Platform = 'youtube' | 'tiktok' | 'instagram' | 'other'
@@ -385,7 +386,10 @@ function ContributeInner() {
             </svg>
             RecDex
           </Link>
-          {displayName && <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>@{displayName}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {displayName && <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>@{displayName}</span>}
+            <ThemeToggle />
+          </div>
         </div>
       </div>
 

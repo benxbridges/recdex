@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type TrendingVideo = {
@@ -150,6 +151,7 @@ export default function TrendingPage() {
           <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Browse</Link>
           <Link href="/contribute" style={{ color: C.text2, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Contribute</Link>
           <Link href="/trending" style={{ color: C.accent, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>Trending</Link>
+          <ThemeToggle />
         </nav>
       </header>
 

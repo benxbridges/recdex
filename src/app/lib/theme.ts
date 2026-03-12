@@ -1,28 +1,29 @@
 // ===== DESIGN TOKENS =====
 // Centralized color palette and font stacks for RecDex.
 // All page files import from here — change once, update everywhere.
+// Colors resolve to CSS custom properties so dark/light mode works automatically.
 
 export const C = {
-  bg: '#1C1917',
-  warm: '#292524',
-  cool: '#1F1D1B',
-  text: '#F5F2EC',
-  text2: '#B8B0A2',
-  text3: '#7C7568',
-  rule: '#3D3832',
-  ruleLight: '#2E2A26',
-  accent: '#E87B5A',
-  accentBg: '#2A1F1C',
-  accentMed: 'rgba(232,123,90,0.2)',
-  green: '#6B9E62',
-  greenBg: '#1A231A',
-  blue: '#5A9ABF',
-  blueBg: '#1A2229',
-  gold: '#D4A24E',
-  goldBg: '#25201A',
-  timerBg: '#231E1C',
-  timerRing: 'rgba(232,123,90,0.2)',
-  eggPoint: '#E8A44A',
+  bg: 'var(--c-bg)',
+  warm: 'var(--c-warm)',
+  cool: 'var(--c-cool)',
+  text: 'var(--c-text)',
+  text2: 'var(--c-text2)',
+  text3: 'var(--c-text3)',
+  rule: 'var(--c-rule)',
+  ruleLight: 'var(--c-ruleLight)',
+  accent: 'var(--c-accent)',
+  accentBg: 'var(--c-accentBg)',
+  accentMed: 'var(--c-accentMed)',
+  green: 'var(--c-green)',
+  greenBg: 'var(--c-greenBg)',
+  blue: 'var(--c-blue)',
+  blueBg: 'var(--c-blueBg)',
+  gold: 'var(--c-gold)',
+  goldBg: 'var(--c-goldBg)',
+  timerBg: 'var(--c-timerBg)',
+  timerRing: 'var(--c-timerRing)',
+  eggPoint: 'var(--c-eggPoint)',
 }
 
 export const SERIF = "'Young Serif', Georgia, serif"
