@@ -51,7 +51,7 @@ async function fetchTranscript(videoId: string): Promise<string | null> {
   const cookieStr = cookies.join('; ')
 
   // Find transcript continuation params from ytInitialData
-  const dataMatch = html.match(/var ytInitialData = ({.*?});<\/script>/s)
+  const dataMatch = html.match(/var ytInitialData = ({[\s\S]*?});<\/script>/)
   if (!dataMatch) return null
 
   let transcriptParams: string | null = null

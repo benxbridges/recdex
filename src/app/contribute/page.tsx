@@ -474,7 +474,7 @@ export default function ContributePage() {
                             placeholder="Paste the recipe text here — ingredients, steps, anything you can copy from the video or its comments..."
                             rows={5}
                             style={{
-                              width: '100%', fontFamily: SANS, fontSize: 14, background: C.card,
+                              width: '100%', fontFamily: SANS, fontSize: 14, background: C.warm,
                               color: C.text, border: `1px solid ${C.rule}`, borderRadius: 6,
                               padding: '10px 12px', resize: 'vertical', boxSizing: 'border-box',
                             }}
