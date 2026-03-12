@@ -1435,14 +1435,6 @@ export default function Home() {
     fetchSubmissions()
   }, [submissionSort])
 
-  // Fetch community-submitted recipes
-  useEffect(() => {
-    async function fetchCommunityRecipes() {
-      const { data } = await supabase.from('recipes').select('*').eq('source', 'community').eq('status', 'published').order('created_at', { ascending: false }).limit(6)
-      if (data) setCommunityRecipes(data)
-    }
-    fetchCommunityRecipes()
-  }, [])
 
   // Load upvote state from localStorage
   useEffect(() => {
@@ -1937,29 +1929,6 @@ export default function Home() {
               </div>
             )}
 
-            {/* Community recipes */}
-            {communityRecipes.length > 0 && (
-              <div style={{ marginTop: 20 }}>
-                <p style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 10 }}>Community recipes</p>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)', gap: 12 }}>
-                  {communityRecipes.map((r, i) => (
-                    <div key={r.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both` }} onClick={() => setQuickViewId(r.id)}>
-                      <div style={{ width: '100%', aspectRatio: '4/3', borderRadius: 8, overflow: 'hidden', background: C.cool, marginBottom: 8 }}>
-                        {r.image_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.image_url} alt={r.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-                        ) : (
-                          <BrokenEggCard />
-                        )}
-                      </div>
-                      <DifficultyBadge difficulty={r.difficulty} />
-                      <h3 style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, margin: '4px 0 2px', lineHeight: 1.25 }}>{r.title}</h3>
-                      {r.submitted_by && <span style={{ fontSize: 10, fontFamily: MONO, color: C.accent }}>by @{r.submitted_by}</span>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
 
           <div style={{ height: 1, background: C.rule }} />
