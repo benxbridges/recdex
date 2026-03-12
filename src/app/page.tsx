@@ -1372,6 +1372,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [view, setView] = useState<'home' | 'browse'>('home')
   const [rotdSaved, setRotdSaved] = useState(false)
   const [selectedBook, setSelectedBook] = useState<typeof BOOKS[0] | null>(null)
@@ -1594,31 +1595,62 @@ export default function Home() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'relative' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => { setView('home'); setSearchQuery(''); setActiveCategory('all') }}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
-              <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
-              <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
-              <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
-              </Link>
-              <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
-                <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
-              </Link>
-            </div>
+            {/* Desktop nav */}
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
+                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
+                <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
+                <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
+                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
+                </Link>
+                <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
+                  <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
+                </Link>
+              </div>
+            )}
+            {/* Mobile nav icons */}
+            {isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 18, lineHeight: 1 }}>🛒</Link>
+                <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, display: 'flex' }}><RecipeBoxIcon /></Link>
+                <button onClick={() => setMenuOpen(!menuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', flexDirection: 'column', gap: 4 }} aria-label="Menu">
+                  <span style={{ display: 'block', width: 20, height: 2, background: C.text, borderRadius: 1, transition: 'transform 0.2s, opacity 0.2s', transform: menuOpen ? 'translateY(6px) rotate(45deg)' : 'none' }} />
+                  <span style={{ display: 'block', width: 20, height: 2, background: C.text, borderRadius: 1, transition: 'opacity 0.2s', opacity: menuOpen ? 0 : 1 }} />
+                  <span style={{ display: 'block', width: 20, height: 2, background: C.text, borderRadius: 1, transition: 'transform 0.2s, opacity 0.2s', transform: menuOpen ? 'translateY(-6px) rotate(-45deg)' : 'none' }} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
+        {/* Mobile dropdown menu */}
+        {isMobile && menuOpen && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.bg, borderBottom: `1px solid ${C.rule}`, zIndex: 200, animation: 'fadeIn 0.15s ease' }}>
+            <div style={{ maxWidth: 960, margin: '0 auto', padding: '8px clamp(16px,4vw,24px) 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {[
+                { href: '/browse', label: 'Browse' },
+                { href: '/leaderboard', label: 'Community' },
+                { href: '/lists', label: 'Lists' },
+                { href: '/trending', label: '🔥 Trending' },
+                { href: '/contribute', label: '+ Contribute', accent: true },
+              ].map(item => (
+                <Link key={item.href} href={item.href} onClick={() => setMenuOpen(false)} style={{ textDecoration: 'none', color: item.accent ? C.accent : C.text2, fontSize: 14, fontFamily: SANS, fontWeight: item.accent ? 600 : 500, padding: '10px 0', borderBottom: `1px solid ${C.ruleLight}` }}>{item.label}</Link>
+              ))}
+            </div>
+          </div>
+        )}
       </header>
 
       {/* TICKER */}
@@ -1775,73 +1807,6 @@ export default function Home() {
                   </div>
                 )
               })}
-            </div>
-          </section>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* TRENDING ON RECDEX */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending on RecDex</h2>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>THIS WEEK</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
-              {featuredRecipes.slice(0, 4).map((r, i) => (
-                <div key={r.id} style={{
-                  borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
-                  cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                  animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                }}
-                  onClick={() => setQuickViewId(r.id)}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                >
-                  <div style={{ display: 'flex', gap: 0 }}>
-                    {/* Thumbnail */}
-                    <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
-                      {r.image_url ? (
-                        <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', minHeight: isMobile ? 140 : 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BrokenEggSmall /></div>
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                      {/* Title */}
-                      <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{r.title}</h3>
-
-                      {/* Meta */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                        <DifficultyBadge difficulty={r.difficulty} />
-                        <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                        {r.cuisine && <>
-                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{r.cuisine}</span>
-                        </>}
-                      </div>
-
-                      {/* Community tip */}
-                      {TIPS[r.slug] && (
-                        <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
-                          <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
-                            &ldquo;{TIPS[r.slug].text}&rdquo;
-                          </p>
-                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginTop: 3, display: 'inline-block' }}>@{TIPS[r.slug].user}</span>
-                        </div>
-                      )}
-
-                      {/* CTA */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-                        <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook this</span>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
