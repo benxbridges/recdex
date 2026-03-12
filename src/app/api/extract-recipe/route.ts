@@ -121,7 +121,11 @@ export async function POST(req: NextRequest) {
   // Helper: fetch transcript from our unified endpoint (Supadata + fallback)
   async function getTranscript(opts: { videoId?: string; url?: string; platform?: string }): Promise<string | null> {
     try {
-      const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+      const origin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000'
       const tRes = await fetch(`${origin}/api/youtube-transcript`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

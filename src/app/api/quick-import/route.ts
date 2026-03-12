@@ -49,11 +49,31 @@ export async function POST(req: NextRequest) {
 
   try {
     // Step 1: Fetch oEmbed metadata
-    const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    // Use production URL to avoid Vercel Deployment Protection 401s on internal calls
+    const origin = process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : 'http://localhost:3000'
     let authorName: string | null = null
     let authorUrl: string | null = null
     let oembedTitle: string | null = null
     let thumbnailUrl: string | null = null
+
+    // Step 1b: Check for duplicate by URL (before expensive extraction)
+    const { data: existing } = await supabaseRead
+      .from('recipes')
+      .select('slug')
+      .eq('video_url', url.trim())
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json({
+        slug: existing[0].slug,
+        title: dishName || 'Recipe',
+        alreadyExists: true,
+      })
+    }
 
     try {
       const oRes = await fetch(`${origin}/api/oembed?url=${encodeURIComponent(url)}`)
@@ -96,22 +116,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'low_confidence', confidence }, { status: 422 })
     }
 
-    // Step 3: Check for duplicate by URL
-    const { data: existing } = await supabaseRead
-      .from('recipes')
-      .select('slug')
-      .eq('video_url', url.trim())
-      .limit(1)
-
-    if (existing && existing.length > 0) {
-      return NextResponse.json({
-        slug: existing[0].slug,
-        title: dishName || recipe.title,
-        alreadyExists: true,
-      })
-    }
-
-    // Step 4: Save to Supabase (using service role key to bypass RLS)
+    // Step 3: Save to Supabase (using service role key to bypass RLS)
     const title = dishName || recipe.title
     const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36)
 
