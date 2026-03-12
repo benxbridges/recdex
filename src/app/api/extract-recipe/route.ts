@@ -68,10 +68,10 @@ async function fetchTikTokCaption(url: string): Promise<string | null> {
 // ===== EXTRACTION PROMPT =====
 
 const EXTRACTION_PROMPT = (platform: string, content: string) => `
-You are extracting a recipe from social media content. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description or spoken transcript)' : 'caption'}:
+You are extracting a recipe from social media content. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description and/or spoken transcript)' : 'caption'}:
 
 ---
-${content.slice(0, 5000)}
+${content.slice(0, 8000)}
 ---
 
 Extract the recipe and return a single JSON object with exactly these fields:
@@ -93,8 +93,16 @@ Rules:
 - "unit" is the measurement unit like "cups", "tbsp", "oz", "g" — or "" if none
 - "notes" is optional info like "room temperature", "divided", "or to taste"
 - Steps must be clear imperative sentences, numbered from 1
-- confidence "high" = complete recipe with full ingredients+steps, "medium" = mostly complete, "low" = reconstructed from minimal hints
-- If this content clearly does not contain a recipe, return: { "error": "insufficient_content" }
+- confidence "high" = complete recipe with exact measurements, "medium" = most measurements present, "low" = reconstructed from transcript or minimal info
+
+IMPORTANT — handling spoken transcripts:
+- Transcripts often mention ingredients without exact amounts. DO YOUR BEST to extract a usable recipe anyway.
+- If a speaker says "add some garlic" without an amount, use amount "" and unit "" with notes "to taste"
+- If a speaker says "a couple tablespoons of oil", use amount "2" and unit "tbsp"
+- If amounts are vague ("a good amount of cheese"), estimate a reasonable amount and add notes "adjust to taste"
+- Infer steps from the natural flow of the cooking narration — combine related actions into clear steps
+- Even low-confidence recipes are valuable. Only return { "error": "insufficient_content" } if the content has NOTHING to do with cooking or food.
+
 - Return ONLY the JSON object with no markdown fences or extra text
 `.trim()
 
@@ -113,12 +121,28 @@ export async function POST(req: NextRequest) {
   if (platform === 'youtube') {
     const { videoId: yt, description } = await fetchYouTubeContent(url)
     videoId = yt
-    if (description) {
-      content = `${oembedTitle || ''}\n\n${description}`.trim()
-    } else if (transcript && typeof transcript === 'string') {
-      // Client-side transcript fallback for videos with no written description
-      content = `${oembedTitle || ''}\n\n[Spoken transcript]\n${transcript.slice(0, 8000)}`.trim()
+
+    // Always try to get transcript for richer extraction
+    let transcriptText = (transcript && typeof transcript === 'string') ? transcript : null
+    if (!transcriptText && videoId) {
+      try {
+        const { YoutubeTranscript } = await import('youtube-transcript')
+        const items = await YoutubeTranscript.fetchTranscript(videoId)
+        if (items?.length) {
+          transcriptText = items.map(i => i.text).join(' ')
+          console.log('[extract] Got server-side transcript, length:', transcriptText.length)
+        }
+      } catch (err) {
+        console.log('[extract] Transcript fetch failed:', err)
+      }
     }
+
+    // Build content: combine description + transcript for best results
+    const parts: string[] = []
+    if (oembedTitle) parts.push(oembedTitle)
+    if (description) parts.push(description)
+    if (transcriptText) parts.push(`[Spoken transcript from the video]\n${transcriptText.slice(0, 6000)}`)
+    content = parts.join('\n\n').trim()
   } else if (platform === 'tiktok') {
     tiktokVideoId = extractTikTokVideoId(url)
     const caption = await fetchTikTokCaption(url)

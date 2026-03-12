@@ -523,12 +523,24 @@ export default function ContributePage() {
 
             {/* ===== EXTRACTING SPINNER ===== */}
             {flowStep === 'extracting' && (
-              <div style={{ textAlign: 'center', paddingTop: 100, animation: 'fadeUp 0.2s ease' }}>
+              <div style={{ textAlign: 'center', paddingTop: 80, animation: 'fadeUp 0.2s ease' }}>
                 <div style={{ width: 52, height: 52, border: `3px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 28px' }} />
                 <h2 style={{ fontFamily: SERIF, fontSize: 24, color: C.text, margin: '0 0 10px', fontWeight: 700 }}>Analyzing video…</h2>
-                <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, lineHeight: 1.6 }}>
-                  Claude is reading the {platform === 'youtube' ? 'description' : 'caption'} and extracting ingredients and steps.
+                <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>
+                  {platform === 'youtube'
+                    ? 'Fetching transcript and description, then extracting a structured recipe with Claude.'
+                    : `Reading the ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} caption and extracting ingredients and steps.`}
                 </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 28 }}>
+                  {['Fetching video data', 'Reading transcript', 'Extracting recipe'].map((step, i) => (
+                    <span key={i} style={{
+                      fontFamily: MONO, fontSize: 10, color: C.text3,
+                      padding: '4px 10px', borderRadius: 20,
+                      background: C.warm, border: `1px solid ${C.ruleLight}`,
+                      animation: `fadeUp 0.3s ease ${i * 0.3}s both`,
+                    }}>{step}</span>
+                  ))}
+                </div>
               </div>
             )}
 
