@@ -56,6 +56,35 @@ async function fetchOembed(url: string): Promise<OEmbedResult | null> {
   return null
 }
 
+function extractYouTubeVideoId(url: string): string | null {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname.includes('youtu.be')) return parsed.pathname.slice(1).split('?')[0]
+    if (parsed.hostname.includes('youtube.com')) {
+      return parsed.searchParams.get('v') || parsed.pathname.split('/').filter(Boolean).pop() || null
+    }
+  } catch { /* invalid */ }
+  return null
+}
+
+async function fetchYouTubeTranscript(url: string): Promise<string | null> {
+  const videoId = extractYouTubeVideoId(url)
+  if (!videoId) return null
+
+  try {
+    const res = await fetch('/api/youtube-transcript', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoId }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.transcript || null
+  } catch {
+    return null
+  }
+}
+
 function getDisplayName(): string {
   try { return JSON.parse(localStorage.getItem('recdex-profile') || '{}').displayName || '' }
   catch { return '' }
@@ -123,6 +152,8 @@ export default function ContributePage() {
   const [oembed, setOembed] = useState<OEmbedResult | null>(null)
   const [oembedLoading, setOembedLoading] = useState(false)
   const [extractError, setExtractError] = useState('')
+  const [showPasteBox, setShowPasteBox] = useState(false)
+  const [pastedText, setPastedText] = useState('')
   const oembedTimer = useRef<ReturnType<typeof setTimeout>>(null)
 
   // Shared review state
@@ -169,16 +200,23 @@ export default function ContributePage() {
     setExtractError('')
     setFlowStep('extracting')
     try {
+      // For YouTube, try to fetch transcript client-side as fallback
+      let transcript: string | null = pastedText.trim() || null
+      if (!transcript && platform === 'youtube') {
+        transcript = await fetchYouTubeTranscript(url.trim())
+      }
+
       const res = await fetch('/api/extract-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), platform, authorName: oembed?.author_name || null, authorUrl: oembed?.author_url || null, oembedTitle: oembed?.title || null }),
+        body: JSON.stringify({ url: url.trim(), platform, authorName: oembed?.author_name || null, authorUrl: oembed?.author_url || null, oembedTitle: oembed?.title || null, transcript }),
       })
       const data = await res.json()
 
       if (data.error === 'insufficient_content') {
         setFlowStep('url')
-        setExtractError("We couldn't find a recipe in this video. Make sure the recipe is written out in the description or caption.")
+        setExtractError("No written recipe found in this video's description. You can paste the recipe text below and we'll try again.")
+        setShowPasteBox(true)
         return
       }
       if (data.error || !data.recipe) {
@@ -291,7 +329,7 @@ export default function ContributePage() {
     setFlowStep('url')
     setMode('video')
     setUrl(''); setPlatform('other'); setOembed(null); setExtracted(null)
-    setExtractError(''); setPublishError(''); setSimilarWarning('')
+    setExtractError(''); setPublishError(''); setSimilarWarning(''); setShowPasteBox(false); setPastedText('')
     setTitle(''); setDescription(''); setCuisine(''); setDifficulty('easy')
     setTimeTotal(''); setTimeActive(''); setServings('')
     setIngredients([BLANK_INGREDIENT()]); setSteps([''])
@@ -428,6 +466,33 @@ export default function ContributePage() {
                   {extractError && (
                     <div style={{ padding: '12px 16px', background: C.accentBg, borderRadius: 8, border: `1px solid rgba(232,123,90,0.2)`, marginBottom: 12 }}>
                       <p style={{ fontFamily: SANS, fontSize: 13, color: C.accent, margin: 0, lineHeight: 1.5 }}>{extractError}</p>
+                      {showPasteBox && (
+                        <div style={{ marginTop: 12 }}>
+                          <textarea
+                            value={pastedText}
+                            onChange={e => setPastedText(e.target.value)}
+                            placeholder="Paste the recipe text here — ingredients, steps, anything you can copy from the video or its comments..."
+                            rows={5}
+                            style={{
+                              width: '100%', fontFamily: SANS, fontSize: 14, background: C.card,
+                              color: C.text, border: `1px solid ${C.rule}`, borderRadius: 6,
+                              padding: '10px 12px', resize: 'vertical', boxSizing: 'border-box',
+                            }}
+                          />
+                          <button
+                            onClick={handleExtract}
+                            disabled={!pastedText.trim()}
+                            style={{
+                              marginTop: 8, fontFamily: SANS, fontSize: 13, fontWeight: 600,
+                              background: pastedText.trim() ? C.accent : C.rule,
+                              color: pastedText.trim() ? '#fff' : C.text3,
+                              border: 'none', borderRadius: 6, padding: '8px 20px', cursor: pastedText.trim() ? 'pointer' : 'default',
+                            }}
+                          >
+                            Try Again with Pasted Text
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
 

@@ -68,7 +68,7 @@ async function fetchTikTokCaption(url: string): Promise<string | null> {
 // ===== EXTRACTION PROMPT =====
 
 const EXTRACTION_PROMPT = (platform: string, content: string) => `
-You are extracting a recipe from social media content. Here is text from a ${platform} ${platform === 'youtube' ? 'video description' : 'caption'}:
+You are extracting a recipe from social media content. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description or spoken transcript)' : 'caption'}:
 
 ---
 ${content.slice(0, 5000)}
@@ -101,7 +101,7 @@ Rules:
 // ===== ROUTE =====
 
 export async function POST(req: NextRequest) {
-  const { url, platform, authorName, authorUrl, oembedTitle } = await req.json()
+  const { url, platform, authorName, authorUrl, oembedTitle, transcript } = await req.json()
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
 
   // Gather content by platform
@@ -113,7 +113,12 @@ export async function POST(req: NextRequest) {
   if (platform === 'youtube') {
     const { videoId: yt, description } = await fetchYouTubeContent(url)
     videoId = yt
-    if (description) content = `${oembedTitle || ''}\n\n${description}`.trim()
+    if (description) {
+      content = `${oembedTitle || ''}\n\n${description}`.trim()
+    } else if (transcript && typeof transcript === 'string') {
+      // Client-side transcript fallback for videos with no written description
+      content = `${oembedTitle || ''}\n\n[Spoken transcript]\n${transcript.slice(0, 8000)}`.trim()
+    }
   } else if (platform === 'tiktok') {
     tiktokVideoId = extractTikTokVideoId(url)
     const caption = await fetchTikTokCaption(url)
