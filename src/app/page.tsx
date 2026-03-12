@@ -1615,6 +1615,7 @@ export default function Home() {
               <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
               <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
               <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
+              <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
               <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
               <div style={{ width: 1, height: 14, background: C.rule }} />
               <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -2172,7 +2173,7 @@ export default function Home() {
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
               <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} categories</p>
               <p style={{ margin: '0 0 4px' }}>updated daily</p>
-              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Contribute</Link> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
+              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Contribute</Link> · <Link href="/trending" style={{ color: C.accent, cursor: 'pointer', textDecoration: 'none' }}>Trending</Link> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

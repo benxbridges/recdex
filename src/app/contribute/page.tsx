@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 
@@ -142,6 +143,14 @@ const BLANK_INGREDIENT = (): Ingredient => ({ name: '', amount: '', unit: '', no
 
 // ===== MAIN COMPONENT =====
 export default function ContributePage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', background: C.bg }} />}>
+      <ContributeInner />
+    </Suspense>
+  )
+}
+
+function ContributeInner() {
   const [mode, setMode] = useState<Mode>('video')
   const [flowStep, setFlowStep] = useState<FlowStep>('url')
   const [displayName, setDisplayName] = useState('')
@@ -173,7 +182,17 @@ export default function ContributePage() {
   // Success
   const [publishedSlug, setPublishedSlug] = useState('')
 
+  const searchParams = useSearchParams()
+
   useEffect(() => { setDisplayName(getDisplayName()) }, [])
+
+  // Pre-fill URL from query params (used by /trending page)
+  useEffect(() => {
+    const prefillUrl = searchParams.get('url')
+    if (prefillUrl && !url) {
+      setUrl(prefillUrl)
+    }
+  }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // oEmbed debounce
   useEffect(() => {
