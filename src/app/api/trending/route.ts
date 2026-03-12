@@ -74,30 +74,84 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// ===== LISTICLE FILTER =====
+// ===== CONTENT FILTERS =====
 
 /**
- * Detects compilation/listicle videos that contain multiple recipes.
- * We only want single-recipe videos for importing.
+ * Detects videos that aren't single, cookable recipes.
+ * Catches: compilations, hacks, ASMR, mukbang, reviews, challenges, etc.
  */
-function isListicleTitle(title: string): boolean {
+function isNonRecipeContent(title: string): boolean {
   const t = title.toLowerCase()
 
-  // Pattern: starts with or contains "N easy/best/quick/..." — e.g. "5 Easy Dinners", "Top 10 Recipes"
-  // Matches: "5 easy", "10 best", "top 7", "15 quick", "my 3 favorite"
+  // --- Compilations / listicles ---
   if (/\b(\d{1,2})\s+(easy|best|quick|simple|favorite|favourite|healthy|cheap|budget|amazing|delicious|incredible|must.try|weeknight|dinner|lunch|breakfast|meal|recipe|crockpot|slow.cooker|instant.pot|air.fryer)/i.test(t)) return true
-
-  // Pattern: "top N", "N recipes", "N meals", "N dishes", "N ideas"
   if (/\btop\s+\d/i.test(t)) return true
   if (/\b\d+\s+(recipes|meals|dishes|dinners|lunches|breakfasts|ideas|ways|things|snacks|appetizers|desserts|sides)\b/i.test(t)) return true
-
-  // Pattern: explicit compilation words
   if (/\b(meal prep for the week|weekly meal prep|what i eat in a|full day of eating|full week)\b/i.test(t)) return true
-
-  // Pattern: "recipes" (plural) in the title almost always means a compilation
   if (/\brecipes\b/i.test(t)) return true
 
+  // --- Non-recipe video types ---
+  if (/\b(hacks?|tips|tricks|ranking|ranked|tier list|taste test|review|compared|vs\.?|versus)\b/i.test(t)) return true
+  if (/\b(mukbang|asmr|eating show|food challenge|speed eating|competitive eating)\b/i.test(t)) return true
+  if (/\b(trying|ranking|rating)\s+(every|all|different)\b/i.test(t)) return true
+  if (/\b(grocery haul|kitchen tour|what i bought|pantry restock|fridge tour)\b/i.test(t)) return true
+  if (/\b(day in my life|morning routine|night routine|vlog)\b/i.test(t)) return true
+  if (/\b(react|reaction)\b/i.test(t)) return true
+
   return false
+}
+
+/**
+ * Detects channels that are typically non-recipe content (ASMR, mukbang, village cooking, etc.)
+ * These channels may have food titles but don't produce usable single-recipe content.
+ */
+function isNonRecipeChannel(channelName: string): boolean {
+  const c = channelName.toLowerCase()
+  // Non-recipe content types
+  if (/\b(asmr|mukbang|eating sounds?|village cook|outdoor cook|primitive|survival|bushcraft|food ranger|street food|food tour)\b/i.test(c)) return true
+  // Non-English cooking channels (transliterated names)
+  if (/\b(rasoi|khana|swad|zaika|tadka|bhojan|rannaghar|pakwan|vlog bangla|desi)\b/i.test(c)) return true
+  return false
+}
+
+/**
+ * Detects non-Latin script characters (Devanagari, Arabic, CJK, Thai, etc.)
+ * Used to filter out non-English content that slips through with transliterated titles.
+ */
+function hasNonLatinScript(str: string): boolean {
+  // Match common non-Latin scripts: Devanagari, Arabic, Bengali, CJK, Thai, Korean, Tamil, Telugu, etc.
+  return /[\u0900-\u097F\u0600-\u06FF\u0980-\u09FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0B80-\u0BFF\u0C00-\u0C7F\u0A00-\u0A7F]/.test(str)
+}
+
+/**
+ * Checks if a string is predominantly English.
+ * Stricter than just Latin chars — also checks for non-Latin scripts.
+ */
+function isEnglishContent(title: string, description: string, channelName: string): boolean {
+  // Reject if title contains non-Latin scripts
+  if (hasNonLatinScript(title)) return false
+
+  // Reject if channel name contains non-Latin scripts
+  if (hasNonLatinScript(channelName)) return false
+
+  // Reject if description has significant non-Latin scripts
+  if (description.length > 10 && hasNonLatinScript(description)) {
+    // Count non-Latin script chars vs total — if more than 15%, skip
+    const nonLatin = description.match(/[\u0900-\u097F\u0600-\u06FF\u0980-\u09FF\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF\u0E00-\u0E7F\u0B80-\u0BFF\u0C00-\u0C7F\u0A00-\u0A7F]/g)
+    if (nonLatin && nonLatin.length / description.length > 0.15) return false
+  }
+
+  // Title must be mostly Latin characters (stricter: 70%+)
+  const titleLatin = title.replace(/[^a-zA-Z]/g, '').length
+  if (title.length > 0 && titleLatin / title.length < 0.6) return false
+
+  // Description check (stricter: 50%+ Latin)
+  if (description.length > 20) {
+    const descLatin = description.replace(/[^a-zA-Z]/g, '').length
+    if (descLatin / description.length < 0.5) return false
+  }
+
+  return true
 }
 
 // ===== YOUTUBE SEARCH =====
@@ -107,17 +161,25 @@ async function fetchYouTubeTrendingRecipes(
   region: string,
   maxResults: number,
 ): Promise<TrendingVideo[]> {
-  // Strategy: search for "recipe" in the Howto & Style category, sorted by view count
-  // from the past 7 days. This gives us genuinely trending recipe content.
+  // Strategy: search for popular single-recipe videos from the past 7 days,
+  // heavily targeting English-language North American food content.
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Queries targeting SINGLE recipes (not compilations like "10 easy dinners")
+  // Queries targeting single recipes popular with American audiences.
+  // More queries = broader coverage; each returns up to 10 results.
   const queries = [
-    'viral recipe I made',
-    'this recipe is incredible',
-    'you need to try this recipe',
-    'best recipe I ever made',
-    'one pot recipe easy',
+    'viral recipe I made this week',
+    'this recipe is incredible you have to try',
+    'crockpot recipe easy family dinner',
+    'one pot recipe comfort food',
+    'air fryer recipe crispy easy',
+    'TikTok recipe I finally tried',
+    'easy weeknight dinner recipe homemade',
+    'best homemade recipe from scratch',
+    'baked chicken recipe juicy tender',
+    'pasta recipe creamy garlic',
+    'dessert recipe chocolate easy',
+    'slow cooker dump recipe',
   ]
   const allVideos: TrendingVideo[] = []
   const seenIds = new Set<string>()
@@ -153,19 +215,16 @@ async function fetchYouTubeTrendingRecipes(
 
         const titleText: string = item.snippet.title || ''
         const descText: string = item.snippet.description || ''
+        const channelName: string = item.snippet.channelTitle || ''
 
-        // English filter — check both title and description for Latin characters
-        const titleLatin = titleText.replace(/[^a-zA-Z]/g, '').length
-        if (titleText.length > 0 && titleLatin / titleText.length < 0.5) continue
+        // Strict English/North American content filter
+        if (!isEnglishContent(titleText, descText, channelName)) continue
 
-        // Also check description (catches transliterated non-English titles)
-        if (descText.length > 20) {
-          const descLatin = descText.replace(/[^a-zA-Z]/g, '').length
-          if (descLatin / descText.length < 0.4) continue
-        }
+        // Skip non-recipe content (compilations, ASMR, hacks, reviews, etc.)
+        if (isNonRecipeContent(titleText)) continue
 
-        // Skip compilation/listicle videos ("5 Easy Dinners", "Top 10 Recipes", etc.)
-        if (isListicleTitle(titleText)) continue
+        // Skip channels that don't produce real recipes
+        if (isNonRecipeChannel(channelName)) continue
 
         seenIds.add(vid)
 
@@ -224,28 +283,43 @@ async function extractDishNames(videos: TrendingVideo[]): Promise<TrendingVideo[
         max_tokens: 1024,
         messages: [{
           role: 'user',
-          content: `Extract ONLY the dish/recipe name from each YouTube video title below. Strip ALL clickbait, filler, channel names, hashtags, emoji, and commentary. Return JUST the simple dish name in title case.
+          content: `You are curating a "Trending Recipes" page for an American cooking app. Extract a single cookable dish name from each YouTube video title, or return null if it doesn't qualify.
 
-If the title doesn't contain a specific identifiable dish name (e.g. "We tried this viral recipe" with no dish mentioned, or just "Sandwich"), return null.
+THE KEY TEST: Could someone click "Cook This" and get a single recipe with ingredients and steps? If not → null.
 
-Rules:
-- The dish name should be what you'd see on a restaurant menu or recipe index
-- Remove words like "viral", "trending", "amazing", "incredible", "easy", "quick", "best ever"
-- Remove "recipe" from the end unless it's part of the name
-- Keep specific descriptors that identify the dish (e.g. "Nashville Hot", "Garlic Parmesan", "Blackened")
-- If the title is in a non-English language, translate the dish name to English
+Return null if:
+- It's hacks, tips, tricks, a roundup, or a taste test (e.g. "Box Cake Mix Hacks", "Ranking Fast Food Burgers")
+- No specific identifiable dish (e.g. "We tried this viral recipe", "Sandwich", "Egg Toast")
+- The video is about a technique or concept, not a specific dish (e.g. "How to Season Cast Iron")
+- The dish is too niche/regional for American audiences (e.g. "Aalu Sevai Cutlet", "Ghujia", "Patra ni Macchi")
+- It's just a condiment, sauce, or side with no main dish context (e.g. "Tamarind Water")
+- The title is too vague to produce a meaningful recipe (e.g. "easy snacks at home")
+- It's ASMR, mukbang, or eating content rather than a recipe
+
+Return the dish name if:
+- It names ONE specific, cookable dish that an American home cook would want to make
+- It's a dish you could write a complete recipe card for (ingredients + steps)
+- International dishes are OK if mainstream in America (Pad Thai, Birria Tacos, Ramen, Tikka Masala)
+
+Rules for the dish name:
+- Strip clickbait, filler, channel names, hashtags, emoji
+- Should read like a recipe index entry or restaurant menu item
+- Remove "viral", "trending", "amazing", "easy", "best ever", "recipe"
+- Keep meaningful descriptors ("Nashville Hot", "Garlic Parmesan", "Slow Cooker")
 
 Examples:
-- "VIRAL TRENDING CROCKPOT RECIPE Garlic Parmesan Chicken & Potatoes SUPER YUMMY" → "Garlic Parmesan Chicken and Potatoes"
-- "Testing the Chocolate Dumpling Recipe from TikTok!" → "Chocolate Dumplings"
-- "This brioche recipe is amazing. Few people know this secret." → "Brioche"
-- "Brits Try American Cinnamon Butter Swim Biscuits… This Should Be Illegal" → "Cinnamon Butter Swim Biscuits"
+- "VIRAL TRENDING CROCKPOT RECIPE Garlic Parmesan Chicken & Potatoes" → "Garlic Parmesan Chicken and Potatoes"
+- "This brioche recipe is amazing." → "Brioche"
+- "I made Birria Tacos and they're insane" → "Birria Tacos"
+- "Slow Cooker Smoked Sausage and Sweet Corn" → "Slow Cooker Smoked Sausage and Sweet Corn"
+- "Box Cake Mix Hacks That Will Change Your Life" → null
 - "We FINALLY tried this viral recipe 🔥" → null
-- "Sandwich #shorts #viral" → null
-- "Medu vada | south indian food" → "Medu Vada"
+- "Egg Toast #shorts #viral" → null
+- "Aalu Sevai Cutlet - Ramzan Special" → null
+- "Deep Fried Beef Curry | Village Cooking" → null
 - "how to make something tasty and delicious snacks at home" → null
 
-Now extract dish names from these titles:
+Titles:
 ${titleList}
 
 Return ONLY a JSON array of strings or nulls, one per title, same order. No markdown fences.`,

@@ -20,7 +20,7 @@ type Recipe = {
   image_url: string | null; servings: number | null; servings_label: string | null
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
-  submitted_by?: string | null; source?: string | null
+  submitted_by?: string | null; source?: string | null; source_attribution?: string | null
   video_url?: string | null; creator_name?: string | null; creator_url?: string | null
 }
 
@@ -954,6 +954,18 @@ export default function RecipePage() {
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
+              </a>
+            </div>
+          )}
+
+          {/* AI-extracted badge for video-sourced recipes */}
+          {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '5px 12px', borderRadius: 6, background: C.accentBg, border: `1px solid ${C.accentMed}` }}>
+              <span style={{ fontSize: 12 }}>🤖</span>
+              <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>AI-extracted from video</span>
+              <span style={{ color: C.rule }}>·</span>
+              <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+                Verify or edit
               </a>
             </div>
           )}

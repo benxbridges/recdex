@@ -15,6 +15,7 @@ type Recipe = {
   cuisine: string | null; difficulty: string
   time_total: number | null; servings: number | null
   ingredients: RawIngredients; steps: Step[]
+  video_url?: string | null; submitted_by?: string | null; source_attribution?: string | null
 }
 
 function capitalizeIngredient(name: string): string {
@@ -258,6 +259,15 @@ export default function CookModePage() {
             <h2 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: '2px 0 0' }}>
               {recipe.title}<EggDot size={6} />
             </h2>
+            {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
+              <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`}
+                style={{ fontSize: 10, color: C.text3, textDecoration: 'none', fontFamily: SANS, transition: 'color 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.color = C.accent)}
+                onMouseLeave={e => (e.currentTarget.style.color = C.text3)}
+              >
+                Something wrong? Edit recipe →
+              </a>
+            )}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isMobile && ingredientItems.length > 0 && (

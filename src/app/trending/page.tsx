@@ -56,6 +56,8 @@ export default function TrendingPage() {
   const [topics, setTopics] = useState<TrendingTopic[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [cookingId, setCookingId] = useState<string | null>(null)
+  const [cookProgress, setCookProgress] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { fetchTrending() }, [])
@@ -78,6 +80,46 @@ export default function TrendingPage() {
 
   function handleImport(video: TrendingVideo) {
     router.push(`/contribute?url=${encodeURIComponent(video.url)}`)
+  }
+
+  async function handleCookThis(video: TrendingVideo) {
+    setCookingId(video.videoId)
+    setCookProgress('Reading transcript…')
+
+    try {
+      const res = await fetch('/api/quick-import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: video.url, dishName: video.dishName }),
+      })
+
+      if (!res.ok) throw new Error('Import failed')
+      const data = await res.json()
+
+      if (data.error) {
+        setCookProgress('')
+        setCookingId(null)
+        // Low confidence or extraction issue → route to edit flow
+        handleImport(video)
+        return
+      }
+
+      // Medium confidence → saved, but route to recipe page (not cook mode)
+      // so user can review before cooking
+      if (data.confidence === 'medium') {
+        setCookProgress('Opening recipe…')
+        router.push(`/recipe/${data.slug}`)
+        return
+      }
+
+      // High confidence → straight to cook mode
+      setCookProgress('Opening cook mode…')
+      router.push(`/recipe/${data.slug}/cook`)
+    } catch {
+      setCookingId(null)
+      setCookProgress('')
+      handleImport(video)
+    }
   }
 
   const hero = videos[0]
@@ -233,13 +275,28 @@ export default function TrendingPage() {
                   </p>
                 )}
 
-                <div style={{ display: 'flex', gap: 10, marginTop: 'auto' }}>
-                  <button className="import-btn" onClick={() => handleImport(hero)}
+                <div style={{ display: 'flex', gap: 10, marginTop: 'auto', flexWrap: 'wrap' }}>
+                  <button className="import-btn"
+                    onClick={() => handleCookThis(hero)}
+                    disabled={cookingId === hero.videoId}
                     style={{
                       background: C.accent, color: '#fff', border: 'none', borderRadius: 8,
-                      padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                      padding: '10px 24px', fontSize: 14, fontWeight: 600, cursor: cookingId === hero.videoId ? 'wait' : 'pointer', fontFamily: SANS,
+                      opacity: cookingId === hero.videoId ? 0.7 : 1,
                     }}>
-                    Get This Recipe →
+                    {cookingId === hero.videoId ? cookProgress || 'Extracting…' : 'Cook This →'}
+                  </button>
+                  <button
+                    onClick={() => handleImport(hero)}
+                    style={{
+                      background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: 8,
+                      padding: '10px 16px', color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      transition: 'border-color 0.15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = C.text3)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = C.rule)}
+                  >
+                    Edit first →
                   </button>
                   <a href={hero.url} target="_blank" rel="noopener noreferrer"
                     style={{
@@ -323,13 +380,32 @@ export default function TrendingPage() {
                       <span style={{ opacity: 0.4 }}>·</span>
                       <span style={{ fontFamily: MONO, fontSize: 10 }}>{timeAgo(video.publishedAt)}</span>
                     </div>
-                    <button className="import-btn" onClick={() => handleImport(video)}
-                      style={{
-                        width: '100%', background: C.accent, color: '#fff', border: 'none',
-                        borderRadius: 6, padding: '7px 0', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      }}>
-                      Get Recipe →
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="import-btn"
+                        onClick={() => handleCookThis(video)}
+                        disabled={cookingId === video.videoId}
+                        style={{
+                          flex: 1, background: C.accent, color: '#fff', border: 'none',
+                          borderRadius: 6, padding: '7px 0', fontSize: 11, fontWeight: 600,
+                          cursor: cookingId === video.videoId ? 'wait' : 'pointer',
+                          opacity: cookingId === video.videoId ? 0.7 : 1,
+                        }}>
+                        {cookingId === video.videoId ? cookProgress || 'Extracting…' : 'Cook This →'}
+                      </button>
+                      <button
+                        onClick={() => handleImport(video)}
+                        title="Review & edit before publishing"
+                        style={{
+                          background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: 6,
+                          padding: '7px 10px', fontSize: 11, color: C.text3, cursor: 'pointer',
+                          transition: 'border-color 0.15s',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.text3)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.rule)}
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
