@@ -118,28 +118,32 @@ export async function POST(req: NextRequest) {
   let tiktokVideoId: string | null = null
   let instagramShortcode: string | null = null
 
+  // Helper: fetch transcript from our unified endpoint (Supadata + fallback)
+  async function getTranscript(opts: { videoId?: string; url?: string; platform?: string }): Promise<string | null> {
+    try {
+      const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+      const tRes = await fetch(`${origin}/api/youtube-transcript`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opts),
+      })
+      const tData = await tRes.json()
+      return tData.transcript || null
+    } catch (err) {
+      console.log('[extract] Transcript fetch failed:', err)
+      return null
+    }
+  }
+
   if (platform === 'youtube') {
     const { videoId: yt, description } = await fetchYouTubeContent(url)
     videoId = yt
 
-    // Try to get transcript (YouTube often blocks server-side, but worth trying)
+    // Try transcript (Supadata → direct YouTube fallback)
     let transcriptText = (transcript && typeof transcript === 'string') ? transcript : null
     if (!transcriptText && videoId) {
-      try {
-        const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
-        const tRes = await fetch(`${origin}/api/youtube-transcript`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoId }),
-        })
-        const tData = await tRes.json()
-        if (tData.transcript) {
-          transcriptText = tData.transcript
-          console.log('[extract] Got transcript, length:', transcriptText?.length)
-        }
-      } catch (err) {
-        console.log('[extract] Transcript fetch failed:', err)
-      }
+      transcriptText = await getTranscript({ videoId, platform: 'youtube' })
+      if (transcriptText) console.log('[extract] Got YouTube transcript, length:', transcriptText.length)
     }
 
     // Build content: combine description + transcript for best results
@@ -151,7 +155,19 @@ export async function POST(req: NextRequest) {
   } else if (platform === 'tiktok') {
     tiktokVideoId = extractTikTokVideoId(url)
     const caption = await fetchTikTokCaption(url)
-    if (caption) content = caption
+
+    // Try Supadata transcript for TikTok (spoken words in the video)
+    let transcriptText = (transcript && typeof transcript === 'string') ? transcript : null
+    if (!transcriptText) {
+      transcriptText = await getTranscript({ url, platform: 'tiktok' })
+      if (transcriptText) console.log('[extract] Got TikTok transcript, length:', transcriptText.length)
+    }
+
+    const parts: string[] = []
+    if (oembedTitle) parts.push(oembedTitle)
+    if (caption) parts.push(caption)
+    if (transcriptText) parts.push(`[Spoken transcript from the video]\n${transcriptText.slice(0, 6000)}`)
+    content = parts.join('\n\n').trim()
   } else if (platform === 'instagram') {
     instagramShortcode = extractInstagramShortcode(url)
     // Instagram oEmbed is restricted — use what oembedTitle gives us

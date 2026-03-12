@@ -545,7 +545,9 @@ export default function ContributePage() {
                 <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>
                   {platform === 'youtube'
                     ? 'Fetching transcript and description, then extracting a structured recipe with Claude.'
-                    : `Reading the ${platform === 'tiktok' ? 'TikTok' : 'Instagram'} caption and extracting ingredients and steps.`}
+                    : platform === 'tiktok'
+                    ? 'Fetching TikTok transcript and caption, then extracting a structured recipe with Claude.'
+                    : 'Reading the Instagram caption and extracting ingredients and steps.'}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 28 }}>
                   {['Fetching video data', 'Reading transcript', 'Extracting recipe'].map((step, i) => (
