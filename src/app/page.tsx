@@ -1306,10 +1306,10 @@ function SubmissionCard({ submission, hasUpvoted, onUpvote, isMobile }: {
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
     >
       <div style={{ display: 'flex', gap: 0 }}>
-        <div style={{ width: isMobile ? 80 : 100, flexShrink: 0, background: C.cool, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, aspectRatio: '3/4', background: C.cool, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           {submission.thumbnail_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={submission.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 110 : 130 }} loading="lazy" />
+            <img src={submission.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           ) : (
             <BrokenEggCard />
           )}
