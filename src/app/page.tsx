@@ -1644,17 +1644,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* TICKER */}
-      <div style={{ borderBottom: `1px solid ${C.ruleLight}`, padding: '10px clamp(16px,4vw,24px)', overflow: 'hidden' }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: SANS, flexShrink: 0 }}>Live</span>
-          <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0, animation: 'pulse 2s ease infinite' }} />
-          <CookedRecentlyFeed />
-        </div>
-      </div>
-
       {/* SEARCH HERO */}
-      <div ref={searchHeroRef} style={{ background: C.warm, borderBottom: `1px solid ${C.rule}`, padding: '32px clamp(16px,4vw,24px) 28px' }}>
+      <div ref={searchHeroRef} style={{ background: C.warm, borderBottom: `1px solid ${C.rule}`, padding: '32px clamp(16px,4vw,24px) 16px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
           <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 4 }}>What do you want to cook?</p>
           <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, marginBottom: 18 }}>{totalCount} recipes · No life stories · Just food</p>
@@ -1671,6 +1662,12 @@ export default function Home() {
               <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
             ))}
           </div>
+        </div>
+        {/* TICKER — below search */}
+        <div style={{ maxWidth: 640, margin: '14px auto 0', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+          <span style={{ fontSize: 8, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: SANS, flexShrink: 0 }}>Live</span>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, animation: 'pulse 2s ease infinite' }} />
+          <CookedRecentlyFeed />
         </div>
       </div>
 
@@ -1695,388 +1692,276 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ===== HOME VIEW ===== */}
-      {view === 'home' && (
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
+      {/* ===== HOME VIEW — UNIFIED FEED ===== */}
+      {view === 'home' && (() => {
+        // Build interleaved feed items
+        const feedItems: { type: string; data: any; key: string }[] = []
 
-          {/* RECIPE OF THE DAY */}
-          {rotdRecipe && (
-            <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />
-                  <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Recipe of the Day</h2>
-                </div>
-                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>FEB 24</span>
-              </div>
-              <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
-                <Link href={`/recipe/${rotdRecipe.slug}`} style={{ flex: '1 1 380px', aspectRatio: '16/10', borderRadius: 10, overflow: 'hidden', background: C.warm, minHeight: 220, display: 'block' }}>
-                  {rotdRecipe.image_url ? <img src={rotdRecipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
-                </Link>
-                <div style={{ flex: '1 1 260px', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '4px 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <DifficultyBadge difficulty={rotdRecipe.difficulty} />
-                    <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(rotdRecipe.time_total)}</span>
-                    <span style={{ color: C.rule }}>·</span>
-                    <span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{rotdRecipe.cuisine}</span>
-                  </div>
-                  <h3 onClick={() => setQuickViewId(rotdRecipe.id)} style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, lineHeight: 1.15, letterSpacing: -0.5, marginBottom: 8, cursor: 'pointer', textDecoration: 'underline', textDecorationColor: C.rule, textUnderlineOffset: 3 }}>{rotdRecipe.title}</h3>
-                  <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, marginBottom: 12, maxWidth: 360 }}>{rotdRecipe.description}</p>
-                  {TIPS[rotdRecipe.slug] && (
-                    <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 14 }}>
-                      <p style={{ fontSize: 12, color: C.text, fontFamily: SANS, lineHeight: 1.5, margin: 0 }}>
-                        <span style={{ fontWeight: 600, color: C.accent }}>@{TIPS[rotdRecipe.slug].user}</span> {TIPS[rotdRecipe.slug].text}
-                      </p>
+        // 1. ROTD always first
+        if (rotdRecipe) feedItems.push({ type: 'rotd', data: rotdRecipe, key: 'rotd' })
+
+        // 2. Interleave: trending recipes, threads, external picks
+        const threads = communityThreads.length > 0
+          ? communityThreads
+          : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '' }))
+        const trending = featuredRecipes.slice(0, 4)
+        const externals = externalRecipes.length > 0
+          ? externalRecipes
+          : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
+
+        // Pattern: recipe, recipe, thread, external, recipe, thread, recipe, external
+        const pattern = ['trending', 'trending', 'thread', 'external', 'trending', 'thread', 'trending', 'external']
+        const cursors = { trending: 0, thread: 0, external: 0 }
+        for (const slot of pattern) {
+          if (slot === 'trending' && cursors.trending < trending.length) {
+            feedItems.push({ type: 'recipe', data: trending[cursors.trending], key: `t-${trending[cursors.trending].id}` })
+            cursors.trending++
+          } else if (slot === 'thread' && cursors.thread < threads.length) {
+            feedItems.push({ type: 'thread', data: threads[cursors.thread], key: `th-${threads[cursors.thread].id}` })
+            cursors.thread++
+          } else if (slot === 'external' && cursors.external < externals.length) {
+            feedItems.push({ type: 'external', data: externals[cursors.external], key: `e-${externals[cursors.external].id}` })
+            cursors.external++
+          }
+        }
+        // Add remaining threads
+        while (cursors.thread < threads.length) {
+          feedItems.push({ type: 'thread', data: threads[cursors.thread], key: `th-${threads[cursors.thread].id}` })
+          cursors.thread++
+        }
+        // Add remaining externals
+        while (cursors.external < externals.length) {
+          feedItems.push({ type: 'external', data: externals[cursors.external], key: `e-${externals[cursors.external].id}` })
+          cursors.external++
+        }
+
+        return (
+          <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
+
+            {/* FEED */}
+            {feedItems.map((item, i) => {
+              // ===== ROTD CARD =====
+              if (item.type === 'rotd') {
+                const r = item.data as Recipe
+                return (
+                  <div key={item.key} style={{ padding: '24px 0', borderBottom: `1px solid ${C.ruleLight}`, animation: `fadeIn 0.3s ease both` }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: MONO, color: C.accent, textTransform: 'uppercase', letterSpacing: 1 }}>Recipe of the Day</span>
                     </div>
-                  )}
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => setQuickViewId(rotdRecipe.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-                    <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
-                      {rotdSaved ? 'Saved' : 'Save'}
-                    </button>
+                    <Link href={`/recipe/${r.slug}`} style={{ display: 'block', borderRadius: 10, overflow: 'hidden', background: C.warm, marginBottom: 12, aspectRatio: '16/9' }}>
+                      {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
+                    </Link>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <DifficultyBadge difficulty={r.difficulty} />
+                      <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
+                      {r.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>{r.cuisine}</span></>}
+                    </div>
+                    <h3 onClick={() => setQuickViewId(r.id)} style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: C.text, lineHeight: 1.2, margin: '0 0 6px', cursor: 'pointer' }}>{r.title}</h3>
+                    <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, margin: '0 0 12px' }}>{r.description}</p>
+                    {TIPS[r.slug] && (
+                      <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 12 }}>
+                        <p style={{ fontSize: 12, color: C.text, fontFamily: SANS, lineHeight: 1.5, margin: 0 }}>
+                          <span style={{ fontWeight: 600, color: C.accent }}>@{TIPS[r.slug].user}</span> {TIPS[r.slug].text}
+                        </p>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={() => setQuickViewId(r.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
+                      <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+                        {rotdSaved ? 'Saved' : 'Save'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </section>
-          )}
+                )
+              }
 
-          <div style={{ height: 1, background: C.rule }} />
+              // ===== RECIPE CARD (trending) =====
+              if (item.type === 'recipe') {
+                const r = item.data as Recipe
+                return (
+                  <div key={item.key} onClick={() => setQuickViewId(r.id)} style={{
+                    padding: '16px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer',
+                    animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
+                  }}>
+                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                      {/* Thumbnail */}
+                      <div style={{ width: 90, height: 90, borderRadius: 8, overflow: 'hidden', background: C.warm, flexShrink: 0 }}>
+                        {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
+                      </div>
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 0.5 }}>TRENDING</span>
+                          <DifficultyBadge difficulty={r.difficulty} />
+                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
+                          {r.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{r.cuisine}</span></>}
+                        </div>
+                        <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px' }}>{r.title}</h3>
+                        {TIPS[r.slug] && (
+                          <p style={{ fontSize: 11, color: C.text3, fontFamily: SANS, lineHeight: 1.4, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            &ldquo;{TIPS[r.slug].text}&rdquo; — @{TIPS[r.slug].user}
+                          </p>
+                        )}
+                        <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent, marginTop: 4, display: 'inline-block' }}>Cook this →</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
 
-          {/* FROM THE COMMUNITY — discussion threads */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From the community</h2>
-                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Cooking talk, gear recs, and kitchen wisdom</p>
-              </div>
-              <Link href="/community" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>SEE ALL →</Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {(communityThreads.length > 0 ? communityThreads : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '' }))).map((thread, i, arr) => {
+              // ===== THREAD CARD =====
+              if (item.type === 'thread') {
+                const thread = item.data as { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }
                 const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
                 return (
-                  <Link key={thread.id} href={communityThreads.length > 0 ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <Link key={item.key} href={communityThreads.length > 0 ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
                     <div style={{
-                      padding: '10px 0', borderBottom: i < arr.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                      cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                      padding: '14px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer',
+                      animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
                     }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        {/* Frying pan upvote column */}
-                        <div style={{
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                          padding: '2px 0', minWidth: 32, flexShrink: 0,
-                        }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
-                            <circle cx="10" cy="12" r="7" />
-                            <line x1="17" y1="5" x2="22" y2="2" />
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        {/* Upvote column */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 32, flexShrink: 0, paddingTop: 2 }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
+                            <circle cx="10" cy="12" r="7" /><line x1="17" y1="5" x2="22" y2="2" />
                           </svg>
-                          <span style={{ fontSize: 12, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvote_count}</span>
+                          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvote_count}</span>
                         </div>
-
                         {/* Content */}
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                            {thread.tag && (
-                              <span style={{
-                                fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3,
-                                padding: '2px 7px', borderRadius: 4, background: tagStyle.bg, color: tagStyle.color,
-                              }}>{thread.tag}</span>
-                            )}
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name} · {thread.created_at ? timeAgo(thread.created_at) : ''}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 0.5 }}>DISCUSSION</span>
+                            {thread.tag && <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3, padding: '1px 6px', borderRadius: 3, background: tagStyle.bg, color: tagStyle.color }}>{thread.tag}</span>}
+                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name}{thread.created_at ? ` · ${timeAgo(thread.created_at)}` : ''}</span>
                           </div>
-
-                          <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0 }}>{thread.title}</h3>
-
-                          {/* Thread meta */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+                          <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: '0 0 4px' }}>{thread.title}</h3>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                               <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
                             </div>
-                            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join discussion →</span>
+                            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join →</span>
                           </div>
                         </div>
                       </div>
                     </div>
                   </Link>
                 )
-              })}
-            </div>
-          </section>
+              }
 
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* TRENDING ON RECDEX */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Trending on RecDex</h2>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>THIS WEEK</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14 }}>
-              {featuredRecipes.slice(0, 4).map((r, i) => (
-                <div key={r.id} style={{
-                  borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
-                  cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                  animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                }}
-                  onClick={() => setQuickViewId(r.id)}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                >
-                  <div style={{ display: 'flex', gap: 0 }}>
-                    {/* Thumbnail */}
-                    <div style={{ width: isMobile ? 90 : 110, flexShrink: 0, background: C.cool }}>
-                      {r.image_url ? (
-                        <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: isMobile ? 140 : 160 }} loading="lazy" />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', minHeight: isMobile ? 140 : 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><BrokenEggSmall /></div>
+              // ===== EXTERNAL RECIPE CARD =====
+              if (item.type === 'external') {
+                const ext = item.data as { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }
+                const src = SOURCES[ext.source_name] || { color: C.text3, bg: C.cool }
+                return (
+                  <div key={item.key} style={{
+                    padding: '14px 0', borderBottom: `1px solid ${C.ruleLight}`,
+                    animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                      <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: src.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{ext.source_name}</span>
+                      {ext.cuisine && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
+                      {ext.time_estimate && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span></>}
+                    </div>
+                    <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                      <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: '0 0 6px' }}>{ext.title}</h3>
+                    </a>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, fontFamily: SANS, color: C.text3, textDecoration: 'none' }}>View on {ext.source_name} →</a>
+                      {ext.matched_recipe_slug && (
+                        <Link href={`/recipe/${ext.matched_recipe_slug}`} style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
+                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Similar on RecDex</span>
+                        </Link>
                       )}
                     </div>
-
-                    {/* Content */}
-                    <div style={{ flex: 1, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                      {/* Title */}
-                      <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: 0 }}>{r.title}</h3>
-
-                      {/* Meta */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                        <DifficultyBadge difficulty={r.difficulty} />
-                        <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                        {r.cuisine && <>
-                          <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{r.cuisine}</span>
-                        </>}
-                      </div>
-
-                      {/* Community tip */}
-                      {TIPS[r.slug] && (
-                        <div style={{ padding: '6px 8px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.ruleLight}`, marginTop: 2 }}>
-                          <p style={{ fontSize: 11, color: C.text2, fontFamily: SANS, lineHeight: 1.35, margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
-                            &ldquo;{TIPS[r.slug].text}&rdquo;
-                          </p>
-                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginTop: 3, display: 'inline-block' }}>@{TIPS[r.slug].user}</span>
-                        </div>
-                      )}
-
-                      {/* CTA */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-                        <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook this</span>
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
-                      </div>
-                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </section>
+                )
+              }
 
-          <div style={{ height: 1, background: C.rule }} />
+              return null
+            })}
 
-          {/* FROM AROUND THE WEB — community submissions */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4, flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 2 }}>From around the web</h2>
-                <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>Recipes people are cooking from other sites</p>
+            {/* EXPLORE STRIP — compact navigation row */}
+            <div style={{ padding: '28px 0 8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Explore</h2>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{totalCount} recipes</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ display: 'flex', gap: 0, border: `1px solid ${C.ruleLight}`, borderRadius: 5, overflow: 'hidden' }}>
-                  {(['recent', 'top'] as const).map(s => (
-                    <button key={s} onClick={() => setSubmissionSort(s)} style={{
-                      padding: '4px 10px', background: submissionSort === s ? C.accent : 'transparent', border: 'none',
-                      color: submissionSort === s ? '#fff' : C.text3, fontSize: 10, fontFamily: MONO, cursor: 'pointer',
-                      fontWeight: submissionSort === s ? 600 : 400, textTransform: 'capitalize',
-                    }}>{s === 'recent' ? 'New' : 'Top'}</button>
-                  ))}
-                </div>
-                <Link href="/contribute" style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '5px 12px', color: C.text2, fontSize: 10, fontFamily: MONO, cursor: 'pointer', textDecoration: 'none' }}>+ Share a recipe</Link>
-              </div>
-            </div>
 
-            {/* User-submitted links + external recipes */}
-            {submissions.length > 0 ? (
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12, marginTop: 14 }}>
-                {submissions.map((sub, i) => (
-                  <div key={sub.id} style={{ animation: `fadeIn 0.3s ease ${i * 0.05}s both` }}>
-                    <SubmissionCard submission={sub} hasUpvoted={userUpvotes.includes(sub.id)} onUpvote={() => toggleUpvote(sub.id)} isMobile={isMobile} />
-                  </div>
+              {/* Quick links row */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                {[
+                  { emoji: '🔥', label: 'Trending', href: '/trending' },
+                  { emoji: '💬', label: 'Community', href: '/community' },
+                  { emoji: '📖', label: 'Browse all', href: '/browse' },
+                  { emoji: '📋', label: 'Lists', href: '/lists' },
+                  { emoji: '✏️', label: 'Contribute', href: '/contribute' },
+                ].map(link => (
+                  <Link key={link.label} href={link.href} style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '10px 16px', borderRadius: 8,
+                    background: C.warm, border: `1px solid ${C.ruleLight}`,
+                    textDecoration: 'none', fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text2,
+                  }}>
+                    <span style={{ fontSize: 14 }}>{link.emoji}</span>{link.label}
+                  </Link>
                 ))}
               </div>
-            ) : (
-              /* External recipe links — from DB or mock fallback */
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 14, marginTop: 14 }}>
-                {(externalRecipes.length > 0 ? externalRecipes : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))).map((ext, i) => {
-                  const src = SOURCES[ext.source_name] || { color: C.text3, bg: C.cool }
-                  return (
-                    <a key={ext.id} href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <div style={{
-                        borderRadius: 12, background: C.warm, border: `1px solid ${C.ruleLight}`, overflow: 'hidden',
-                        cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
-                        animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                        padding: '14px 16px',
-                      }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                          <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.5, padding: '2px 6px', borderRadius: 3, background: src.bg, color: src.color, textTransform: 'uppercase' }}>{ext.source_name}</span>
-                          {ext.cuisine && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
-                          {ext.time_estimate && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span></>}
-                        </div>
-                        <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 8px' }}>{ext.title}</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>View on {ext.source_name} →</span>
-                          {ext.matched_recipe_slug && (
-                            <Link href={`/recipe/${ext.matched_recipe_slug}`} onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-                              <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
-                              <span style={{ fontSize: 9, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Similar on RecDex</span>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    </a>
-                  )
-                })}
+
+              {/* Cuisine pills */}
+              <div style={{ marginBottom: 20 }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: '0 0 8px' }}>By cuisine</p>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {categories.slice(0, 12).map(cat => (
+                    <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setView('browse') }} style={{
+                      padding: '5px 12px', borderRadius: 6, border: `1px solid ${C.ruleLight}`,
+                      background: 'transparent', color: C.text2, fontSize: 11, fontFamily: SANS, cursor: 'pointer',
+                    }}>
+                      {cat.name} <span style={{ color: C.text3, fontFamily: MONO, fontSize: 9 }}>{cat.recipe_count}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
 
-          </section>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* BROWSE LISTS */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 16 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Browse lists</h2>
-              <Link href="/lists" style={{ fontSize: 10, fontFamily: MONO, color: C.accent, textDecoration: 'none' }}>VIEW ALL →</Link>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
-              {[
-                { emoji: '⚡', name: 'Quick Weeknight Meals', desc: 'Ready in 30 minutes or less', color: C.gold, bg: C.goldBg },
-                { emoji: '🌱', name: 'Beginner Friendly', desc: 'Great first recipes', color: C.green, bg: C.greenBg },
-                { emoji: '🌍', name: 'Around the World', desc: 'One dish from every cuisine', color: C.blue, bg: C.blueBg },
-              ].map((list, i) => (
-                <Link key={list.name} href="/lists" style={{
-                  textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '16px 18px', borderRadius: 12,
-                  background: C.warm, border: `1px solid ${C.ruleLight}`,
-                  transition: 'transform 0.15s, box-shadow 0.15s',
-                  animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
-                >
-                  <span style={{
-                    fontSize: 22, lineHeight: 1, flexShrink: 0,
-                    width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: list.bg, borderRadius: 10,
-                  }}>{list.emoji}</span>
-                  <div>
-                    <h3 style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, margin: '0 0 2px' }}>{list.name}</h3>
-                    <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>{list.desc}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* ESSENTIAL COOKBOOKS */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Essential cookbooks</h2>
-              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
-            </div>
-            <div style={{
-              display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 12,
-              scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch',
-              scrollbarWidth: 'none',
-            }}>
-              <style>{`div::-webkit-scrollbar{display:none}`}</style>
-              {BOOKS.map((book, i) => {
-                const stats = bookStats[book.key] || { likes: 0, owns: 0 }
-                const my = myBookActions[book.key] || { liked: false, owned: false }
-                return (
-                <div key={i} onClick={() => setSelectedBook(book)} style={{
-                  flexShrink: 0, width: 130, scrollSnapAlign: 'start',
-                  cursor: 'pointer',
-                }}>
-                  <div style={{ position: 'relative', width: 130, height: 195 }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`}
-                      alt={book.title}
-                      style={{
-                        width: 130, height: 195, borderRadius: 4, objectFit: 'cover',
-                        background: book.color,
-                        boxShadow: '2px 3px 8px rgba(0,0,0,0.12)',
-                        transition: 'transform 0.2s',
-                      }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)' }}
-                    />
-                    {/* Letterboxd-style indicators */}
-                    <div style={{ position: 'absolute', bottom: 6, left: 6, right: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      {stats.likes > 0 ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '2px 7px 2px 5px', fontSize: 9, fontFamily: MONO, color: my.liked ? '#FF6B6B' : 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill={my.liked ? '#FF6B6B' : 'none'} stroke={my.liked ? '#FF6B6B' : 'rgba(255,255,255,0.85)'} strokeWidth="2.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
-                          {stats.likes}
-                        </span>
-                      ) : <span />}
-                      {stats.owns > 0 ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '2px 7px 2px 5px', fontSize: 9, fontFamily: MONO, color: my.owned ? '#7BC47F' : 'rgba(255,255,255,0.85)', fontWeight: 600 }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill={my.owned ? '#7BC47F' : 'none'} stroke={my.owned ? '#7BC47F' : 'rgba(255,255,255,0.85)'} strokeWidth="2.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></svg>
-                          {stats.owns}
-                        </span>
-                      ) : <span />}
-                    </div>
-                  </div>
-                  <p style={{ fontFamily: SERIF, fontSize: 12, fontWeight: 600, color: C.text, margin: '8px 0 2px', lineHeight: 1.3 }}>{book.title}</p>
-                  <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: 0 }}>{book.author}</p>
+              {/* Cookbooks — compact horizontal scroll */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: 0 }}>Essential cookbooks</p>
+                  <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
                 </div>
-                )
-              })}
+                <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
+                  <style>{`div::-webkit-scrollbar{display:none}`}</style>
+                  {BOOKS.map((book, i) => {
+                    const stats = bookStats[book.key] || { likes: 0, owns: 0 }
+                    return (
+                      <div key={i} onClick={() => setSelectedBook(book)} style={{ flexShrink: 0, width: 90, cursor: 'pointer' }}>
+                        <img src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`} alt={book.title}
+                          style={{ width: 90, height: 135, borderRadius: 3, objectFit: 'cover', background: book.color, boxShadow: '1px 2px 6px rgba(0,0,0,0.1)' }} />
+                        <p style={{ fontFamily: SERIF, fontSize: 10, fontWeight: 600, color: C.text, margin: '5px 0 1px', lineHeight: 1.2 }}>{book.title}</p>
+                        <p style={{ fontFamily: SANS, fontSize: 9, color: C.text3, margin: 0 }}>{book.author}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
-          </section>
 
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* MISSION */}
-          <div style={{ padding: '28px 32px', borderRadius: 10, background: C.warm, border: `1px solid ${C.rule}`, marginBottom: 28, marginTop: 28, textAlign: 'center' }}>
-            <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 6 }}>Recipes belong to everyone</p>
-            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 14px' }}>Recipe Index is a free, ad-free, open commons for cooking knowledge. Built by cooks, for cooks.</p>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-              <Link href="/contribute" style={{ padding: '9px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: SANS, textDecoration: 'none' }}>Contribute a recipe</Link>
-              <button style={{ padding: '9px 20px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Learn more</button>
+            {/* MISSION — slim banner */}
+            <div style={{ padding: '20px 24px', borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 24, textAlign: 'center' }}>
+              <p style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>Recipes belong to everyone</p>
+              <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, lineHeight: 1.5, margin: '0 0 10px' }}>Free, ad-free, open commons for cooking knowledge.</p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                <Link href="/contribute" style={{ padding: '8px 18px', borderRadius: 6, background: C.text, color: C.bg, fontSize: 11, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Contribute</Link>
+                <Link href="/about" style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 11, fontWeight: 500, fontFamily: SANS, textDecoration: 'none' }}>Learn more</Link>
+              </div>
             </div>
+
           </div>
-
-          <div style={{ height: 1, background: C.rule }} />
-
-          {/* BROWSE BY CUISINE */}
-          <section style={{ paddingTop: 28, paddingBottom: 28 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Browse by cuisine</h2>
-              <button onClick={() => setView('browse')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Browse all {totalCount} recipes →</button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
-              {categories.slice(0, 12).map((cat, i) => (
-                <div key={cat.id} style={{ cursor: 'pointer', animation: `fadeIn 0.3s ease ${i * 0.03}s both` }} onClick={() => { setActiveCategory(cat.id); setView('browse') }}>
-                  <div style={{ width: '100%', aspectRatio: '3/2', borderRadius: 8, overflow: 'hidden', position: 'relative', background: C.warm }}>
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 10 }}>
-                      <h3 style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 1 }}>{cat.name}</h3>
-                      <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{cat.recipe_count} recipes</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
+        )
+      })()}
 
       {/* ===== BROWSE VIEW ===== */}
       {view === 'browse' && (
