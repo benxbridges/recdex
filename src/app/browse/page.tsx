@@ -284,12 +284,17 @@ function BrowseContent() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const { data } = await supabase
-        .from('recipes')
-        .select('id,slug,title,description,cuisine,category_id,difficulty,time_total,time_active,time_passive,time_passive_label,image_url,servings,servings_label,tags,ingredients,steps')
-        .eq('status', 'published')
-        .order('title', { ascending: true })
-      if (data) setRecipes(data as Recipe[])
+      try {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('id,slug,title,description,cuisine,category_id,difficulty,time_total,time_active,time_passive,time_passive_label,image_url,servings,servings_label,tags,ingredients,steps')
+          .eq('status', 'published')
+          .order('title', { ascending: true })
+        if (error) throw error
+        if (data) setRecipes(data as Recipe[])
+      } catch (err) {
+        console.error('[browse] Failed to load recipes:', err)
+      }
       setLoading(false)
     }
     load()
@@ -396,13 +401,13 @@ function BrowseContent() {
     <div style={{ background: C.bg, minHeight: '100vh', color: C.text }}>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1px solid ${C.ruleLight}`, padding: `16px ${pad}`, position: 'sticky', top: 0, background: C.bg, zIndex: 50 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, background: C.bg, zIndex: 50 }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(20px, 3.5vw, 24px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -0.5, lineHeight: 1 }}>
-              Recipe Index<EggDot size={8} />
+            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+              Recipe Index<EggDot size={9} />
             </h1>
-            <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: '3px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
             <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, fontFamily: MONO, letterSpacing: 0.3 }}>Browse</span>
@@ -512,8 +517,9 @@ function BrowseContent() {
       <div style={{ padding: `24px ${pad} 80px`, maxWidth: 1100, margin: '0 auto' }}>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', fontFamily: MONO, fontSize: 11, color: C.text3, letterSpacing: 1 }}>
-            Loading recipes…
+          <div style={{ textAlign: 'center', padding: '80px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 20, height: 20, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.text3, letterSpacing: 1 }}>Loading recipes</span>
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
@@ -537,10 +543,10 @@ function BrowseContent() {
               )}
               {/* View toggle */}
               <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
-                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" aria-label="Grid view" aria-pressed={viewMode === 'grid'} style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <GridIcon active={viewMode === 'grid'} />
                 </button>
-                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('list')} title="List view" aria-label="List view" aria-pressed={viewMode === 'list'} style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <ListIcon active={viewMode === 'list'} />
                 </button>
               </div>
@@ -565,10 +571,10 @@ function BrowseContent() {
             {/* View toggle for default state */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
               <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
-                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" aria-label="Grid view" aria-pressed={viewMode === 'grid'} style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <GridIcon active={viewMode === 'grid'} />
                 </button>
-                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('list')} title="List view" aria-label="List view" aria-pressed={viewMode === 'list'} style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <ListIcon active={viewMode === 'list'} />
                 </button>
               </div>

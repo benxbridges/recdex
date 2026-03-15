@@ -282,13 +282,14 @@ export default function ListsPage() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
@@ -327,7 +328,10 @@ export default function ListsPage() {
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-            <p style={{ fontFamily: SANS, fontSize: 14, color: C.text3 }}>Loading lists...</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+              <div style={{ width: 16, height: 16, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+              <span style={{ fontFamily: SANS, fontSize: 14, color: C.text3 }}>Loading lists...</span>
+            </div>
           </div>
         ) : (
           <>

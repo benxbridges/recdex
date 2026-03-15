@@ -63,12 +63,16 @@ export default function ThreadPage() {
 
   const fetchThread = useCallback(async () => {
     setLoading(true)
-    const [threadRes, repliesRes] = await Promise.all([
-      supabase.from('threads').select('*').eq('id', id).single(),
-      supabase.from('thread_replies').select('*').eq('thread_id', id).order('created_at', { ascending: true }),
-    ])
-    if (threadRes.data) setThread(threadRes.data)
-    if (repliesRes.data) setReplies(repliesRes.data)
+    try {
+      const [threadRes, repliesRes] = await Promise.all([
+        supabase.from('threads').select('*').eq('id', id).single(),
+        supabase.from('thread_replies').select('*').eq('thread_id', id).order('created_at', { ascending: true }),
+      ])
+      if (threadRes.data) setThread(threadRes.data)
+      if (repliesRes.data) setReplies(repliesRes.data)
+    } catch (err) {
+      console.error('[thread] Failed to load thread:', err)
+    }
     setLoading(false)
   }, [id])
 
@@ -132,8 +136,9 @@ export default function ThreadPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontFamily: SANS, fontSize: 14, color: C.text3 }}>Loading...</span>
+      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ width: 20, height: 20, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <span style={{ fontFamily: SANS, fontSize: 13, color: C.text3 }}>Loading thread</span>
       </div>
     )
   }
@@ -150,13 +155,14 @@ export default function ThreadPage() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <Link href="/community" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>← Community</Link>

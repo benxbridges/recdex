@@ -378,21 +378,26 @@ function ContributeInner() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
-      {/* Nav */}
-      <div style={{ borderBottom: `1px solid ${C.ruleLight}`, padding: '14px clamp(16px,4vw,32px)' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ fontFamily: MONO, fontSize: 13, color: C.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, letterSpacing: '-0.01em' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            RecDex
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            {displayName && <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>@{displayName}</span>}
-            <ThemeToggle />
+      {/* Header */}
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Link href="/" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+                Recipe Index<span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
+              </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
+              <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
+              <div style={{ width: 1, height: 14, background: C.rule }} />
+              <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>Contribute</span>
+              {displayName && <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>@{displayName}</span>}
+              <ThemeToggle />
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div style={{ maxWidth: 620, margin: '0 auto', padding: 'clamp(40px,8vw,72px) clamp(16px,4vw,24px)' }}>
 

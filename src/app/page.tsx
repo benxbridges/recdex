@@ -920,6 +920,187 @@ function StarRating({ rating }: { rating: number }) {
   )
 }
 
+// ===== CAROUSEL ROW =====
+function CarouselRow({ title, seeAllHref, children }: { title: string; seeAllHref?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ padding: '20px 0 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, padding: '0 clamp(16px,4vw,24px)' }}>
+        <h2 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: 0 }}>{title}</h2>
+        {seeAllHref && <Link href={seeAllHref} style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 500, textDecoration: 'none' }}>See all →</Link>}
+      </div>
+      <div style={{
+        display: 'flex', gap: 12, overflowX: 'auto', paddingLeft: 'clamp(16px,4vw,24px)', paddingRight: 'clamp(16px,4vw,24px)', paddingBottom: 8,
+        scrollSnapType: 'x mandatory', scrollbarWidth: 'none',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// ===== CAROUSEL CARDS =====
+const CARD_W = 200
+const CARD_IMG_H = 130
+
+function CarouselRecipeCard({ recipe, onQuickView, isMobile }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean }) {
+  const w = isMobile ? 155 : CARD_W
+  const imgH = isMobile ? 100 : CARD_IMG_H
+  return (
+    <div
+      onClick={() => onQuickView(recipe.id)}
+      style={{
+        width: w, flexShrink: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+        border: `1px solid ${C.ruleLight}`, background: C.warm, scrollSnapAlign: 'start',
+        transition: 'transform 0.15s, box-shadow 0.15s',
+      }}
+      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+    >
+      <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool }}>
+        {recipe.image_url
+          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+          : <BrokenEggCard />
+        }
+      </div>
+      <div style={{ padding: '10px 12px 12px' }}>
+        <h3 style={{
+          fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 6px',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+        }}>{recipe.title}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+          <DifficultyBadge difficulty={recipe.difficulty} />
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_total)}</span>
+          {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 7 }}>·</span><span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{recipe.cuisine}</span></>}
+        </div>
+        <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook this →</span>
+      </div>
+    </div>
+  )
+}
+
+const EXTERNAL_SOURCE_COLORS: Record<string, { bg: string; bgLight: string; text: string }> = {
+  'NYT Cooking': { bg: '#8B7355', bgLight: '#F5F0E8', text: '#FFF' },
+  'Bon Appétit': { bg: '#E8614D', bgLight: '#FDF0EC', text: '#FFF' },
+  'Serious Eats': { bg: '#2B8C8C', bgLight: '#EBF5F5', text: '#FFF' },
+}
+
+function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean }) {
+  const w = isMobile ? 155 : CARD_W
+  const imgH = isMobile ? 100 : CARD_IMG_H
+  const sc = EXTERNAL_SOURCE_COLORS[ext.source_name] || { bg: C.text3, bgLight: C.cool, text: '#FFF' }
+  return (
+    <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
+      <div
+        style={{
+          width: w, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          border: `1px solid ${C.ruleLight}`, transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+      >
+        {/* Colored header */}
+        <div style={{ width: w, height: imgH, background: sc.bg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 14px' }}>
+          <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>{ext.source_name}</span>
+          <h3 style={{
+            fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: sc.text, lineHeight: 1.25, margin: 0,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{ext.title}</h3>
+        </div>
+        <div style={{ padding: '10px 12px 12px', background: C.warm }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+            {ext.cuisine && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
+            {ext.cuisine && ext.time_estimate && <span style={{ color: C.rule, fontSize: 7 }}>·</span>}
+            {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
+          </div>
+          <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Read on {ext.source_name} →</span>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+function CarouselCommunityCard({ submission, isMobile }: { submission: CommunitySubmission; isMobile: boolean }) {
+  const w = isMobile ? 155 : CARD_W
+  const imgH = isMobile ? 100 : CARD_IMG_H
+  const platform = PLATFORM_STYLES[submission.platform] || PLATFORM_STYLES.other
+  return (
+    <a href={submission.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
+      <div
+        style={{
+          width: w, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+      >
+        {/* Thumbnail or platform-colored placeholder */}
+        <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool, position: 'relative' }}>
+          {submission.thumbnail_url
+            ? <img src={submission.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: platform.bg }}>
+                <span style={{ fontSize: 28, opacity: 0.6 }}>{platform.icon}</span>
+              </div>
+          }
+          {/* Platform badge overlay */}
+          <div style={{ position: 'absolute', bottom: 6, left: 6 }}>
+            <PlatformBadge platform={submission.platform} />
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px 12px' }}>
+          <h3 style={{
+            fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{submission.title}</h3>
+          {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '0 0 4px' }}>by {submission.author_name}</p>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{submission.upvote_count}</span>
+          </div>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+function CarouselThreadCard({ thread, hasRealData, isMobile }: {
+  thread: { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }
+  hasRealData: boolean; isMobile: boolean
+}) {
+  const w = isMobile ? 240 : 280
+  const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
+  return (
+    <Link href={hasRealData ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', flexShrink: 0, scrollSnapAlign: 'start' }}>
+      <div
+        style={{
+          width: w, padding: '14px 16px', borderRadius: 8, cursor: 'pointer',
+          border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'flex', flexDirection: 'column', gap: 8, minHeight: isMobile ? 120 : 140,
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {thread.tag && <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3, padding: '2px 7px', borderRadius: 3, background: tagStyle.bg, color: tagStyle.color }}>{thread.tag}</span>}
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name}</span>
+        </div>
+        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0, flex: 1 }}>{thread.title}</h3>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.upvote_count}</span>
+          </div>
+          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500, marginLeft: 'auto' }}>Join →</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 // ===== SUBMIT MODAL =====
 function SubmitModal({ onClose, onSubmitted, categories }: {
   onClose: () => void
@@ -1369,6 +1550,8 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
   const [searchPinned, setSearchPinned] = useState(false)
+  const [searchMode, setSearchMode] = useState<'recipe' | 'pantry'>('recipe')
+  const [pantryCount, setPantryCount] = useState(0)
   const searchHeroRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
@@ -1509,6 +1692,7 @@ export default function Home() {
   const [rotdRecipe, setRotdRecipe] = useState<Recipe | null>(null)
 
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 700); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
+  useEffect(() => { try { const p = JSON.parse(localStorage.getItem('recdex-pantry') || '[]'); setPantryCount(p.length) } catch { /* ignore */ } }, [])
   useEffect(() => {
     const onScroll = () => {
       if (searchHeroRef.current) {
@@ -1598,8 +1782,29 @@ export default function Home() {
     fetchRecipes()
   }, [activeCategory, searchQuery, view])
 
-  // Switch to browse when searching
-  useEffect(() => { if (searchQuery.trim()) setView('browse') }, [searchQuery])
+  // Switch to browse when searching in recipe mode
+  useEffect(() => { if (searchQuery.trim() && searchMode === 'recipe') setView('browse') }, [searchQuery, searchMode])
+
+  // Pantry match: filter recipes by ingredient input
+  const pantryMatches = (() => {
+    if (searchMode !== 'pantry' || !searchQuery.trim()) return []
+    const terms = searchQuery.toLowerCase().split(',').map(t => t.trim()).filter(Boolean)
+    if (terms.length === 0) return []
+    const allRecipes = [...featuredRecipes, ...quickRecipes, ...(rotdRecipe ? [rotdRecipe] : [])]
+    const unique = Array.from(new Map(allRecipes.map(r => [r.id, r])).values())
+    return unique
+      .map(r => {
+        const items = getIngredientItems(r.ingredients)
+        const total = items.length || 1
+        // Count how many of the recipe's ingredients the user has
+        const haveCount = items.filter(item => terms.some(term => item.name.toLowerCase().includes(term))).length
+        const needCount = total - haveCount
+        return { recipe: r, haveCount, needCount, totalIngredients: total, fraction: haveCount / total }
+      })
+      .filter(m => m.haveCount > 0)
+      .sort((a, b) => b.fraction - a.fraction || a.needCount - b.needCount)
+      .slice(0, 12)
+  })()
 
   const activeCategoryName = activeCategory === 'all' ? 'All Recipes' : categories.find(c => c.id === activeCategory)?.name || 'All Recipes'
   const quickViewRecipe = quickViewId ? (recipes.find(r => r.id === quickViewId) || featuredRecipes.find(r => r.id === quickViewId) || quickRecipes.find(r => r.id === quickViewId) || (rotdRecipe?.id === quickViewId ? rotdRecipe : null)) : null
@@ -1616,7 +1821,7 @@ export default function Home() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => { setView('home'); setSearchQuery(''); setActiveCategory('all') }}>
@@ -1647,21 +1852,60 @@ export default function Home() {
       {/* SEARCH HERO */}
       <div ref={searchHeroRef} style={{ background: C.warm, borderBottom: `1px solid ${C.rule}`, padding: '32px clamp(16px,4vw,24px) 16px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 4 }}>What do you want to cook?</p>
-          <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, marginBottom: 18 }}>{totalCount} recipes · No life stories · Just food</p>
+          <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 4 }}>
+            {searchMode === 'recipe' ? 'What are you cooking today?' : "What's in your kitchen?"}
+          </p>
+          <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, marginBottom: 14 }}>
+            {searchMode === 'recipe' ? `${totalCount} recipes · No life stories · Just food` : 'Type ingredients and we\'ll find what you can make'}
+          </p>
+          {/* Mode toggle */}
+          <div style={{ display: 'inline-flex', borderRadius: 8, border: `1px solid ${C.rule}`, overflow: 'hidden', marginBottom: 16 }}>
+            <button onClick={() => { setSearchMode('recipe'); setSearchQuery(''); setView('home') }} style={{
+              padding: '7px 18px', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
+              background: searchMode === 'recipe' ? C.text : 'transparent', color: searchMode === 'recipe' ? C.bg : C.text3,
+              display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></svg>
+              Find a recipe
+            </button>
+            <button onClick={() => { setSearchMode('pantry'); setSearchQuery(''); setView('home') }} style={{
+              padding: '7px 18px', border: 'none', borderLeft: `1px solid ${C.rule}`, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: SANS,
+              background: searchMode === 'pantry' ? C.text : 'transparent', color: searchMode === 'pantry' ? C.bg : C.text3,
+              display: 'flex', alignItems: 'center', gap: 5, transition: 'all 0.15s',
+            }}>
+              <span style={{ fontSize: 13 }}>🥬</span>
+              Use what you have
+            </button>
+          </div>
+          {/* Search input */}
           <div style={{ position: 'relative', maxWidth: 520, margin: '0 auto' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={searchFocused ? C.accent : C.text3} strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', transition: 'stroke 0.15s' }}>
-              <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
+              {searchMode === 'recipe'
+                ? <><circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" /></>
+                : <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>
+              }
             </svg>
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-              placeholder="Search by recipe, ingredient, or cuisine..."
-              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchFocused ? C.accent : C.accent + '44'}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px rgba(232,123,90,0.15)` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
+              placeholder={searchMode === 'recipe' ? 'Search by recipe, ingredient, or cuisine...' : 'Type ingredients: chicken, garlic, lemon...'}
+              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
           </div>
+          {/* Quick tags */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking'].map(tag => (
-              <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
-            ))}
+            {searchMode === 'recipe'
+              ? ['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking'].map(tag => (
+                  <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
+                ))
+              : ['chicken, rice', 'pasta, tomato', 'eggs, cheese', 'ground beef', 'tofu, soy sauce'].map(tag => (
+                  <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
+                ))
+            }
           </div>
+          {/* Pantry count hint */}
+          {searchMode === 'pantry' && pantryCount > 0 && !searchQuery.trim() && (
+            <Link href="/pantry" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontFamily: SANS, color: C.green, fontWeight: 500, textDecoration: 'none' }}>
+              You have {pantryCount} item{pantryCount !== 1 ? 's' : ''} saved · Start from your pantry →
+            </Link>
+          )}
         </div>
         {/* TICKER — below search */}
         <div style={{ maxWidth: 640, margin: '14px auto 0', display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
@@ -1692,248 +1936,221 @@ export default function Home() {
         </div>
       </div>
 
-      {/* ===== HOME VIEW — UNIFIED FEED ===== */}
+      {/* ===== HOME VIEW — CAROUSEL ROWS ===== */}
       {view === 'home' && (() => {
-        // Build interleaved feed items
-        const feedItems: { type: string; data: any; key: string }[] = []
-
-        // 1. ROTD always first
-        if (rotdRecipe) feedItems.push({ type: 'rotd', data: rotdRecipe, key: 'rotd' })
-
-        // 2. Interleave: trending recipes, threads, external picks
+        // Data prep
         const threads = communityThreads.length > 0
           ? communityThreads
           : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '' }))
-        const trending = featuredRecipes.slice(0, 4)
         const externals = externalRecipes.length > 0
           ? externalRecipes
           : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
 
-        // Pattern: recipe, recipe, thread, external, recipe, thread, recipe, external
-        const pattern = ['trending', 'trending', 'thread', 'external', 'trending', 'thread', 'trending', 'external']
-        const cursors = { trending: 0, thread: 0, external: 0 }
-        for (const slot of pattern) {
-          if (slot === 'trending' && cursors.trending < trending.length) {
-            feedItems.push({ type: 'recipe', data: trending[cursors.trending], key: `t-${trending[cursors.trending].id}` })
-            cursors.trending++
-          } else if (slot === 'thread' && cursors.thread < threads.length) {
-            feedItems.push({ type: 'thread', data: threads[cursors.thread], key: `th-${threads[cursors.thread].id}` })
-            cursors.thread++
-          } else if (slot === 'external' && cursors.external < externals.length) {
-            feedItems.push({ type: 'external', data: externals[cursors.external], key: `e-${externals[cursors.external].id}` })
-            cursors.external++
-          }
-        }
-        // Add remaining threads
-        while (cursors.thread < threads.length) {
-          feedItems.push({ type: 'thread', data: threads[cursors.thread], key: `th-${threads[cursors.thread].id}` })
-          cursors.thread++
-        }
-        // Add remaining externals
-        while (cursors.external < externals.length) {
-          feedItems.push({ type: 'external', data: externals[cursors.external], key: `e-${externals[cursors.external].id}` })
-          cursors.external++
+        // Pantry mode: show matches instead of carousels
+        if (searchMode === 'pantry' && searchQuery.trim()) {
+          return (
+            <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px clamp(16px,4vw,24px)' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16 }}>
+                <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Recipes you can make</h2>
+                <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{pantryMatches.length} match{pantryMatches.length !== 1 ? 'es' : ''}</span>
+              </div>
+              {pantryMatches.length === 0 && (
+                <p style={{ fontSize: 14, color: C.text3, fontFamily: SANS }}>No matches yet. Try adding more ingredients.</p>
+              )}
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                {pantryMatches.map(m => {
+                  const pct = Math.round((m.haveCount / m.totalIngredients) * 100)
+                  const ready = m.needCount === 0
+                  const circumference = 2 * Math.PI * 10 // r=10
+                  const filled = circumference * (m.haveCount / m.totalIngredients)
+                  return (
+                  <div key={m.recipe.id} onClick={() => setQuickViewId(m.recipe.id)} style={{
+                    width: isMobile ? '100%' : 200, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+                    border: `1px solid ${ready ? C.green : C.ruleLight}`, background: C.warm, position: 'relative',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+                  >
+                    {/* Match badge — mini donut + actionable text */}
+                    <div style={{
+                      position: 'absolute', top: 8, right: 8, zIndex: 2,
+                      display: 'flex', alignItems: 'center', gap: 5,
+                      padding: '4px 8px 4px 5px', borderRadius: 6,
+                      background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+                    }}>
+                      {/* Mini donut chart */}
+                      <svg width="22" height="22" viewBox="0 0 24 24" style={{ transform: 'rotate(-90deg)' }}>
+                        <circle cx="12" cy="12" r="10" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
+                        <circle cx="12" cy="12" r="10" fill="none"
+                          stroke={ready ? '#6B9E62' : '#E8A44A'}
+                          strokeWidth="3" strokeLinecap="round"
+                          strokeDasharray={`${filled} ${circumference}`}
+                        />
+                      </svg>
+                      <span style={{ fontSize: 10, fontWeight: 600, fontFamily: SANS, color: '#fff', lineHeight: 1.2 }}>
+                        {ready
+                          ? 'Ready to cook!'
+                          : m.needCount <= 3
+                            ? `Need ${m.needCount} more`
+                            : `Have ${m.haveCount}/${m.totalIngredients}`
+                        }
+                      </span>
+                    </div>
+                    <div style={{ width: '100%', height: isMobile ? 140 : 130, overflow: 'hidden', background: C.cool }}>
+                      {m.recipe.image_url
+                        ? <img src={m.recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+                        : <BrokenEggCard />
+                      }
+                    </div>
+                    <div style={{ padding: '10px 12px 12px' }}>
+                      <h3 style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 6px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>{m.recipe.title}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <DifficultyBadge difficulty={m.recipe.difficulty} />
+                        <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{formatTime(m.recipe.time_total)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
         }
 
         return (
-          <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
+          <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
-            {/* FEED */}
-            {feedItems.map((item, i) => {
-              // ===== ROTD CARD =====
-              if (item.type === 'rotd') {
-                const r = item.data as Recipe
-                return (
-                  <div key={item.key} style={{ padding: '24px 0', borderBottom: `1px solid ${C.ruleLight}`, animation: `fadeIn 0.3s ease both` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: MONO, color: C.accent, textTransform: 'uppercase', letterSpacing: 1 }}>Recipe of the Day</span>
-                    </div>
-                    <Link href={`/recipe/${r.slug}`} style={{ display: 'block', borderRadius: 10, overflow: 'hidden', background: C.warm, marginBottom: 12, aspectRatio: '16/9' }}>
-                      {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
-                    </Link>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
-                      <DifficultyBadge difficulty={r.difficulty} />
-                      <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                      {r.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>{r.cuisine}</span></>}
-                    </div>
-                    <h3 onClick={() => setQuickViewId(r.id)} style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: C.text, lineHeight: 1.2, margin: '0 0 6px', cursor: 'pointer' }}>{r.title}</h3>
-                    <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, margin: '0 0 12px' }}>{r.description}</p>
-                    {TIPS[r.slug] && (
-                      <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 12 }}>
-                        <p style={{ fontSize: 12, color: C.text, fontFamily: SANS, lineHeight: 1.5, margin: 0 }}>
-                          <span style={{ fontWeight: 600, color: C.accent }}>@{TIPS[r.slug].user}</span> {TIPS[r.slug].text}
-                        </p>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => setQuickViewId(r.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-                      <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
-                        {rotdSaved ? 'Saved' : 'Save'}
-                      </button>
-                    </div>
+            {/* 1. RECIPE OF THE DAY — full-width hero */}
+            {rotdRecipe && (
+              <div style={{ padding: '24px clamp(16px,4vw,24px)', borderBottom: `1px solid ${C.ruleLight}`, animation: 'fadeIn 0.3s ease both' }}>
+                <div style={{ maxWidth: 640, margin: '0 auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent }} />
+                    <span style={{ fontSize: 9, fontWeight: 700, fontFamily: MONO, color: C.accent, textTransform: 'uppercase', letterSpacing: 1 }}>Recipe of the Day</span>
                   </div>
-                )
-              }
-
-              // ===== RECIPE CARD (trending) =====
-              if (item.type === 'recipe') {
-                const r = item.data as Recipe
-                return (
-                  <div key={item.key} onClick={() => setQuickViewId(r.id)} style={{
-                    padding: '16px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer',
-                    animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
-                  }}>
-                    <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-                      {/* Thumbnail */}
-                      <div style={{ width: 90, height: 90, borderRadius: 8, overflow: 'hidden', background: C.warm, flexShrink: 0 }}>
-                        {r.image_url ? <img src={r.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
-                      </div>
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 0.5 }}>TRENDING</span>
-                          <DifficultyBadge difficulty={r.difficulty} />
-                          <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                          {r.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{r.cuisine}</span></>}
-                        </div>
-                        <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px' }}>{r.title}</h3>
-                        {TIPS[r.slug] && (
-                          <p style={{ fontSize: 11, color: C.text3, fontFamily: SANS, lineHeight: 1.4, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            &ldquo;{TIPS[r.slug].text}&rdquo; — @{TIPS[r.slug].user}
-                          </p>
-                        )}
-                        <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent, marginTop: 4, display: 'inline-block' }}>Cook this →</span>
-                      </div>
-                    </div>
-                  </div>
-                )
-              }
-
-              // ===== THREAD CARD =====
-              if (item.type === 'thread') {
-                const thread = item.data as { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }
-                const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
-                return (
-                  <Link key={item.key} href={communityThreads.length > 0 ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                    <div style={{
-                      padding: '14px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer',
-                      animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        {/* Upvote column */}
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, minWidth: 32, flexShrink: 0, paddingTop: 2 }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: 'rotate(-30deg)' }}>
-                            <circle cx="10" cy="12" r="7" /><line x1="17" y1="5" x2="22" y2="2" />
-                          </svg>
-                          <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: C.text2 }}>{thread.upvote_count}</span>
-                        </div>
-                        {/* Content */}
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                            <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 0.5 }}>DISCUSSION</span>
-                            {thread.tag && <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3, padding: '1px 6px', borderRadius: 3, background: tagStyle.bg, color: tagStyle.color }}>{thread.tag}</span>}
-                            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name}{thread.created_at ? ` · ${timeAgo(thread.created_at)}` : ''}</span>
-                          </div>
-                          <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: '0 0 4px' }}>{thread.title}</h3>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-                              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
-                            </div>
-                            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Join →</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <Link href={`/recipe/${rotdRecipe.slug}`} style={{ display: 'block', borderRadius: 10, overflow: 'hidden', background: C.warm, marginBottom: 12, aspectRatio: '16/9' }}>
+                    {rotdRecipe.image_url ? <img src={rotdRecipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
                   </Link>
-                )
-              }
-
-              // ===== EXTERNAL RECIPE CARD =====
-              if (item.type === 'external') {
-                const ext = item.data as { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }
-                const src = SOURCES[ext.source_name] || { color: C.text3, bg: C.cool }
-                return (
-                  <div key={item.key} style={{
-                    padding: '14px 0', borderBottom: `1px solid ${C.ruleLight}`,
-                    animation: `fadeIn 0.3s ease ${Math.min(i * 0.04, 0.3)}s both`,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                      <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: src.color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{ext.source_name}</span>
-                      {ext.cuisine && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
-                      {ext.time_estimate && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span></>}
-                    </div>
-                    <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                      <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: '0 0 6px' }}>{ext.title}</h3>
-                    </a>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10, fontFamily: SANS, color: C.text3, textDecoration: 'none' }}>View on {ext.source_name} →</a>
-                      {ext.matched_recipe_slug && (
-                        <Link href={`/recipe/${ext.matched_recipe_slug}`} style={{ display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-                          <div style={{ width: 4, height: 4, borderRadius: '50%', background: C.accent, flexShrink: 0 }} />
-                          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Similar on RecDex</span>
-                        </Link>
-                      )}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+                    <DifficultyBadge difficulty={rotdRecipe.difficulty} />
+                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(rotdRecipe.time_total)}</span>
+                    {rotdRecipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>{rotdRecipe.cuisine}</span></>}
                   </div>
-                )
-              }
-
-              return null
-            })}
-
-            {/* EXPLORE STRIP — compact navigation row */}
-            <div style={{ padding: '28px 0 8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
-                <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Explore</h2>
-                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{totalCount} recipes</span>
-              </div>
-
-              {/* Quick links row */}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-                {[
-                  { emoji: '🔥', label: 'Trending', href: '/trending' },
-                  { emoji: '💬', label: 'Community', href: '/community' },
-                  { emoji: '📖', label: 'Browse all', href: '/browse' },
-                  { emoji: '📋', label: 'Lists', href: '/lists' },
-                  { emoji: '✏️', label: 'Contribute', href: '/contribute' },
-                ].map(link => (
-                  <Link key={link.label} href={link.href} style={{
-                    display: 'flex', alignItems: 'center', gap: 6,
-                    padding: '10px 16px', borderRadius: 8,
-                    background: C.warm, border: `1px solid ${C.ruleLight}`,
-                    textDecoration: 'none', fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text2,
-                  }}>
-                    <span style={{ fontSize: 14 }}>{link.emoji}</span>{link.label}
-                  </Link>
-                ))}
-              </div>
-
-              {/* Cuisine pills */}
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: '0 0 8px' }}>By cuisine</p>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {categories.slice(0, 12).map(cat => (
-                    <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setView('browse') }} style={{
-                      padding: '5px 12px', borderRadius: 6, border: `1px solid ${C.ruleLight}`,
-                      background: 'transparent', color: C.text2, fontSize: 11, fontFamily: SANS, cursor: 'pointer',
-                    }}>
-                      {cat.name} <span style={{ color: C.text3, fontFamily: MONO, fontSize: 9 }}>{cat.recipe_count}</span>
+                  <h3 onClick={() => setQuickViewId(rotdRecipe.id)} style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: C.text, lineHeight: 1.2, margin: '0 0 6px', cursor: 'pointer' }}>{rotdRecipe.title}</h3>
+                  <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text2, lineHeight: 1.6, margin: '0 0 12px' }}>{rotdRecipe.description}</p>
+                  {TIPS[rotdRecipe.slug] && (
+                    <div style={{ padding: '8px 12px', background: C.cool, borderRadius: 6, borderLeft: `3px solid ${C.accent}`, marginBottom: 12 }}>
+                      <p style={{ fontSize: 12, color: C.text, fontFamily: SANS, lineHeight: 1.5, margin: 0 }}>
+                        <span style={{ fontWeight: 600, color: C.accent }}>@{TIPS[rotdRecipe.slug].user}</span> {TIPS[rotdRecipe.slug].text}
+                      </p>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => setQuickViewId(rotdRecipe.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
+                    <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+                      {rotdSaved ? 'Saved' : 'Save'}
                     </button>
-                  ))}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Cookbooks — compact horizontal scroll */}
-              <div style={{ marginBottom: 20 }}>
+            {/* 2. TRENDING ON RECDEX */}
+            {featuredRecipes.length > 0 && (
+              <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
+                {featuredRecipes.map(r => (
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 3. FROM THE WEB — external recipes */}
+            {externals.length > 0 && (
+              <CarouselRow title="From the Web">
+                {externals.map(ext => (
+                  <CarouselExternalCard key={ext.id} ext={ext} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 4. COMMUNITY PICKS — submissions */}
+            {submissions.length > 0 && (
+              <CarouselRow title="Community Picks" seeAllHref="/community">
+                {submissions.map(sub => (
+                  <CarouselCommunityCard key={sub.id} submission={sub} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 5. QUICK MEALS */}
+            {quickRecipes.length > 0 && (
+              <CarouselRow title="Quick Meals" seeAllHref="/browse">
+                {quickRecipes.map(r => (
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 6. COMMUNITY DISCUSSIONS */}
+            {threads.length > 0 && (
+              <CarouselRow title="Discussions" seeAllHref="/community">
+                {threads.map(t => (
+                  <CarouselThreadCard key={t.id} thread={t} hasRealData={communityThreads.length > 0} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 7. EXPLORE STRIP */}
+            <div style={{ padding: '28px clamp(16px,4vw,24px) 8px' }}>
+              <div style={{ maxWidth: 640, margin: '0 auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+                  <h2 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Explore</h2>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{totalCount} recipes</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+                  {[
+                    { emoji: '🔥', label: 'Trending', href: '/trending' },
+                    { emoji: '💬', label: 'Community', href: '/community' },
+                    { emoji: '📖', label: 'Browse all', href: '/browse' },
+                    { emoji: '📋', label: 'Lists', href: '/lists' },
+                    { emoji: '✏️', label: 'Contribute', href: '/contribute' },
+                  ].map(link => (
+                    <Link key={link.label} href={link.href} style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '10px 16px', borderRadius: 8,
+                      background: C.warm, border: `1px solid ${C.ruleLight}`,
+                      textDecoration: 'none', fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text2,
+                    }}>
+                      <span style={{ fontSize: 14 }}>{link.emoji}</span>{link.label}
+                    </Link>
+                  ))}
+                </div>
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: '0 0 8px' }}>By cuisine</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {categories.slice(0, 12).map(cat => (
+                      <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setView('browse') }} style={{
+                        padding: '5px 12px', borderRadius: 6, border: `1px solid ${C.ruleLight}`,
+                        background: 'transparent', color: C.text2, fontSize: 11, fontFamily: SANS, cursor: 'pointer',
+                      }}>
+                        {cat.name} <span style={{ color: C.text3, fontFamily: MONO, fontSize: 9 }}>{cat.recipe_count}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 8. COOKBOOKS */}
+            <div style={{ padding: '0 clamp(16px,4vw,24px) 20px' }}>
+              <div style={{ maxWidth: 640, margin: '0 auto' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                   <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: 0 }}>Essential cookbooks</p>
                   <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>via bookshop.org</span>
                 </div>
                 <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
-                  <style>{`div::-webkit-scrollbar{display:none}`}</style>
                   {BOOKS.map((book, i) => {
                     const stats = bookStats[book.key] || { likes: 0, owns: 0 }
                     return (
@@ -1949,13 +2166,17 @@ export default function Home() {
               </div>
             </div>
 
-            {/* MISSION — slim banner */}
-            <div style={{ padding: '20px 24px', borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`, marginBottom: 24, textAlign: 'center' }}>
-              <p style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>Recipes belong to everyone</p>
-              <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, lineHeight: 1.5, margin: '0 0 10px' }}>Free, ad-free, open commons for cooking knowledge.</p>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                <Link href="/contribute" style={{ padding: '8px 18px', borderRadius: 6, background: C.text, color: C.bg, fontSize: 11, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Contribute</Link>
-                <Link href="/about" style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 11, fontWeight: 500, fontFamily: SANS, textDecoration: 'none' }}>Learn more</Link>
+            {/* MISSION BANNER */}
+            <div style={{ padding: '0 clamp(16px,4vw,24px) 24px' }}>
+              <div style={{ maxWidth: 640, margin: '0 auto' }}>
+                <div style={{ padding: '20px 24px', borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`, textAlign: 'center' }}>
+                  <p style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>Recipes belong to everyone</p>
+                  <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, lineHeight: 1.5, margin: '0 0 10px' }}>Free, ad-free, open commons for cooking knowledge.</p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                    <Link href="/contribute" style={{ padding: '8px 18px', borderRadius: 6, background: C.text, color: C.bg, fontSize: 11, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Contribute</Link>
+                    <Link href="/about" style={{ padding: '8px 18px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 11, fontWeight: 500, fontFamily: SANS, textDecoration: 'none' }}>Learn more</Link>
+                  </div>
+                </div>
               </div>
             </div>
 

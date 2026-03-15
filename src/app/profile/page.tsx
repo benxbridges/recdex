@@ -266,13 +266,14 @@ export default function ProfilePage() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
@@ -712,53 +713,15 @@ export default function ProfilePage() {
           </section>
         )}
 
-        {/* ========== PHOTOS — carousel mockup ========== */}
-        <section style={{ marginBottom: 32 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-            <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Photos</h3>
-            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>COMING SOON</span>
-          </div>
-          <div className="hide-scrollbar" style={{
-            display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4,
-            scrollSnapType: 'x mandatory',
-          }}>
-            {[0, 1, 2, 3, 4].map(i => (
-              <div key={i} style={{
-                flexShrink: 0, width: isMobile ? 130 : 160, height: isMobile ? 130 : 160,
-                borderRadius: 10, background: i === 0 ? C.warm : C.cool,
-                border: `1.5px ${i === 0 ? 'dashed' : 'solid'} ${C.ruleLight}`,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-                scrollSnapAlign: 'start', cursor: 'pointer',
-              }}>
-                {i === 0 ? (
-                  <>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="1.5" strokeLinecap="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="M21 15l-5-5L5 21" />
-                    </svg>
-                    <span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>Add photo</span>
-                  </>
-                ) : (
-                  <>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.ruleLight} strokeWidth="1.5" strokeLinecap="round">
-                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
-                    </svg>
-                    <span style={{ fontSize: 10, fontFamily: SANS, color: C.ruleLight }}>Photo {i + 1}</span>
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div style={{ height: 1, background: C.rule, marginBottom: 28 }} />
 
         {/* ========== SAVED RECIPES — horizontal scroll ========== */}
         <section style={{ marginBottom: 36, paddingBottom: 20 }}>
           <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Saved Recipes</h3>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-              <p style={{ fontSize: 13, color: C.text3 }}>Loading recipes...</p>
+            <div style={{ textAlign: 'center', padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 18, height: 18, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+              <span style={{ fontSize: 13, color: C.text3 }}>Loading recipes</span>
             </div>
           ) : savedRecipes.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 20px' }}>

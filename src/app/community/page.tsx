@@ -61,12 +61,17 @@ export default function CommunityPage() {
   const fetchThreads = useCallback(async () => {
     setLoading(true)
     const orderCol = sortBy === 'top' ? 'upvote_count' : 'created_at'
-    const { data } = await supabase
-      .from('threads')
-      .select('*')
-      .order(orderCol, { ascending: false })
-      .limit(50)
-    if (data) setThreads(data)
+    try {
+      const { data, error } = await supabase
+        .from('threads')
+        .select('*')
+        .order(orderCol, { ascending: false })
+        .limit(50)
+      if (error) throw error
+      if (data) setThreads(data)
+    } catch (err) {
+      console.error('[community] Failed to load threads:', err)
+    }
     setLoading(false)
   }, [sortBy])
 
@@ -142,13 +147,14 @@ export default function CommunityPage() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <Link href="/" style={{ color: C.text2, textDecoration: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Home</Link>
@@ -310,8 +316,9 @@ export default function CommunityPage() {
 
         {/* Thread list */}
         {loading ? (
-          <div style={{ padding: '60px 0', textAlign: 'center', fontFamily: SANS, fontSize: 13, color: C.text3 }}>
-            Loading threads...
+          <div style={{ padding: '60px 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 18, height: 18, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            <span style={{ fontFamily: SANS, fontSize: 13, color: C.text3 }}>Loading threads</span>
           </div>
         ) : threads.length === 0 ? (
           <div style={{ padding: '60px 0', textAlign: 'center' }}>

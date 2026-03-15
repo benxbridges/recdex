@@ -140,19 +140,24 @@ export default function TrendingPage() {
       `}</style>
 
       {/* Header */}
-      <header style={{
-        padding: '16px 24px', borderBottom: `1px solid ${C.ruleLight}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <Link href="/" style={{ textDecoration: 'none', color: C.text, fontFamily: SERIF, fontSize: 20, fontWeight: 700 }}>
-          Recipe Index<span style={{ color: C.accent }}>.</span>
-        </Link>
-        <nav style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Browse</Link>
-          <Link href="/contribute" style={{ color: C.text2, textDecoration: 'none', fontSize: 13, fontWeight: 500 }}>Contribute</Link>
-          <Link href="/trending" style={{ color: C.accent, textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>Trending</Link>
-          <ThemeToggle />
-        </nav>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Link href="/" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+                Recipe Index<span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
+              </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
+              <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
+              <Link href="/contribute" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Contribute</Link>
+              <div style={{ width: 1, height: 14, background: C.rule }} />
+              <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>Trending</span>
+              <ThemeToggle />
+            </div>
+          </div>
+        </div>
       </header>
 
       <main style={{ maxWidth: 1080, margin: '0 auto', padding: '32px 20px 60px' }}>

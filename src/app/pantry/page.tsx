@@ -199,13 +199,14 @@ export default function PantryPage() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
               <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
@@ -579,20 +580,6 @@ export default function PantryPage() {
               </>
             )}
 
-            {/* Photo scan teaser */}
-            <div style={{
-              marginTop: 32, padding: '20px 24px', borderRadius: 10,
-              background: C.accentBg, border: `1px solid ${C.accentMed}`,
-              textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 24, marginBottom: 8 }}>📷</div>
-              <p style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 4px' }}>
-                Photo scanning coming soon
-              </p>
-              <p style={{ fontSize: 12, color: C.text2, lineHeight: 1.5, margin: 0 }}>
-                Snap your fridge or pantry and we&apos;ll identify what you have automatically.
-              </p>
-            </div>
           </div>
         )}
       </div>
