@@ -972,7 +972,7 @@ function CardFooter({ commentCount, cta, ctaColor }: { commentCount?: number; ct
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
       padding: '8px 12px', marginTop: 'auto', flexShrink: 0,
-      background: C.accentBg, borderTop: `1px solid ${C.ruleLight}`,
+      background: C.cool, borderTop: `1.5px solid ${C.accent}`,
       borderRadius: '0 0 7px 7px',
     }}>
       {(commentCount !== undefined && commentCount > 0) && (
@@ -1152,7 +1152,7 @@ function CarouselThreadCard({ thread, hasRealData, isMobile }: {
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
           padding: '8px 12px', flexShrink: 0,
-          background: C.accentBg, borderTop: `1px solid ${C.ruleLight}`,
+          background: C.cool, borderTop: `1.5px solid ${C.accent}`,
           borderRadius: '0 0 7px 7px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
