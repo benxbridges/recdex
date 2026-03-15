@@ -969,13 +969,18 @@ function CardSaveOverlay({ id, saved, onToggle }: { id: string; saved: boolean; 
 
 function CardFooter({ commentCount, cta, ctaColor }: { commentCount?: number; cta: string; ctaColor?: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto', paddingTop: 6 }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '8px 12px', marginTop: 'auto', flexShrink: 0,
+      background: C.accentBg, borderTop: `1px solid ${C.ruleLight}`,
+      borderRadius: '0 0 7px 7px',
+    }}>
       {(commentCount !== undefined && commentCount > 0) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{commentCount}</span>
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{commentCount}</span>
         </div>
       )}
       <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: ctaColor || C.accent, marginLeft: 'auto' }}>{cta}</span>
@@ -1005,18 +1010,18 @@ function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave
         }
         {onToggleSave && <CardSaveOverlay id={recipe.id} saved={!!saved} onToggle={onToggleSave} />}
       </div>
-      <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
         <h3 style={{
           fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 6px',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
         }}>{recipe.title}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
           <DifficultyBadge difficulty={recipe.difficulty} />
           <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_total)}</span>
           {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 7 }}>·</span><span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{recipe.cuisine}</span></>}
         </div>
-        <CardFooter commentCount={commentCount} cta="Cook this →" />
       </div>
+      <CardFooter commentCount={commentCount} cta="Cook this →" />
     </div>
   )
 }
@@ -1051,14 +1056,14 @@ function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: str
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>{ext.title}</h3>
         </div>
-        <div style={{ padding: '10px 12px 12px', background: C.warm, display: 'flex', flexDirection: 'column', flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+        <div style={{ padding: '10px 12px 8px', background: C.warm, flex: 1, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             {ext.cuisine && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
             {ext.cuisine && ext.time_estimate && <span style={{ color: C.rule, fontSize: 7 }}>·</span>}
             {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
           </div>
-          <CardFooter cta={`Read on ${ext.source_name} →`} />
         </div>
+        <CardFooter cta={`Read on ${ext.source_name} →`} />
       </div>
     </a>
   )
@@ -1093,18 +1098,14 @@ function CarouselCommunityCard({ submission, isMobile }: { submission: Community
             <PlatformBadge platform={submission.platform} />
           </div>
         </div>
-        <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+        <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
           <h3 style={{
             fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>{submission.title}</h3>
-          {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '0 0 4px' }}>by {submission.author_name}</p>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{submission.upvote_count}</span>
-            <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent, marginLeft: 'auto' }}>Watch →</span>
-          </div>
+          {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: 0 }}>by {submission.author_name}</p>}
         </div>
+        <CardFooter cta="Watch →" />
       </div>
     </a>
   )
@@ -1141,23 +1142,28 @@ function CarouselThreadCard({ thread, hasRealData, isMobile }: {
           </svg>
           {thread.tag && <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 4, background: 'rgba(0,0,0,0.1)', color: tagStyle.color }}>{thread.tag}</span>}
         </div>
-        <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginBottom: 4 }}>@{thread.author_display_name}</span>
+        <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginBottom: 4, display: 'block' }}>@{thread.author_display_name}</span>
           <h3 style={{
             fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>{thread.title}</h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto', paddingTop: 6 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
-              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.upvote_count}</span>
-            </div>
-            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500, marginLeft: 'auto' }}>Join →</span>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '8px 12px', flexShrink: 0,
+          background: C.accentBg, borderTop: `1px solid ${C.ruleLight}`,
+          borderRadius: '0 0 7px 7px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{thread.reply_count}</span>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+            <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{thread.upvote_count}</span>
+          </div>
+          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 600, marginLeft: 'auto' }}>Join →</span>
         </div>
       </div>
     </Link>
