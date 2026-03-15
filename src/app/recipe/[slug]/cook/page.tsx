@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { classifySteps, phaseColor, type StepSection, type CookingPhase } from '@/app/lib/classify-steps'
+import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
 import ThemeToggle from '@/app/components/ThemeToggle'
 
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -47,6 +49,118 @@ function formatTimerDisplay(seconds: number): string {
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
+}
+
+// Phase section icons
+function KnifeIcon({ size = 14, color }: { size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 2L3.5 7.5C2 9 2 11 3 12s3 1 4.5-.5L13 6" />
+      <path d="M13 6l8 8" />
+    </svg>
+  )
+}
+
+function FlameIcon({ size = 14, color }: { size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2c1 4-2 7-2 10a4 4 0 0 0 8 0c0-3-3-6-2-10" />
+      <path d="M12 18a2 2 0 0 1-2-2c0-1 1-2 2-3 1 1 2 2 2 3a2 2 0 0 1-2 2z" />
+    </svg>
+  )
+}
+
+function PlateIcon({ size = 14, color }: { size?: number; color: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="4" />
+    </svg>
+  )
+}
+
+function PhaseIcon({ phase, size, color }: { phase: CookingPhase; size?: number; color: string }) {
+  switch (phase) {
+    case 'prep': return <KnifeIcon size={size} color={color} />
+    case 'cook': return <FlameIcon size={size} color={color} />
+    case 'finish': return <PlateIcon size={size} color={color} />
+  }
+}
+
+function SectionHeader({ section, isMobile }: { section: StepSection; isMobile: boolean }) {
+  const { color, bg } = phaseColor(section.phase)
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      margin: isMobile ? '18px 0 8px' : '24px 0 10px',
+      animation: 'fadeIn 0.2s ease',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '4px 12px 4px 8px', borderRadius: 20,
+        background: bg,
+      }}>
+        <PhaseIcon phase={section.phase} size={13} color={color} />
+        <span style={{
+          fontSize: 10, fontWeight: 700, color,
+          textTransform: 'uppercase', letterSpacing: 1.5,
+          fontFamily: SANS,
+        }}>
+          {section.label}
+        </span>
+        <span style={{ fontSize: 10, color, fontFamily: MONO, opacity: 0.7 }}>
+          · {section.steps.length}
+        </span>
+      </div>
+      <div style={{ flex: 1, height: 1, background: bg }} />
+    </div>
+  )
+}
+
+// Tip indicator + popover
+function TipBadge({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onToggle() }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '3px 8px', borderRadius: 12,
+        border: `1px solid ${isOpen ? C.gold : C.ruleLight}`,
+        background: isOpen ? C.goldBg : 'transparent',
+        color: C.gold, fontSize: 10, fontWeight: 600,
+        cursor: 'pointer', fontFamily: SANS,
+        transition: 'all 0.15s',
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18h6" /><path d="M10 22h4" />
+        <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+      </svg>
+      Tip
+    </button>
+  )
+}
+
+function TipPopover({ tip, onClose }: { tip: CookingTip; onClose: () => void }) {
+  return (
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{
+        marginTop: 10, padding: '14px 16px', borderRadius: 10,
+        background: C.goldBg, border: `1.5px solid ${C.gold}`,
+        animation: 'slideUp 0.15s ease',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: C.gold, margin: 0, fontFamily: SANS }}>{tip.title}</p>
+        <button onClick={e => { e.stopPropagation(); onClose() }} style={{
+          background: 'none', border: 'none', color: C.text3, fontSize: 14,
+          cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+        }}>×</button>
+      </div>
+      <p style={{ fontSize: 12, color: C.text, margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{tip.tip}</p>
+    </div>
+  )
 }
 
 // Inline timer
@@ -106,6 +220,7 @@ export default function CookModePage() {
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [checkedIngredients, setCheckedIngredients] = useState<Record<number, boolean>>({})
   const [timerAlerts, setTimerAlerts] = useState<{ key: string; label: string }[]>([])
+  const [openTip, setOpenTip] = useState<string | null>(null)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
 
   const toggleIngredient = (index: number) => {
@@ -122,8 +237,13 @@ export default function CookModePage() {
   useEffect(() => {
     async function fetchRecipe() {
       setLoading(true)
-      const { data } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
-      if (data) setRecipe(data)
+      try {
+        const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
+        if (error) throw error
+        if (data) setRecipe(data)
+      } catch (err) {
+        console.error('[cook] Failed to load recipe:', err)
+      }
       setLoading(false)
     }
     if (slug) fetchRecipe()
@@ -157,6 +277,7 @@ export default function CookModePage() {
 
   const goToStep = useCallback((step: number) => {
     setActiveStep(step)
+    setOpenTip(null)
     // Scroll the step into view
     setTimeout(() => {
       stepRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -206,8 +327,9 @@ export default function CookModePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 14, color: C.text3 }}>Loading...</p>
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ width: 22, height: 22, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <span style={{ fontSize: 13, color: C.text3 }}>Loading cook mode</span>
       </div>
     )
   }
@@ -224,8 +346,8 @@ export default function CookModePage() {
   if (!recipe.steps || recipe.steps.length === 0) {
     return (
       <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <p style={{ fontSize: 16, color: C.text2, fontFamily: SERIF }}>Steps coming soon for this recipe</p>
-        <p style={{ fontSize: 12, color: C.text3, fontFamily: SANS }}>Check back later — we&apos;re still working on it.</p>
+        <p style={{ fontSize: 16, color: C.text2, fontFamily: SERIF }}>No steps available for this recipe</p>
+        <p style={{ fontSize: 12, color: C.text3, fontFamily: SANS }}>This recipe doesn&apos;t have step-by-step instructions yet.</p>
         <button onClick={() => router.push(`/recipe/${slug}`)} style={{ padding: '10px 20px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>← Back to recipe</button>
       </div>
     )
@@ -234,13 +356,25 @@ export default function CookModePage() {
   const total = recipe.steps.length
   const ingredientItems = getIngredientItems(recipe.ingredients)
   const isLastStep = activeStep >= total - 1
+  const sections = classifySteps(recipe.steps)
+
+  // Build a flat map: stepIndex → phase (for progress bar coloring & step counter label)
+  const stepPhaseMap: CookingPhase[] = []
+  for (const section of sections) {
+    for (const s of section.steps) {
+      stepPhaseMap[s.originalIndex] = s.phase
+    }
+  }
+  const currentPhase = activeStep < total ? stepPhaseMap[activeStep] : null
+  const currentPhaseLabel = currentPhase ? { prep: 'Prep', cook: 'Cook', finish: 'Finish' }[currentPhase] : null
 
   // Dock magnification: compute scale for each step based on distance from active
   function getStepScale(index: number): { scale: number; opacity: number; fontSize: number; padding: string } {
     const distance = Math.abs(index - activeStep)
     if (distance === 0) return { scale: 1, opacity: 1, fontSize: 18, padding: '24px 22px' }
-    if (distance === 1) return { scale: 0.95, opacity: 0.7, fontSize: 14, padding: '14px 18px' }
-    return { scale: 0.9, opacity: 0.45, fontSize: 13, padding: '10px 18px' }
+    if (distance === 1) return { scale: 0.97, opacity: 0.85, fontSize: 15, padding: '16px 18px' }
+    if (distance === 2) return { scale: 0.95, opacity: 0.65, fontSize: 14, padding: '12px 18px' }
+    return { scale: 0.93, opacity: 0.5, fontSize: 13, padding: '10px 18px' }
   }
 
   return (
@@ -292,16 +426,39 @@ export default function CookModePage() {
               </button>
             )}
             <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+              {currentPhaseLabel && sections.length > 1 && (
+                <span style={{ color: currentPhase ? phaseColor(currentPhase).color : C.text3, fontWeight: 600 }}>{currentPhaseLabel} · </span>
+              )}
               {activeStep + 1}/{total}
             </span>
             <ThemeToggle />
           </div>
         </div>
         {/* Progress bar */}
-        <div style={{ maxWidth: 1060, margin: '10px auto 0', display: 'flex', gap: 3 }}>
-          {recipe.steps.map((_, i) => (
-            <div key={i} onClick={() => goToStep(i)} style={{ flex: 1, height: 4, borderRadius: 2, cursor: 'pointer', background: i < activeStep ? C.green : i === activeStep ? C.accent : C.ruleLight, transition: 'background 0.3s' }} />
-          ))}
+        <div style={{ maxWidth: 1060, margin: '10px auto 0', display: 'flex', gap: 0 }}>
+          {sections.length > 1 ? (
+            sections.map((section, si) => (
+              <div key={section.phase} style={{ display: 'flex', gap: 3, flex: section.steps.length, marginLeft: si > 0 ? 6 : 0 }}>
+                {section.steps.map((s) => {
+                  const i = s.originalIndex
+                  const completed = i < activeStep
+                  const active = i === activeStep
+                  const { color } = phaseColor(s.phase)
+                  return (
+                    <div key={i} onClick={() => goToStep(i)} style={{
+                      flex: 1, height: 4, borderRadius: 2, cursor: 'pointer',
+                      background: completed ? color : active ? C.accent : C.ruleLight,
+                      transition: 'background 0.3s',
+                    }} />
+                  )
+                })}
+              </div>
+            ))
+          ) : (
+            recipe.steps.map((_, i) => (
+              <div key={i} onClick={() => goToStep(i)} style={{ flex: 1, height: 4, borderRadius: 2, cursor: 'pointer', marginLeft: i > 0 ? 3 : 0, background: i < activeStep ? C.green : i === activeStep ? C.accent : C.ruleLight, transition: 'background 0.3s' }} />
+            ))
+          )}
         </div>
       </div>
 
@@ -378,135 +535,132 @@ export default function CookModePage() {
         </div>
       )}
 
-      {/* MAIN CONTENT: Ingredients sidebar + Steps */}
+      {/* MAIN CONTENT: Steps + Ingredients sidebar */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-
-        {/* Ingredients sidebar (desktop only) */}
-        {!isMobile && ingredientItems.length > 0 && (
-          <div style={{
-            width: 260, flexShrink: 0, borderRight: `1px solid ${C.rule}`,
-            overflowY: 'auto', padding: '24px 24px 40px',
-            background: C.warm,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
-              <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
-              {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length}</span>}
-            </div>
-            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 14px' }}>serves {recipe.servings || 4}</p>
-            <div style={{ height: 1, background: C.rule, marginBottom: 14 }} />
-            {ingredientItems.map((item, i) => (
-              <p key={i} onClick={() => toggleIngredient(i)} style={{
-                fontSize: 13, color: checkedIngredients[i] ? C.text3 : C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.55,
-                cursor: 'pointer', userSelect: 'none' as const,
-                textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
-                opacity: checkedIngredients[i] ? 0.45 : 1, transition: 'all 0.15s',
-              }}>
-                {item.name}
-                {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
-                {item.notes && <span style={{ color: C.text3, fontSize: 12 }}> ({item.notes})</span>}
-              </p>
-            ))}
-          </div>
-        )}
 
         {/* Steps area */}
         <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '20px 20px 120px' : '28px 40px 120px' }}>
           <div style={{ maxWidth: 620, margin: '0 auto' }}>
-            {recipe.steps.map((s, i) => {
-              const isActive = i === activeStep
-              const isCompleted = i < activeStep
-              const { opacity, fontSize, padding } = getStepScale(i)
+            {sections.map((section, si) => (
+              <div key={section.phase + si}>
+                {/* Section header — only when multiple sections */}
+                {sections.length > 1 && (
+                  <SectionHeader section={section} isMobile={isMobile} />
+                )}
+                {section.steps.map((s) => {
+                  const i = s.originalIndex
+                  const isActive = i === activeStep
+                  const isCompleted = i < activeStep
+                  const { opacity, fontSize, padding } = getStepScale(i)
 
-              return (
-                <div
-                  key={i}
-                  ref={el => { stepRefs.current[i] = el }}
-                  onClick={() => goToStep(i)}
-                  style={{
-                    padding,
-                    marginBottom: isActive ? 8 : 4,
-                    borderRadius: isActive ? 10 : 6,
-                    cursor: 'pointer',
-                    background: isActive ? C.accentBg : 'transparent',
-                    border: isActive ? `1.5px solid ${C.accentMed}` : '1.5px solid transparent',
-                    opacity,
-                    transform: `scale(${isActive ? 1 : getStepScale(i).scale})`,
-                    transformOrigin: 'left center',
-                    transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                  }}
-                >
-                  {/* Step number + text */}
-                  <div style={{ display: 'flex', gap: isActive ? 16 : 12, alignItems: 'flex-start' }}>
-                    <div style={{
-                      width: isActive ? 36 : 28, height: isActive ? 36 : 28,
-                      borderRadius: isActive ? 8 : 4, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontFamily: MONO, fontSize: isActive ? 15 : 12, fontWeight: 700,
-                      background: isCompleted ? C.greenBg : isActive ? C.accent : C.ruleLight,
-                      color: isCompleted ? C.green : isActive ? '#fff' : C.text3,
-                      transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                    }}>
-                      {isCompleted ? '✓' : i + 1}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{
-                        fontFamily: isActive ? SERIF : SANS,
-                        fontSize,
-                        lineHeight: isActive ? 1.7 : 1.55,
-                        color: isCompleted ? C.text3 : C.text,
-                        margin: 0, fontWeight: 400,
-                        transition: 'font-size 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-                      }}>
-                        {s.text}
-                      </p>
+                  return (
+                    <div
+                      key={i}
+                      ref={el => { stepRefs.current[i] = el }}
+                      onClick={() => goToStep(i)}
+                      style={{
+                        padding,
+                        marginBottom: isActive ? 8 : 4,
+                        borderRadius: isActive ? 10 : 6,
+                        cursor: 'pointer',
+                        background: isActive ? C.accentBg : 'transparent',
+                        border: isActive ? `1.5px solid ${C.accentMed}` : `1px solid ${C.rule}`,
+                        opacity,
+                        transform: `scale(${isActive ? 1 : getStepScale(i).scale})`,
+                        transformOrigin: 'left center',
+                        transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                    >
+                      {/* Step number + text + tip */}
+                      <div style={{ display: 'flex', gap: isActive ? 16 : 12, alignItems: 'flex-start' }}>
+                        <div style={{
+                          width: isActive ? 36 : 28, height: isActive ? 36 : 28,
+                          borderRadius: isActive ? 8 : 4, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontFamily: MONO, fontSize: isActive ? 15 : 12, fontWeight: 700,
+                          background: isCompleted ? C.greenBg : isActive ? C.accent : C.ruleLight,
+                          color: isCompleted ? C.green : isActive ? '#fff' : C.text3,
+                          transition: 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                        }}>
+                          {isCompleted ? '✓' : i + 1}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{
+                            fontFamily: isActive ? SERIF : SANS,
+                            fontSize,
+                            lineHeight: isActive ? 1.7 : 1.55,
+                            color: isCompleted ? C.text3 : C.text,
+                            margin: 0, fontWeight: 400,
+                            transition: 'font-size 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+                          }}>
+                            {s.text}
+                          </p>
 
-                      {/* Timer (show on active step, or if a timer is running) */}
-                      {s.timer_minutes && (isActive || timers[`${recipe.id}-${i}`]?.active) && (
-                        <InlineTimer minutes={s.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
-                      )}
-
-                      {/* Navigation buttons — only on the active step */}
-                      {isActive && (
-                        <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', animation: 'slideUp 0.25s ease 0.1s both' }}>
-                          {activeStep > 0 && (
-                            <button onClick={e => { e.stopPropagation(); goToStep(activeStep - 1) }} style={{
-                              padding: '11px 18px', borderRadius: 6,
-                              border: `1.5px solid ${C.rule}`, background: 'transparent',
-                              color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-                              display: 'flex', alignItems: 'center', gap: 6,
-                            }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
-                              Back
-                            </button>
+                          {/* Timer (show on active step, or if a timer is running) */}
+                          {s.timer_minutes && (isActive || timers[`${recipe.id}-${i}`]?.active) && (
+                            <InlineTimer minutes={s.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
                           )}
-                          {!isLastStep ? (
-                            <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
-                              padding: '11px 28px', borderRadius: 6, border: 'none',
-                              background: C.text, color: C.bg,
-                              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-                              display: 'flex', alignItems: 'center', gap: 8,
-                            }}>
-                              Next step
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
-                            </button>
-                          ) : (
-                            <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
-                              padding: '11px 28px', borderRadius: 6, border: 'none',
-                              background: C.green, color: '#fff',
-                              fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-                              display: 'flex', alignItems: 'center', gap: 8,
-                            }}>
-                              Finish cooking
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                            </button>
+
+                          {/* Navigation buttons — only on the active step */}
+                          {isActive && (
+                            <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', animation: 'slideUp 0.25s ease 0.1s both' }}>
+                              {activeStep > 0 && (
+                                <button onClick={e => { e.stopPropagation(); goToStep(activeStep - 1) }} style={{
+                                  padding: '11px 18px', borderRadius: 6,
+                                  border: `1.5px solid ${C.rule}`, background: 'transparent',
+                                  color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                                  display: 'flex', alignItems: 'center', gap: 6,
+                                }}>
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+                                  Back
+                                </button>
+                              )}
+                              {!isLastStep ? (
+                                <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
+                                  padding: '11px 28px', borderRadius: 6, border: 'none',
+                                  background: C.text, color: C.bg,
+                                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                }}>
+                                  Next step
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+                                </button>
+                              ) : (
+                                <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
+                                  padding: '11px 28px', borderRadius: 6, border: 'none',
+                                  background: C.green, color: '#fff',
+                                  fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                }}>
+                                  Finish cooking
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                                </button>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                        {/* Cooking technique tip badge — pinned right */}
+                        {(() => {
+                          const stepTip = getTipsForStep(s.text)
+                          if (!stepTip) return null
+                          return (
+                            <div style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: isActive ? 4 : 2 }}>
+                              <TipBadge isOpen={openTip === stepTip.id} onToggle={() => setOpenTip(openTip === stepTip.id ? null : stepTip.id)} />
+                            </div>
+                          )
+                        })()}
+                      </div>
+                      {/* Tip popover — full width below the step row */}
+                      {(() => {
+                        const stepTip = getTipsForStep(s.text)
+                        if (!stepTip || openTip !== stepTip.id) return null
+                        return <TipPopover tip={stepTip} onClose={() => setOpenTip(null)} />
+                      })()}
                     </div>
-                  </div>
-                </div>
-              )
-            })}
+                  )
+                })}
+              </div>
+            ))}
 
             {/* Completion — feedback flow */}
             {activeStep >= total && (
@@ -669,6 +823,34 @@ export default function CookModePage() {
             )}
           </div>
         </div>
+
+        {/* Ingredients sidebar (desktop only, RIGHT side) */}
+        {!isMobile && ingredientItems.length > 0 && (
+          <div style={{
+            width: 260, flexShrink: 0, borderLeft: `1px solid ${C.rule}`,
+            overflowY: 'auto', padding: '24px 24px 40px',
+            background: C.warm,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 4 }}>
+              <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+              {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length}</span>}
+            </div>
+            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '0 0 14px' }}>serves {recipe.servings || 4}</p>
+            <div style={{ height: 1, background: C.rule, marginBottom: 14 }} />
+            {ingredientItems.map((item, i) => (
+              <p key={i} onClick={() => toggleIngredient(i)} style={{
+                fontSize: 13, color: checkedIngredients[i] ? C.text3 : C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.55,
+                cursor: 'pointer', userSelect: 'none' as const,
+                textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
+                opacity: checkedIngredients[i] ? 0.45 : 1, transition: 'all 0.15s',
+              }}>
+                {item.name}
+                {item.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {item.amount}{item.unit ? ` ${item.unit}` : ''}</span>}
+                {item.notes && <span style={{ color: C.text3, fontSize: 12 }}> ({item.notes})</span>}
+              </p>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

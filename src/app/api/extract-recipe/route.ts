@@ -93,7 +93,7 @@ Return a single JSON object with exactly these fields:
   "time_active": number (active hands-on cooking time in minutes) | null,
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
-  "steps": [{ "step": number, "text": string, "timer_minutes": number | null }],
+  "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook" | "finish", "tip": string | null }],
   "confidence": "high" | "medium" | "low"
 }
 
@@ -103,6 +103,8 @@ Rules:
 - "notes" is optional info like "room temperature", "divided", "or to taste"
 - Steps must be clear imperative sentences in neutral instructional tone, numbered from 1
 - Write steps as you would for a general cooking reference — direct, concise, no personality or flair
+- Classify each step's "phase" as: "prep" (ingredient preparation, preheating, mixing before cooking), "cook" (active cooking on heat — sautéing, baking, boiling, frying), or "finish" (plating, garnishing, resting, serving)
+- If a step involves a technique where a brief educational note would help a home cook, add a "tip" — a 1-2 sentence technique explanation in a warm, slightly conversational tone. Only add tips for steps where technique genuinely matters (e.g., searing, deglazing, resting meat). Most steps should have tip: null.
 - confidence "high" = complete recipe with exact measurements, "medium" = most measurements present, "low" = reconstructed from transcript or minimal info
 
 IMPORTANT — handling spoken transcripts:

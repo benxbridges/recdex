@@ -721,8 +721,13 @@ export default function RecipePage() {
   useEffect(() => {
     async function fetchRecipe() {
       setLoading(true)
-      const { data } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
-      if (data) setRecipe(data)
+      try {
+        const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
+        if (error) throw error
+        if (data) setRecipe(data)
+      } catch (err) {
+        console.error('[recipe] Failed to load recipe:', err)
+      }
       setLoading(false)
     }
     if (slug) fetchRecipe()
@@ -825,8 +830,9 @@ export default function RecipePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 14, color: C.text3 }}>Loading...</p>
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ width: 22, height: 22, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <span style={{ fontSize: 13, color: C.text3 }}>Loading recipe</span>
       </div>
     )
   }
@@ -1095,7 +1101,7 @@ export default function RecipePage() {
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
             <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Ingredients</h2>
-            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Full ingredient list coming soon. Know this recipe? You can help by contributing.</p>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No ingredients listed yet for this recipe.</p>
           </div>
         )}
 
@@ -1132,9 +1138,14 @@ export default function RecipePage() {
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
             <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
-            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Step-by-step instructions coming soon.</p>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
           </div>
         )}
+
+        <div style={{ height: 1, background: C.rule }} />
+
+        {/* ===== KITCHEN CONSENSUS ===== */}
+        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         <div style={{ height: 1, background: C.rule }} />
 
@@ -1148,11 +1159,6 @@ export default function RecipePage() {
             </div>
           </div>
         )}
-
-        <div style={{ height: 1, background: C.rule }} />
-
-        {/* ===== KITCHEN CONSENSUS ===== */}
-        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         {/* ===== COMMUNITY NOTES ===== */}
         <div style={{ paddingTop: 28, paddingBottom: 28 }}>
