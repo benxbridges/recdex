@@ -1685,7 +1685,15 @@ export default function Home() {
   // Fallback slugs (used when no activity data exists)
   const FALLBACK_SLUGS = ['shakshouka', 'pad-thai', 'chicken-tikka-masala', 'chocolate-chip-cookies', 'carbonara']
   const QUICK_SLUGS = ['guacamole', 'hummus', 'scrambled-eggs', 'aglio-e-olio', 'fried-rice', 'pesto-alla-genovese']
-  const ROTD_SLUG = 'cacio-e-pepe'
+  // Deterministic daily rotation: pick a recipe based on the date
+  // Uses a better scatter so consecutive days don't pick adjacent recipes
+  function getRotdIndex(total: number): number {
+    const d = new Date()
+    // Days since epoch — simple, stable seed
+    const daysSinceEpoch = Math.floor(d.getTime() / 86400000)
+    // Multiply by a large prime to scatter, then mod
+    return ((daysSinceEpoch * 2654435761) >>> 0) % total
+  }
 
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([])
   const [quickRecipes, setQuickRecipes] = useState<Recipe[]>([])
@@ -1713,8 +1721,10 @@ export default function Home() {
       const { data: allRecipes } = await supabase.from('recipes').select('*').eq('status', 'published')
       if (!allRecipes) return
 
-      // Set Recipe of the Day
-      setRotdRecipe(allRecipes.find(r => r.slug === ROTD_SLUG) || allRecipes[0])
+      // Set Recipe of the Day — rotates daily based on date hash
+      const rotdIdx = getRotdIndex(allRecipes.length)
+      const todaysRotd = allRecipes[rotdIdx]
+      setRotdRecipe(todaysRotd)
 
       // 2. Get comment counts per recipe from Supabase
       const { data: commentData } = await supabase.from('comments').select('recipe_id')
@@ -1742,7 +1752,7 @@ export default function Home() {
 
       // 4. Score each recipe: comments×3 + saves×2 + cooks×1
       const scored = allRecipes
-        .filter(r => r.slug !== ROTD_SLUG) // exclude Recipe of the Day
+        .filter(r => r.id !== todaysRotd?.id) // exclude Recipe of the Day
         .map(r => ({
           recipe: r,
           score: (commentCounts[r.id] || 0) * 3
