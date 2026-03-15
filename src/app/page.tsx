@@ -940,30 +940,72 @@ function CarouselRow({ title, seeAllHref, children }: { title: string; seeAllHre
 }
 
 // ===== CAROUSEL CARDS =====
-const CARD_W = 200
-const CARD_IMG_H = 130
+const CARD_W = 220
+const CARD_W_M = 165
+const CARD_IMG_H = 140
+const CARD_IMG_H_M = 110
+const CARD_H = 280
+const CARD_H_M = 240
 
-function CarouselRecipeCard({ recipe, onQuickView, isMobile }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean }) {
-  const w = isMobile ? 155 : CARD_W
-  const imgH = isMobile ? 100 : CARD_IMG_H
+function CardSaveOverlay({ id, saved, onToggle }: { id: string; saved: boolean; onToggle: (id: string) => void }) {
+  return (
+    <button
+      onClick={e => { e.preventDefault(); e.stopPropagation(); onToggle(id) }}
+      style={{
+        position: 'absolute', top: 8, right: 8, zIndex: 3,
+        width: 30, height: 30, borderRadius: '50%',
+        background: saved ? C.accent : 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)',
+        border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s', padding: 0,
+      }}
+      aria-label={saved ? 'Unsave recipe' : 'Save recipe'}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? '#fff' : 'none'} stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
+    </button>
+  )
+}
+
+function CardFooter({ commentCount, cta, ctaColor }: { commentCount?: number; cta: string; ctaColor?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto', paddingTop: 6 }}>
+      {(commentCount !== undefined && commentCount > 0) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{commentCount}</span>
+        </div>
+      )}
+      <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: ctaColor || C.accent, marginLeft: 'auto' }}>{cta}</span>
+    </div>
+  )
+}
+
+function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave, commentCount }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean; saved?: boolean; onToggleSave?: (id: string) => void; commentCount?: number }) {
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
   return (
     <div
       onClick={() => onQuickView(recipe.id)}
       style={{
-        width: w, flexShrink: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+        width: w, height: h, flexShrink: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
         border: `1px solid ${C.ruleLight}`, background: C.warm, scrollSnapAlign: 'start',
-        transition: 'transform 0.15s, box-shadow 0.15s',
+        transition: 'transform 0.15s, box-shadow 0.15s', display: 'flex', flexDirection: 'column',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
     >
-      <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool }}>
+      <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool, position: 'relative', flexShrink: 0 }}>
         {recipe.image_url
           ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <BrokenEggCard />
         }
+        {onToggleSave && <CardSaveOverlay id={recipe.id} saved={!!saved} onToggle={onToggleSave} />}
       </div>
-      <div style={{ padding: '10px 12px 12px' }}>
+      <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
         <h3 style={{
           fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 6px',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
@@ -973,7 +1015,7 @@ function CarouselRecipeCard({ recipe, onQuickView, isMobile }: { recipe: Recipe;
           <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_total)}</span>
           {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 7 }}>·</span><span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{recipe.cuisine}</span></>}
         </div>
-        <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook this →</span>
+        <CardFooter commentCount={commentCount} cta="Cook this →" />
       </div>
     </div>
   )
@@ -986,34 +1028,36 @@ const EXTERNAL_SOURCE_COLORS: Record<string, { bg: string; bgLight: string; text
 }
 
 function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean }) {
-  const w = isMobile ? 155 : CARD_W
-  const imgH = isMobile ? 100 : CARD_IMG_H
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
   const sc = EXTERNAL_SOURCE_COLORS[ext.source_name] || { bg: C.text3, bgLight: C.cool, text: '#FFF' }
   return (
     <a href={ext.source_url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
       <div
         style={{
-          width: w, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          width: w, height: h, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
           border: `1px solid ${C.ruleLight}`, transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'flex', flexDirection: 'column',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
       >
         {/* Colored header */}
-        <div style={{ width: w, height: imgH, background: sc.bg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 14px' }}>
+        <div style={{ width: w, height: imgH, flexShrink: 0, background: sc.bg, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '12px 14px' }}>
           <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,0.6)', marginBottom: 6 }}>{ext.source_name}</span>
           <h3 style={{
             fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: sc.text, lineHeight: 1.25, margin: 0,
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>{ext.title}</h3>
         </div>
-        <div style={{ padding: '10px 12px 12px', background: C.warm }}>
+        <div style={{ padding: '10px 12px 12px', background: C.warm, display: 'flex', flexDirection: 'column', flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
             {ext.cuisine && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
             {ext.cuisine && ext.time_estimate && <span style={{ color: C.rule, fontSize: 7 }}>·</span>}
             {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
           </div>
-          <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Read on {ext.source_name} →</span>
+          <CardFooter cta={`Read on ${ext.source_name} →`} />
         </div>
       </div>
     </a>
@@ -1021,21 +1065,23 @@ function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: str
 }
 
 function CarouselCommunityCard({ submission, isMobile }: { submission: CommunitySubmission; isMobile: boolean }) {
-  const w = isMobile ? 155 : CARD_W
-  const imgH = isMobile ? 100 : CARD_IMG_H
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
   const platform = PLATFORM_STYLES[submission.platform] || PLATFORM_STYLES.other
   return (
     <a href={submission.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
       <div
         style={{
-          width: w, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          width: w, height: h, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
           border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'flex', flexDirection: 'column',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
       >
         {/* Thumbnail or platform-colored placeholder */}
-        <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool, position: 'relative' }}>
+        <div style={{ width: w, height: imgH, flexShrink: 0, overflow: 'hidden', background: C.cool, position: 'relative' }}>
           {submission.thumbnail_url
             ? <img src={submission.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
             : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: platform.bg }}>
@@ -1047,15 +1093,16 @@ function CarouselCommunityCard({ submission, isMobile }: { submission: Community
             <PlatformBadge platform={submission.platform} />
           </div>
         </div>
-        <div style={{ padding: '10px 12px 12px' }}>
+        <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
           <h3 style={{
             fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px',
             display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
           }}>{submission.title}</h3>
           {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '0 0 4px' }}>by {submission.author_name}</p>}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto' }}>
             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
             <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{submission.upvote_count}</span>
+            <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: C.accent, marginLeft: 'auto' }}>Watch →</span>
           </div>
         </div>
       </div>
@@ -1067,34 +1114,50 @@ function CarouselThreadCard({ thread, hasRealData, isMobile }: {
   thread: { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }
   hasRealData: boolean; isMobile: boolean
 }) {
-  const w = isMobile ? 240 : 280
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
   const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
+  // Use tag color for the header area background
+  const headerBg = thread.tag ? tagStyle.bg : C.cool
   return (
     <Link href={hasRealData ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', flexShrink: 0, scrollSnapAlign: 'start' }}>
       <div
         style={{
-          width: w, padding: '14px 16px', borderRadius: 8, cursor: 'pointer',
+          width: w, height: h, borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
           border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
-          display: 'flex', flexDirection: 'column', gap: 8, minHeight: isMobile ? 120 : 140,
+          display: 'flex', flexDirection: 'column',
         }}
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          {thread.tag && <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, letterSpacing: 0.3, padding: '2px 7px', borderRadius: 3, background: tagStyle.bg, color: tagStyle.color }}>{thread.tag}</span>}
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name}</span>
+        {/* Colored header area to match image slot height */}
+        <div style={{
+          width: w, height: imgH, flexShrink: 0, background: headerBg,
+          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '12px 16px',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={tagStyle.color || C.text3} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          {thread.tag && <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 4, background: 'rgba(0,0,0,0.1)', color: tagStyle.color }}>{thread.tag}</span>}
         </div>
-        <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0, flex: 1 }}>{thread.title}</h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
+        <div style={{ padding: '10px 12px 12px', display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginBottom: 4 }}>@{thread.author_display_name}</span>
+          <h3 style={{
+            fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0,
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{thread.title}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 'auto', paddingTop: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.reply_count}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+              <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.upvote_count}</span>
+            </div>
+            <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500, marginLeft: 'auto' }}>Join →</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{thread.upvote_count}</span>
-          </div>
-          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500, marginLeft: 'auto' }}>Join →</span>
         </div>
       </div>
     </Link>
@@ -1563,6 +1626,10 @@ export default function Home() {
   const [myBookActions, setMyBookActions] = useState<Record<string, { liked: boolean; owned: boolean }>>({})
   const [recentComments, setRecentComments] = useState<{ id: string; display_name: string; body: string; created_at: string; recipe_title?: string; recipe_slug?: string; recipe_image?: string | null }[]>([])
 
+  // Save state (NYT-style bookmark on cards)
+  const [homeSavedIds, setHomeSavedIds] = useState<string[]>([])
+  const [commentCountsMap, setCommentCountsMap] = useState<Record<string, number>>({})
+
   // Community submissions state
   const [submissions, setSubmissions] = useState<CommunitySubmission[]>([])
   const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([])
@@ -1644,7 +1711,16 @@ export default function Home() {
   // Load upvote state from localStorage
   useEffect(() => {
     try { setUserUpvotes(JSON.parse(localStorage.getItem('recdex-upvotes') || '[]')) } catch { /* ignore */ }
+    try { setHomeSavedIds(JSON.parse(localStorage.getItem('recdex-box') || '[]')) } catch { /* ignore */ }
   }, [])
+
+  const toggleHomeSave = (id: string) => {
+    setHomeSavedIds(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+      localStorage.setItem('recdex-box', JSON.stringify(next))
+      return next
+    })
+  }
 
   // Hydrate upvotes from server
   useEffect(() => {
@@ -1734,6 +1810,7 @@ export default function Home() {
           commentCounts[c.recipe_id] = (commentCounts[c.recipe_id] || 0) + 1
         }
       }
+      setCommentCountsMap(commentCounts)
 
       // 3. Get local activity data (saves + cooks)
       let savedIds: string[] = []
@@ -2058,9 +2135,9 @@ export default function Home() {
                   )}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => setQuickViewId(rotdRecipe.id)} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Cook this</button>
-                    <button onClick={() => setRotdSaved(!rotdSaved)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${rotdSaved ? C.green : C.rule}`, background: rotdSaved ? C.greenBg : 'transparent', color: rotdSaved ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill={rotdSaved ? C.green : 'none'} stroke={rotdSaved ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
-                      {rotdSaved ? 'Saved' : 'Save'}
+                    <button onClick={() => toggleHomeSave(rotdRecipe.id)} style={{ padding: '10px 16px', borderRadius: 6, border: `1.5px solid ${homeSavedIds.includes(rotdRecipe.id) ? C.green : C.rule}`, background: homeSavedIds.includes(rotdRecipe.id) ? C.greenBg : 'transparent', color: homeSavedIds.includes(rotdRecipe.id) ? C.green : C.text3, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill={homeSavedIds.includes(rotdRecipe.id) ? C.green : 'none'} stroke={homeSavedIds.includes(rotdRecipe.id) ? C.green : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /></svg>
+                      {homeSavedIds.includes(rotdRecipe.id) ? 'Saved' : 'Save'}
                     </button>
                   </div>
                 </div>
@@ -2071,7 +2148,7 @@ export default function Home() {
             {featuredRecipes.length > 0 && (
               <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
                 {featuredRecipes.map(r => (
-                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} />
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} />
                 ))}
               </CarouselRow>
             )}
@@ -2098,7 +2175,7 @@ export default function Home() {
             {quickRecipes.length > 0 && (
               <CarouselRow title="Quick Meals" seeAllHref="/browse">
                 {quickRecipes.map(r => (
-                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} />
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} />
                 ))}
               </CarouselRow>
             )}
