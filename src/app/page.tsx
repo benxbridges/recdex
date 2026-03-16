@@ -101,6 +101,154 @@ function getDisplayName(): string {
   catch { return '' }
 }
 
+// ===== COMMENT DRAWER =====
+type ItemComment = {
+  id: string; item_type: string; item_id: string; item_title: string | null
+  display_name: string; body: string; created_at: string
+}
+
+function CommentDrawer({ itemType, itemId, itemTitle, onClose }: { itemType: string; itemId: string; itemTitle: string; onClose: () => void }) {
+  const [comments, setComments] = useState<ItemComment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [body, setBody] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const backdropRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => { requestAnimationFrame(() => setVisible(true)) }, [])
+
+  const handleClose = useCallback(() => {
+    setVisible(false)
+    setTimeout(onClose, 250)
+  }, [onClose])
+
+  useEffect(() => {
+    setLoading(true)
+    if (itemType === 'recipe') {
+      // Use existing comments table for recipes
+      supabase.from('comments').select('id, recipe_id, display_name, body, created_at')
+        .eq('recipe_id', itemId).order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) setComments(data.map(c => ({ ...c, item_type: 'recipe', item_id: c.recipe_id, item_title: null })))
+          setLoading(false)
+        })
+    } else {
+      fetch(`/api/comments?item_type=${encodeURIComponent(itemType)}&item_id=${encodeURIComponent(itemId)}`)
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setComments(data) })
+        .catch(() => {})
+        .finally(() => setLoading(false))
+    }
+  }, [itemType, itemId])
+
+  const postComment = async () => {
+    const displayName = getDisplayName()
+    if (!displayName || !body.trim()) return
+    setPosting(true)
+    try {
+      if (itemType === 'recipe') {
+        // Post to existing comments table for recipes
+        const { data } = await supabase.from('comments').insert({
+          recipe_id: itemId, display_name: displayName, body: body.trim(),
+        }).select().single()
+        if (data) {
+          setComments(prev => [{ ...data, item_type: 'recipe', item_id: data.recipe_id, item_title: null }, ...prev])
+          setBody('')
+        }
+      } else {
+        const res = await fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_type: itemType, item_id: itemId, item_title: itemTitle, display_name: displayName, body: body.trim() }),
+        })
+        const data = await res.json()
+        if (data?.id) { setComments(prev => [data, ...prev]); setBody('') }
+      }
+    } catch { /* ignore */ }
+    setPosting(false)
+  }
+
+  const displayName = getDisplayName()
+
+  return (
+    <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) handleClose() }} style={{
+      position: 'fixed', inset: 0, zIndex: 1100, background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+      transition: 'background 0.25s ease',
+      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+    }}>
+      <div style={{
+        background: C.bg, borderRadius: '16px 16px 0 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+        transform: visible ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform 0.25s ease',
+      }}>
+        {/* Handle bar */}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 6px' }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.rule }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ padding: '4px 20px 14px', borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h3 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: 0, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{itemTitle}</h3>
+            <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{comments.length} comment{comments.length !== 1 ? 's' : ''}</span>
+          </div>
+          <button onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: C.text3, padding: '4px 0 4px 12px', flexShrink: 0 }}>✕</button>
+        </div>
+
+        {/* Scrollable comments */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+          {loading ? (
+            <p style={{ fontSize: 12, color: C.text3, fontFamily: SANS, textAlign: 'center', padding: '20px 0' }}>Loading comments...</p>
+          ) : comments.length === 0 ? (
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, textAlign: 'center', padding: '20px 0', fontStyle: 'italic' }}>No comments yet. Be the first!</p>
+          ) : (
+            comments.map(c => (
+              <div key={c.id} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.ruleLight}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <div style={{ width: 24, height: 24, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{c.display_name.charAt(0).toUpperCase()}</div>
+                  <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>@{c.display_name}</span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{timeAgo(c.created_at)}</span>
+                </div>
+                <p style={{ fontSize: 13, fontFamily: SANS, color: C.text, lineHeight: 1.5, margin: 0, paddingLeft: 32 }}>{c.body}</p>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Post input */}
+        <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.ruleLight}`, background: C.warm }}>
+          {displayName ? (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{displayName.charAt(0).toUpperCase()}</div>
+              <textarea
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                placeholder="Add a comment..."
+                rows={1}
+                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${C.ruleLight}`, background: C.bg, fontSize: 13, fontFamily: SANS, color: C.text, resize: 'none', outline: 'none', lineHeight: 1.4, minHeight: 36 }}
+                onFocus={e => { e.target.style.borderColor = C.accent }}
+                onBlur={e => { e.target.style.borderColor = C.ruleLight }}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); postComment() } }}
+              />
+              <button onClick={postComment} disabled={posting || !body.trim()} style={{
+                padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: body.trim() ? C.accent : C.ruleLight,
+                color: body.trim() ? '#fff' : C.text3,
+                fontSize: 12, fontWeight: 600, fontFamily: SANS, transition: 'all 0.15s', flexShrink: 0,
+              }}>{posting ? '...' : 'Post'}</button>
+            </div>
+          ) : (
+            <div style={{ fontSize: 12, color: C.text2, fontFamily: SANS, textAlign: 'center', padding: '4px 0' }}>
+              <Link href="/profile" style={{ color: C.accent, fontWeight: 600, textDecoration: 'none' }}>Set up your profile</Link> to comment.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===== SMALL COMPONENTS =====
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
@@ -967,7 +1115,7 @@ function CardSaveOverlay({ id, saved, onToggle }: { id: string; saved: boolean; 
   )
 }
 
-function CardFooter({ commentCount, cta, ctaColor }: { commentCount?: number; cta: string; ctaColor?: string }) {
+function CardFooter({ commentCount, cta, ctaColor, onCommentClick }: { commentCount?: number; cta: string; ctaColor?: string; onCommentClick?: (e: React.MouseEvent) => void }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -975,20 +1123,23 @@ function CardFooter({ commentCount, cta, ctaColor }: { commentCount?: number; ct
       background: C.cool, borderTop: `1.5px solid ${C.accent}`,
       borderRadius: '0 0 7px 7px',
     }}>
-      {(commentCount !== undefined && commentCount > 0) && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{commentCount}</span>
-        </div>
-      )}
+      <div
+        onClick={onCommentClick ? (e) => { e.preventDefault(); e.stopPropagation(); onCommentClick(e) } : undefined}
+        style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: onCommentClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 4, transition: 'background 0.1s' }}
+        onMouseEnter={onCommentClick ? e => { (e.currentTarget as HTMLElement).style.background = 'rgba(200,74,42,0.1)' } : undefined}
+        onMouseLeave={onCommentClick ? e => { (e.currentTarget as HTMLElement).style.background = 'transparent' } : undefined}
+      >
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{commentCount || 0}</span>
+      </div>
       <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: ctaColor || C.accent, marginLeft: 'auto' }}>{cta}</span>
     </div>
   )
 }
 
-function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave, commentCount }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean; saved?: boolean; onToggleSave?: (id: string) => void; commentCount?: number }) {
+function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave, commentCount, onCommentClick }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean; saved?: boolean; onToggleSave?: (id: string) => void; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
@@ -1021,7 +1172,7 @@ function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave
           {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 7 }}>·</span><span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{recipe.cuisine}</span></>}
         </div>
       </div>
-      <CardFooter commentCount={commentCount} cta="Cook this →" />
+      <CardFooter commentCount={commentCount} cta="Cook this →" onCommentClick={onCommentClick} />
     </div>
   )
 }
@@ -1032,7 +1183,7 @@ const EXTERNAL_SOURCE_COLORS: Record<string, { bg: string; bgLight: string; text
   'Serious Eats': { bg: '#2B8C8C', bgLight: '#EBF5F5', text: '#FFF' },
 }
 
-function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean }) {
+function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
@@ -1063,13 +1214,13 @@ function CarouselExternalCard({ ext, isMobile }: { ext: { id: string; title: str
             {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
           </div>
         </div>
-        <CardFooter cta={`Read on ${ext.source_name} →`} />
+        <CardFooter commentCount={commentCount} cta={`Read on ${ext.source_name} →`} onCommentClick={onCommentClick} />
       </div>
     </a>
   )
 }
 
-function CarouselCommunityCard({ submission, isMobile }: { submission: CommunitySubmission; isMobile: boolean }) {
+function CarouselCommunityCard({ submission, isMobile, commentCount, onCommentClick }: { submission: CommunitySubmission; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
@@ -1105,7 +1256,7 @@ function CarouselCommunityCard({ submission, isMobile }: { submission: Community
           }}>{submission.title}</h3>
           {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: 0 }}>by {submission.author_name}</p>}
         </div>
-        <CardFooter cta="Watch →" />
+        <CardFooter commentCount={commentCount} cta="Watch →" onCommentClick={onCommentClick} />
       </div>
     </a>
   )
@@ -1632,6 +1783,14 @@ export default function Home() {
   const [myBookActions, setMyBookActions] = useState<Record<string, { liked: boolean; owned: boolean }>>({})
   const [recentComments, setRecentComments] = useState<{ id: string; display_name: string; body: string; created_at: string; recipe_title?: string; recipe_slug?: string; recipe_image?: string | null }[]>([])
 
+  // Comment drawer state
+  const [commentDrawer, setCommentDrawer] = useState<{ itemType: string; itemId: string; itemTitle: string } | null>(null)
+  const [itemCommentCounts, setItemCommentCounts] = useState<Record<string, number>>({})
+
+  const openCommentDrawer = useCallback((itemType: string, itemId: string, itemTitle: string) => {
+    setCommentDrawer({ itemType, itemId, itemTitle })
+  }, [])
+
   // Save state (NYT-style bookmark on cards)
   const [homeSavedIds, setHomeSavedIds] = useState<string[]>([])
   const [commentCountsMap, setCommentCountsMap] = useState<Record<string, number>>({})
@@ -1681,6 +1840,23 @@ export default function Home() {
       .order('created_at', { ascending: false }).limit(8)
       .then(({ data }) => { if (data) setExternalRecipes(data) })
   }, [])
+
+  // Fetch item_comments counts for non-recipe items (external, community, books)
+  const fetchItemCommentCounts = useCallback(async () => {
+    try {
+      const { data } = await supabase.from('item_comments').select('item_type, item_id')
+      if (data) {
+        const counts: Record<string, number> = {}
+        for (const c of data) {
+          const key = `${c.item_type}:${c.item_id}`
+          counts[key] = (counts[key] || 0) + 1
+        }
+        setItemCommentCounts(counts)
+      }
+    } catch { /* table may not exist yet */ }
+  }, [])
+
+  useEffect(() => { fetchItemCommentCounts() }, [fetchItemCommentCounts])
 
   // Fetch book shelf stats
   useEffect(() => {
@@ -2154,7 +2330,7 @@ export default function Home() {
             {featuredRecipes.length > 0 && (
               <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
                 {featuredRecipes.map(r => (
-                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} />
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
                 ))}
               </CarouselRow>
             )}
@@ -2163,7 +2339,7 @@ export default function Home() {
             {externals.length > 0 && (
               <CarouselRow title="From the Web">
                 {externals.map(ext => (
-                  <CarouselExternalCard key={ext.id} ext={ext} isMobile={isMobile} />
+                  <CarouselExternalCard key={ext.id} ext={ext} isMobile={isMobile} commentCount={itemCommentCounts[`external:${ext.id}`] || 0} onCommentClick={() => openCommentDrawer('external', ext.id, ext.title)} />
                 ))}
               </CarouselRow>
             )}
@@ -2172,7 +2348,7 @@ export default function Home() {
             {submissions.length > 0 && (
               <CarouselRow title="Community Picks" seeAllHref="/community">
                 {submissions.map(sub => (
-                  <CarouselCommunityCard key={sub.id} submission={sub} isMobile={isMobile} />
+                  <CarouselCommunityCard key={sub.id} submission={sub} isMobile={isMobile} commentCount={itemCommentCounts[`community:${sub.id}`] || 0} onCommentClick={() => openCommentDrawer('community', sub.id, sub.title)} />
                 ))}
               </CarouselRow>
             )}
@@ -2181,7 +2357,7 @@ export default function Home() {
             {quickRecipes.length > 0 && (
               <CarouselRow title="Quick Meals" seeAllHref="/browse">
                 {quickRecipes.map(r => (
-                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} />
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
                 ))}
               </CarouselRow>
             )}
@@ -2246,12 +2422,24 @@ export default function Home() {
                 <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8, scrollbarWidth: 'none' }}>
                   {BOOKS.map((book, i) => {
                     const stats = bookStats[book.key] || { likes: 0, owns: 0 }
+                    const bookComments = itemCommentCounts[`book:${book.key}`] || 0
                     return (
-                      <div key={i} onClick={() => setSelectedBook(book)} style={{ flexShrink: 0, width: 90, cursor: 'pointer' }}>
-                        <img src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`} alt={book.title}
-                          style={{ width: 90, height: 135, borderRadius: 3, objectFit: 'cover', background: book.color, boxShadow: '1px 2px 6px rgba(0,0,0,0.1)' }} />
-                        <p style={{ fontFamily: SERIF, fontSize: 10, fontWeight: 600, color: C.text, margin: '5px 0 1px', lineHeight: 1.2 }}>{book.title}</p>
-                        <p style={{ fontFamily: SANS, fontSize: 9, color: C.text3, margin: 0 }}>{book.author}</p>
+                      <div key={i} style={{ flexShrink: 0, width: 90 }}>
+                        <div onClick={() => setSelectedBook(book)} style={{ cursor: 'pointer' }}>
+                          <img src={`https://covers.openlibrary.org/b/isbn/${book.isbn}-M.jpg`} alt={book.title}
+                            style={{ width: 90, height: 135, borderRadius: 3, objectFit: 'cover', background: book.color, boxShadow: '1px 2px 6px rgba(0,0,0,0.1)' }} />
+                          <p style={{ fontFamily: SERIF, fontSize: 10, fontWeight: 600, color: C.text, margin: '5px 0 1px', lineHeight: 1.2 }}>{book.title}</p>
+                          <p style={{ fontFamily: SANS, fontSize: 9, color: C.text3, margin: '0 0 3px' }}>{book.author}</p>
+                        </div>
+                        <button
+                          onClick={e => { e.stopPropagation(); openCommentDrawer('book', book.key, book.title) }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 0', background: 'none', border: 'none', cursor: 'pointer' }}
+                        >
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{bookComments}</span>
+                        </button>
                       </div>
                     )
                   })}
@@ -2342,6 +2530,27 @@ export default function Home() {
         }}
         categories={categories}
       />}
+
+      {/* COMMENT DRAWER */}
+      {commentDrawer && (
+        <CommentDrawer
+          itemType={commentDrawer.itemType}
+          itemId={commentDrawer.itemId}
+          itemTitle={commentDrawer.itemTitle}
+          onClose={() => {
+            setCommentDrawer(null)
+            fetchItemCommentCounts()
+            // Refresh recipe comment counts too
+            supabase.from('comments').select('recipe_id').then(({ data }) => {
+              if (data) {
+                const counts: Record<string, number> = {}
+                for (const c of data) counts[c.recipe_id] = (counts[c.recipe_id] || 0) + 1
+                setCommentCountsMap(counts)
+              }
+            })
+          }}
+        />
+      )}
 
       {/* FOOTER */}
       <footer style={{ borderTop: `1.5px solid ${C.text}`, marginTop: 24 }}>
