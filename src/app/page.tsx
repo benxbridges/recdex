@@ -2306,7 +2306,25 @@ export default function Home() {
         return (
           <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
-            {/* 1. RECIPE OF THE DAY — full-width hero */}
+            {/* 1. TRENDING ON RECDEX */}
+            {featuredRecipes.length > 0 && (
+              <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
+                {featuredRecipes.map(r => (
+                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 2. FROM THE WEB — external recipes */}
+            {externals.length > 0 && (
+              <CarouselRow title="From the Web">
+                {externals.map(ext => (
+                  <CarouselExternalCard key={ext.id} ext={ext} isMobile={isMobile} commentCount={itemCommentCounts[`external:${ext.id}`] || 0} onCommentClick={() => openCommentDrawer('external', ext.id, ext.title)} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 3. RECIPE OF THE DAY */}
             {rotdRecipe && (
               <div style={{ padding: '24px clamp(16px,4vw,24px)', borderBottom: `1px solid ${C.ruleLight}`, animation: 'fadeIn 0.3s ease both' }}>
                 <div style={{ maxWidth: 640, margin: '0 auto' }}>
@@ -2340,24 +2358,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* 2. TRENDING ON RECDEX */}
-            {featuredRecipes.length > 0 && (
-              <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
-                {featuredRecipes.map(r => (
-                  <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
-                ))}
-              </CarouselRow>
-            )}
-
-            {/* 3. FROM THE WEB — external recipes */}
-            {externals.length > 0 && (
-              <CarouselRow title="From the Web">
-                {externals.map(ext => (
-                  <CarouselExternalCard key={ext.id} ext={ext} isMobile={isMobile} commentCount={itemCommentCounts[`external:${ext.id}`] || 0} onCommentClick={() => openCommentDrawer('external', ext.id, ext.title)} />
-                ))}
-              </CarouselRow>
             )}
 
             {/* 4. COMMUNITY PICKS — submissions */}
