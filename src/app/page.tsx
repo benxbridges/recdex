@@ -172,13 +172,14 @@ function CommentDrawer({ itemType, itemId, itemTitle, onClose }: { itemType: str
 
   return (
     <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) handleClose() }} style={{
-      position: 'fixed', inset: 0, zIndex: 1100, background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+      position: 'fixed', inset: 0, zIndex: 1100, background: visible ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0)',
       transition: 'background 0.25s ease',
-      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
     }}>
       <div style={{
-        background: C.bg, borderRadius: '16px 16px 0 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+        background: C.warm, borderRadius: '16px 16px 0 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+        width: '100%', maxWidth: 960,
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', border: `1px solid ${C.ruleLight}`, borderBottom: 'none',
         transform: visible ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 0.25s ease',
       }}>
@@ -217,7 +218,7 @@ function CommentDrawer({ itemType, itemId, itemTitle, onClose }: { itemType: str
         </div>
 
         {/* Post input */}
-        <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.ruleLight}`, background: C.warm }}>
+        <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.ruleLight}`, background: C.cool, borderRadius: '0 0 0 0' }}>
           {displayName ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{displayName.charAt(0).toUpperCase()}</div>
@@ -1267,59 +1268,55 @@ function CarouselCommunityCard({ submission, isMobile, commentCount, onCommentCl
   )
 }
 
-function CarouselThreadCard({ thread, hasRealData, isMobile }: {
-  thread: { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }
-  hasRealData: boolean; isMobile: boolean
+function DiscussionListItem({ thread, hasRealData }: {
+  thread: { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }
+  hasRealData: boolean
 }) {
-  const w = isMobile ? CARD_W_M : CARD_W
-  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
-  const h = isMobile ? CARD_H_M : CARD_H
   const tagStyle = THREAD_TAGS[thread.tag || ''] || { color: C.text3, bg: C.cool }
-  // Use tag color for the header area background
-  const headerBg = thread.tag ? tagStyle.bg : C.cool
   return (
-    <Link href={hasRealData ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', flexShrink: 0, scrollSnapAlign: 'start' }}>
+    <Link href={hasRealData ? `/community/${thread.id}` : '/community'} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
       <div
         style={{
-          width: w, height: h, borderRadius: 8, cursor: 'pointer', overflow: 'hidden',
-          border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
-          display: 'flex', flexDirection: 'column',
+          padding: '14px 16px', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer',
+          transition: 'background 0.1s',
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.cool }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
-        {/* Colored header area to match image slot height */}
-        <div style={{
-          width: w, height: imgH, flexShrink: 0, background: headerBg,
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '12px 16px',
-        }}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={tagStyle.color || C.text3} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-          {thread.tag && <span style={{ fontSize: 10, fontFamily: MONO, fontWeight: 700, letterSpacing: 0.5, padding: '3px 10px', borderRadius: 4, background: 'rgba(0,0,0,0.1)', color: tagStyle.color }}>{thread.tag}</span>}
-        </div>
-        <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, marginBottom: 4, display: 'block' }}>@{thread.author_display_name}</span>
-          <h3 style={{
-            fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.3, margin: 0,
-            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-          }}>{thread.title}</h3>
-        </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '8px 12px', flexShrink: 0,
-          background: C.cool, borderTop: `1.5px solid ${C.accent}`,
-          borderRadius: '0 0 7px 7px',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{thread.reply_count}</span>
+        {/* Top row: upvotes + content */}
+        <div style={{ display: 'flex', gap: 12 }}>
+          {/* Upvote column */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, minWidth: 32, paddingTop: 2 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
+            <span style={{ fontSize: 12, fontFamily: MONO, color: C.text, fontWeight: 600 }}>{thread.upvote_count}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5"><path d="M12 4l-8 8h5v8h6v-8h5z" /></svg>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{thread.upvote_count}</span>
+          {/* Content */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+              {thread.tag && (
+                <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, letterSpacing: 0.5, padding: '2px 8px', borderRadius: 3, background: tagStyle.bg, color: tagStyle.color }}>{thread.tag}</span>
+              )}
+              <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>@{thread.author_display_name}</span>
+            </div>
+            <h3 style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.35, margin: '0 0 6px' }}>{thread.title}</h3>
+            {/* Top reply preview */}
+            {thread.topReply && (
+              <div style={{ padding: '6px 10px', background: C.cool, borderRadius: 6, borderLeft: `2px solid ${C.accent}`, marginBottom: 6 }}>
+                <p style={{ fontSize: 12, fontFamily: SANS, color: C.text2, lineHeight: 1.4, margin: 0 }}>
+                  <span style={{ fontWeight: 600, color: C.accent, fontFamily: MONO, fontSize: 10 }}>@{thread.topReply.user}</span>{' '}
+                  {thread.topReply.text}
+                </p>
+              </div>
+            )}
+            {/* Meta row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{thread.reply_count} replies</span>
+              </div>
+              <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 600, marginLeft: 'auto' }}>Join →</span>
+            </div>
           </div>
-          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 600, marginLeft: 'auto' }}>Join →</span>
         </div>
       </div>
     </Link>
@@ -1808,7 +1805,7 @@ export default function Home() {
   const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
   // Community threads state
-  const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string }[]>([])
+  const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }[]>([])
 
   // External recipes state
   const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
@@ -1831,11 +1828,25 @@ export default function Home() {
     fetchRecentComments()
   }, [])
 
-  // Fetch community threads
+  // Fetch community threads with top reply
   useEffect(() => {
-    supabase.from('threads').select('id, title, tag, author_display_name, reply_count, upvote_count, created_at')
-      .order('created_at', { ascending: false }).limit(4)
-      .then(({ data }) => { if (data) setCommunityThreads(data) })
+    async function fetchThreads() {
+      const { data: threads } = await supabase.from('threads').select('id, title, tag, author_display_name, reply_count, upvote_count, created_at')
+        .order('created_at', { ascending: false }).limit(6)
+      if (!threads || threads.length === 0) return
+      // Fetch first reply for each thread
+      const { data: replies } = await supabase.from('thread_replies').select('thread_id, author_display_name, body')
+        .in('thread_id', threads.map(t => t.id))
+        .order('created_at', { ascending: true })
+      const replyMap = new Map<string, { user: string; text: string }>()
+      if (replies) {
+        for (const r of replies) {
+          if (!replyMap.has(r.thread_id)) replyMap.set(r.thread_id, { user: r.author_display_name, text: r.body })
+        }
+      }
+      setCommunityThreads(threads.map(t => ({ ...t, topReply: replyMap.get(t.id) || null })))
+    }
+    fetchThreads()
   }, [])
 
   // Fetch external recipes
@@ -2215,7 +2226,7 @@ export default function Home() {
         // Data prep
         const threads = communityThreads.length > 0
           ? communityThreads
-          : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '' }))
+          : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '', topReply: t.topReply }))
         const externals = externalRecipes.length > 0
           ? externalRecipes
           : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
@@ -2367,13 +2378,21 @@ export default function Home() {
               </CarouselRow>
             )}
 
-            {/* 6. COMMUNITY DISCUSSIONS */}
+            {/* 6. COMMUNITY DISCUSSIONS — Reddit-style list */}
             {threads.length > 0 && (
-              <CarouselRow title="Discussions" seeAllHref="/community">
-                {threads.map(t => (
-                  <CarouselThreadCard key={t.id} thread={t} hasRealData={communityThreads.length > 0} isMobile={isMobile} />
-                ))}
-              </CarouselRow>
+              <div style={{ padding: '20px clamp(16px,4vw,24px) 8px' }}>
+                <div style={{ maxWidth: 640, margin: '0 auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <h2 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: 0 }}>Discussions</h2>
+                    <Link href="/community" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 500, textDecoration: 'none' }}>See all →</Link>
+                  </div>
+                  <div style={{ borderRadius: 8, border: `1px solid ${C.ruleLight}`, overflow: 'hidden', background: C.warm }}>
+                    {threads.map(t => (
+                      <DiscussionListItem key={t.id} thread={t} hasRealData={communityThreads.length > 0} />
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* 7. EXPLORE STRIP */}
