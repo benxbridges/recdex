@@ -15,9 +15,10 @@ type TrendingVideo = {
   channelId: string
   thumbnail: string
   publishedAt: string
-  platform: 'youtube'
+  platform: 'youtube' | 'tiktok-via-youtube'
   url: string
   description: string
+  viewCount: number
 }
 
 type TrendingTopic = {
@@ -27,6 +28,19 @@ type TrendingTopic = {
 }
 
 // ===== HELPERS =====
+function formatViewCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M views`
+  if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K views`
+  return `${count} views`
+}
+
+function platformLabel(platform: 'youtube' | 'tiktok-via-youtube'): { text: string; color: string; bg: string } {
+  if (platform === 'tiktok-via-youtube') {
+    return { text: 'TikTok Viral', color: '#fff', bg: 'rgba(0,0,0,0.75)' }
+  }
+  return { text: 'YouTube', color: '#fff', bg: 'rgba(255,0,0,0.75)' }
+}
+
 function timeAgo(dateStr: string): string {
   const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000)
   if (seconds < 60) return 'just now'
@@ -258,9 +272,15 @@ export default function TrendingPage() {
                 <div style={{
                   fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
                   color: C.text3, fontFamily: MONO, marginBottom: 12,
-                  display: 'flex', alignItems: 'center', gap: 5,
+                  display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap',
                 }}>
-                  <span style={{ color: '#FF6B6B', fontSize: 7 }}>▶</span> <span style={{ color: '#FF6B6B' }}>YouTube</span> · {timeAgo(hero.publishedAt)}
+                  {(() => { const p = platformLabel(hero.platform); return (
+                    <span style={{ background: p.bg, color: p.color, padding: '2px 7px', borderRadius: 4, fontSize: 9, letterSpacing: '0.04em' }}>{p.text}</span>
+                  ) })()}
+                  <span style={{ opacity: 0.4 }}>·</span>
+                  <span>{formatViewCount(hero.viewCount)}</span>
+                  <span style={{ opacity: 0.4 }}>·</span>
+                  <span>{timeAgo(hero.publishedAt)}</span>
                 </div>
 
                 <h2 style={{
@@ -382,10 +402,16 @@ export default function TrendingPage() {
                     }}>
                       {video.dishName}
                     </h3>
-                    <div style={{ fontSize: 11, color: C.text3, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ fontSize: 11, color: C.text3, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                      {(() => { const p = platformLabel(video.platform); return (
+                        <span style={{ background: p.bg, color: p.color, padding: '1px 5px', borderRadius: 3, fontSize: 9, fontWeight: 600, letterSpacing: '0.03em' }}>{p.text}</span>
+                      ) })()}
                       <span>{video.channelTitle}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: C.text3, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5, fontFamily: MONO }}>
+                      <span>{formatViewCount(video.viewCount)}</span>
                       <span style={{ opacity: 0.4 }}>·</span>
-                      <span style={{ fontFamily: MONO, fontSize: 10 }}>{timeAgo(video.publishedAt)}</span>
+                      <span>{timeAgo(video.publishedAt)}</span>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="import-btn"
@@ -438,7 +464,7 @@ export default function TrendingPage() {
           display: 'flex', gap: 32, alignItems: 'flex-start',
         }}>
           {[
-            { icon: '📡', title: 'We scan', desc: 'YouTube is searched hourly for the most popular recipe videos from the past 7 days.' },
+            { icon: '📡', title: 'We scan', desc: 'YouTube and TikTok-viral content is searched hourly for the most viewed recipe videos from the past 7 days.' },
             { icon: '🤖', title: 'AI extracts', desc: 'Claude reads the video transcript and pulls out ingredients, steps, and cook times.' },
             { icon: '📖', title: 'You cook', desc: 'A clean, structured recipe — with servings adjuster, cook mode, and the original video.' },
           ].map((s, i) => (

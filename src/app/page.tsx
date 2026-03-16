@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -1804,6 +1805,15 @@ export default function Home() {
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  useEffect(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+      if (!profile.onboardingComplete) setShowOnboarding(true)
+    } catch { setShowOnboarding(true) }
+  }, [])
+
   // Community threads state
   const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }[]>([])
 
@@ -2096,6 +2106,11 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
+      {showOnboarding && (
+        <OnboardingFlow onComplete={(profile: OnboardingProfile) => {
+          setShowOnboarding(false)
+        }} />
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         *{box-sizing:border-box}body{margin:0;background:${C.bg}}::selection{background:rgba(200,74,42,0.15);color:${C.text}}input::placeholder{color:${C.text3}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${C.rule}}
