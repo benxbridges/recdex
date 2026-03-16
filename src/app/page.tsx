@@ -172,13 +172,14 @@ function CommentDrawer({ itemType, itemId, itemTitle, onClose }: { itemType: str
 
   return (
     <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) handleClose() }} style={{
-      position: 'fixed', inset: 0, zIndex: 1100, background: visible ? 'rgba(0,0,0,0.45)' : 'rgba(0,0,0,0)',
+      position: 'fixed', inset: 0, zIndex: 1100, background: visible ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0)',
       transition: 'background 0.25s ease',
-      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+      display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', alignItems: 'center',
     }}>
       <div style={{
-        background: C.bg, borderRadius: '16px 16px 0 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
-        boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
+        background: C.warm, borderRadius: '16px 16px 0 0', maxHeight: '70vh', display: 'flex', flexDirection: 'column',
+        width: '100%', maxWidth: 960,
+        boxShadow: '0 -8px 40px rgba(0,0,0,0.2)', border: `1px solid ${C.ruleLight}`, borderBottom: 'none',
         transform: visible ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 0.25s ease',
       }}>
@@ -217,7 +218,7 @@ function CommentDrawer({ itemType, itemId, itemTitle, onClose }: { itemType: str
         </div>
 
         {/* Post input */}
-        <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.ruleLight}`, background: C.warm }}>
+        <div style={{ padding: '12px 20px 20px', borderTop: `1px solid ${C.ruleLight}`, background: C.cool, borderRadius: '0 0 0 0' }}>
           {displayName ? (
             <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <div style={{ width: 28, height: 28, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700, fontFamily: SANS, flexShrink: 0 }}>{displayName.charAt(0).toUpperCase()}</div>
