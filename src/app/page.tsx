@@ -1115,7 +1115,7 @@ function CardSaveOverlay({ id, saved, onToggle }: { id: string; saved: boolean; 
   )
 }
 
-function CardFooter({ commentCount, cta, ctaColor, onCommentClick }: { commentCount?: number; cta: string; ctaColor?: string; onCommentClick?: (e: React.MouseEvent) => void }) {
+function CardFooter({ commentCount, cta, ctaColor, onCommentClick, onCtaClick }: { commentCount?: number; cta: string; ctaColor?: string; onCommentClick?: (e: React.MouseEvent) => void; onCtaClick?: (e: React.MouseEvent) => void }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
@@ -1134,34 +1134,39 @@ function CardFooter({ commentCount, cta, ctaColor, onCommentClick }: { commentCo
         </svg>
         <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, fontWeight: 600 }}>{commentCount || 0}</span>
       </div>
-      <span style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: ctaColor || C.accent, marginLeft: 'auto' }}>{cta}</span>
+      <span
+        onClick={onCtaClick ? (e) => { e.preventDefault(); e.stopPropagation(); onCtaClick(e) } : undefined}
+        style={{ fontSize: 10, fontFamily: SANS, fontWeight: 600, color: ctaColor || C.accent, marginLeft: 'auto', cursor: onCtaClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 4, transition: 'background 0.1s' }}
+        onMouseEnter={onCtaClick ? e => { (e.currentTarget as HTMLElement).style.background = 'rgba(200,74,42,0.1)' } : undefined}
+        onMouseLeave={onCtaClick ? e => { (e.currentTarget as HTMLElement).style.background = 'transparent' } : undefined}
+      >{cta}</span>
     </div>
   )
 }
 
 function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave, commentCount, onCommentClick }: { recipe: Recipe; onQuickView: (id: string) => void; isMobile: boolean; saved?: boolean; onToggleSave?: (id: string) => void; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
+  const router = useRouter()
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
   return (
     <div
-      onClick={() => onQuickView(recipe.id)}
       style={{
-        width: w, height: h, flexShrink: 0, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+        width: w, height: h, flexShrink: 0, borderRadius: 8, overflow: 'hidden',
         border: `1px solid ${C.ruleLight}`, background: C.warm, scrollSnapAlign: 'start',
         transition: 'transform 0.15s, box-shadow 0.15s', display: 'flex', flexDirection: 'column',
       }}
       onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
     >
-      <div style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool, position: 'relative', flexShrink: 0 }}>
+      <div onClick={() => onQuickView(recipe.id)} style={{ width: w, height: imgH, overflow: 'hidden', background: C.cool, position: 'relative', flexShrink: 0, cursor: 'pointer' }}>
         {recipe.image_url
           ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <BrokenEggCard />
         }
         {onToggleSave && <CardSaveOverlay id={recipe.id} saved={!!saved} onToggle={onToggleSave} />}
       </div>
-      <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
+      <div onClick={() => onQuickView(recipe.id)} style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden', cursor: 'pointer' }}>
         <h3 style={{
           fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 6px',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
@@ -1172,7 +1177,7 @@ function CarouselRecipeCard({ recipe, onQuickView, isMobile, saved, onToggleSave
           {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 7 }}>·</span><span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{recipe.cuisine}</span></>}
         </div>
       </div>
-      <CardFooter commentCount={commentCount} cta="Cook this →" onCommentClick={onCommentClick} />
+      <CardFooter commentCount={commentCount} cta="Cook this →" onCommentClick={onCommentClick} onCtaClick={() => router.push(`/recipe/${recipe.slug}`)} />
     </div>
   )
 }
