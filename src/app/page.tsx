@@ -1188,9 +1188,11 @@ const EXTERNAL_SOURCE_COLORS: Record<string, { bg: string; bgLight: string; text
   'NYT Cooking': { bg: '#8B7355', bgLight: '#F5F0E8', text: '#FFF' },
   'Bon Appétit': { bg: '#E8614D', bgLight: '#FDF0EC', text: '#FFF' },
   'Serious Eats': { bg: '#2B8C8C', bgLight: '#EBF5F5', text: '#FFF' },
+  'Epicurious': { bg: '#B8860B', bgLight: '#FDF5E6', text: '#FFF' },
+  'Food52': { bg: '#C25B28', bgLight: '#FDF0E8', text: '#FFF' },
 }
 
-function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
+function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: { ext: { id: string; title: string; source_name: string; source_url: string; description: string | null; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
@@ -1215,11 +1217,15 @@ function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: {
           }}>{ext.title}</h3>
         </div>
         <div style={{ padding: '10px 12px 8px', background: C.warm, flex: 1, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: ext.description ? 6 : 0 }}>
             {ext.cuisine && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
             {ext.cuisine && ext.time_estimate && <span style={{ color: C.rule, fontSize: 7 }}>·</span>}
             {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
           </div>
+          {ext.description && <p style={{
+            fontSize: 11, fontFamily: SANS, color: C.text2, lineHeight: 1.4, margin: 0,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{ext.description}</p>}
         </div>
         <CardFooter commentCount={commentCount} cta={`Read on ${ext.source_name} →`} onCommentClick={onCommentClick} />
       </div>
@@ -1818,7 +1824,7 @@ export default function Home() {
   const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }[]>([])
 
   // External recipes state
-  const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
+  const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; description: string | null; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
 
   // Fetch recent community comments
   useEffect(() => {
@@ -1861,9 +1867,9 @@ export default function Home() {
 
   // Fetch external recipes
   useEffect(() => {
-    supabase.from('external_recipes').select('id, title, source_name, source_url, cuisine, time_estimate, matched_recipe_slug')
+    supabase.from('external_recipes').select('id, title, source_name, source_url, description, cuisine, time_estimate, matched_recipe_slug')
       .eq('status', 'active')
-      .order('created_at', { ascending: false }).limit(8)
+      .order('created_at', { ascending: false }).limit(24)
       .then(({ data }) => { if (data) setExternalRecipes(data) })
   }, [])
 
@@ -2244,7 +2250,7 @@ export default function Home() {
           : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '', topReply: t.topReply }))
         const externals = externalRecipes.length > 0
           ? externalRecipes
-          : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
+          : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', description: null, cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
 
         // Pantry mode: show matches instead of carousels
         if (searchMode === 'pantry' && searchQuery.trim()) {

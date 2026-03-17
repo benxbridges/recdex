@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS external_recipes (
   title TEXT NOT NULL,
   source_name TEXT NOT NULL,       -- e.g. "NYT Cooking", "Bon Appétit", "Serious Eats"
   source_url TEXT NOT NULL,        -- direct link to the recipe on the external site
+  description TEXT,                -- short original description of the recipe
   cuisine TEXT,                    -- e.g. "Italian", "Mexican"
   time_estimate TEXT,              -- e.g. "45 min", "1 hr 30 min"
   matched_recipe_slug TEXT,        -- slug of a similar recipe on RecDex (nullable)
