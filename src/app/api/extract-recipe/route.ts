@@ -103,7 +103,10 @@ Rules:
 - "notes" is optional info like "room temperature", "divided", "or to taste"
 - Steps must be clear imperative sentences in neutral instructional tone, numbered from 1
 - Write steps as you would for a general cooking reference — direct, concise, no personality or flair
-- Classify each step's "phase" as: "prep" (ingredient preparation, preheating, mixing before cooking), "cook" (active cooking on heat — sautéing, baking, boiling, frying), or "finish" (plating, garnishing, resting, serving)
+- Classify each step's "phase" as:
+  - "prep": ingredient preparation, preheating, mixing/combining before cooking, wrapping dough, refrigerating/chilling, sifting, creaming butter, proofing dough, shaping, lining/greasing pans
+  - "cook": active cooking with heat — sautéing, baking, boiling, frying, roasting, blind baking, simmering, grilling
+  - "finish": plating, garnishing, cooling on wire rack, resting, serving, frosting, glazing, dusting with powdered sugar, unmolding
 - If a step involves a technique where a brief educational note would help a home cook, add a "tip" — a 1-2 sentence technique explanation in a warm, slightly conversational tone. Only add tips for steps where technique genuinely matters (e.g., searing, deglazing, resting meat). Most steps should have tip: null.
 - confidence "high" = complete recipe with exact measurements, "medium" = most measurements present, "low" = reconstructed from transcript or minimal info
 

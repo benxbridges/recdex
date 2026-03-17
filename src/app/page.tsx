@@ -1275,6 +1275,62 @@ function CarouselCommunityCard({ submission, isMobile, commentCount, onCommentCl
   )
 }
 
+function formatViewCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M views`
+  if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K views`
+  return `${count} views`
+}
+
+function CarouselViralCard({ video, isMobile }: { video: { videoId: string; dishName: string; channelTitle: string; thumbnail: string; url: string; viewCount: number; platform: string }; isMobile: boolean }) {
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
+  const isTikTok = video.platform === 'tiktok-via-youtube'
+  return (
+    <a href={video.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
+      <div
+        style={{
+          width: w, height: h, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'flex', flexDirection: 'column',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+      >
+        <div style={{ width: w, height: imgH, flexShrink: 0, overflow: 'hidden', background: C.cool, position: 'relative' }}>
+          {video.thumbnail
+            ? <img src={video.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                <span style={{ fontSize: 28, opacity: 0.6 }}>▶</span>
+              </div>
+          }
+          <div style={{ position: 'absolute', bottom: 6, left: 6, display: 'flex', gap: 4 }}>
+            <span style={{
+              fontSize: 9, fontFamily: MONO, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+              color: '#fff', background: isTikTok ? 'rgba(0,0,0,0.75)' : 'rgba(255,0,0,0.75)',
+            }}>
+              {isTikTok ? 'TikTok' : 'YouTube'}
+            </span>
+            <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, padding: '2px 6px', borderRadius: 4, color: '#fff', background: 'rgba(0,0,0,0.6)' }}>
+              {formatViewCount(video.viewCount)}
+            </span>
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
+          <h3 style={{
+            fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{video.dishName}</h3>
+          <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: 0 }}>{video.channelTitle}</p>
+        </div>
+        <div style={{ padding: '0 12px 10px' }}>
+          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Watch →</span>
+        </div>
+      </div>
+    </a>
+  )
+}
+
 function DiscussionListItem({ thread, hasRealData }: {
   thread: { id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }
   hasRealData: boolean
@@ -1988,6 +2044,7 @@ export default function Home() {
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([])
   const [quickRecipes, setQuickRecipes] = useState<Recipe[]>([])
   const [rotdRecipe, setRotdRecipe] = useState<Recipe | null>(null)
+  const [viralVideos, setViralVideos] = useState<{ videoId: string; dishName: string; channelTitle: string; thumbnail: string; url: string; viewCount: number; platform: string }[]>([])
 
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 700); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
   useEffect(() => { try { const p = JSON.parse(localStorage.getItem('recdex-pantry') || '[]'); setPantryCount(p.length) } catch { /* ignore */ } }, [])
@@ -2066,6 +2123,19 @@ export default function Home() {
     }
     fetchHomepage()
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Fetch viral/trending videos from YouTube/TikTok
+  useEffect(() => {
+    async function fetchViral() {
+      try {
+        const res = await fetch('/api/trending?limit=8')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.videos) setViralVideos(data.videos)
+      } catch { /* ignore */ }
+    }
+    fetchViral()
   }, [])
 
   // Fetch browse recipes
@@ -2327,9 +2397,9 @@ export default function Home() {
         return (
           <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
-            {/* 1. TRENDING ON RECDEX */}
+            {/* 1. POPULAR RECIPES */}
             {featuredRecipes.length > 0 && (
-              <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
+              <CarouselRow title="Popular on RecDex" seeAllHref="/trending">
                 {featuredRecipes.map(r => (
                   <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
                 ))}
@@ -2381,7 +2451,16 @@ export default function Home() {
               </div>
             )}
 
-            {/* 4. COMMUNITY PICKS — submissions */}
+            {/* 4. VIRAL — trending YouTube/TikTok recipe videos */}
+            {viralVideos.length > 0 && (
+              <CarouselRow title="Viral" seeAllHref="/trending">
+                {viralVideos.map(v => (
+                  <CarouselViralCard key={v.videoId} video={v} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 4b. COMMUNITY PICKS — user submissions (shows when available) */}
             {submissions.length > 0 && (
               <CarouselRow title="Community Picks" seeAllHref="/community">
                 {submissions.map(sub => (
