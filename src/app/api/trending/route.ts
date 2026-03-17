@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 /**
  * GET /api/trending
- * Returns trending recipe videos from YouTube (free, using existing API key).
+ * Returns trending recipe videos from YouTube + TikTok (via Supabase viral_videos table).
  * Also attempts to pull trending food topics from Google Trends RSS.
  *
  * Discovery strategy:
@@ -100,13 +101,34 @@ export async function GET(req: NextRequest) {
     .sort((a, b) => b.viewCount - a.viewCount)
 
   // Use Claude to extract clean dish names from clickbait YouTube titles
-  const videos = await extractDishNames(ranked)
+  const youtubeVideos = await extractDishNames(ranked)
+
+  // Merge with TikTok videos from Supabase (scraped separately)
+  const tiktokVideos = await fetchTikTokFromSupabase(15)
+  const allVideos: TrendingVideo[] = [
+    ...youtubeVideos,
+    ...tiktokVideos,
+  ]
+
+  // Sort all by view count, interleaving platforms
+  allVideos.sort((a, b) => b.viewCount - a.viewCount)
+
+  // Deduplicate by dish name (case-insensitive) — keep higher view count
+  const seenDishes = new Set<string>()
+  const dedupedVideos: TrendingVideo[] = []
+  for (const v of allVideos) {
+    const key = v.dishName.toLowerCase().trim()
+    if (!seenDishes.has(key)) {
+      seenDishes.add(key)
+      dedupedVideos.push(v)
+    }
+  }
 
   // Update cache
-  cache = { videos, topics, ts: Date.now() }
+  cache = { videos: dedupedVideos, topics, ts: Date.now() }
 
   return NextResponse.json({
-    videos: videos.slice(0, limit),
+    videos: dedupedVideos.slice(0, limit),
     trendingTopics: topics,
     cached: false,
   })
@@ -501,6 +523,53 @@ async function fetchGoogleTrendsFood(): Promise<TrendingTopic[]> {
     return items.slice(0, 5) // Top 5 food-related trends
   } catch (err) {
     console.error('[trending] Google Trends fetch error:', err)
+    return []
+  }
+}
+
+// ===== TIKTOK FROM SUPABASE =====
+
+/**
+ * Fetches trending TikTok videos from the viral_videos table.
+ * These are populated by the /api/scrape-tiktok cron job.
+ */
+async function fetchTikTokFromSupabase(limit: number): Promise<TrendingVideo[]> {
+  try {
+    const supabaseUrl = 'https://zacwsrcdvpglrcvirlng.supabase.co'
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const { data, error } = await supabase
+      .from('viral_videos')
+      .select('*')
+      .eq('platform', 'tiktok')
+      .eq('is_active', true)
+      .order('view_count', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) {
+      console.log('[trending] No TikTok data from Supabase:', error?.message || 'empty')
+      return []
+    }
+
+    // Map to TrendingVideo format
+    return data.map((v: Record<string, unknown>) => ({
+      videoId: `tiktok-${v.platform_id}`,
+      title: (v.title as string) || '',
+      dishName: (v.dish_name as string) || '',
+      channelTitle: (v.author_name as string) || '',
+      channelId: '',
+      thumbnail: (v.thumbnail_url as string) || '',
+      publishedAt: (v.scraped_at as string) || new Date().toISOString(),
+      platform: 'tiktok-via-youtube' as const, // Reuse existing platform type for display
+      url: (v.video_url as string) || '',
+      description: '',
+      viewCount: (v.view_count as number) || 0,
+    }))
+  } catch (err) {
+    console.error('[trending] TikTok Supabase fetch error:', err)
     return []
   }
 }
