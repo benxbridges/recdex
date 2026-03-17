@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 /**
  * GET /api/trending
- * Returns trending recipe videos from YouTube (free, using existing API key).
+ * Returns trending recipe videos from YouTube + TikTok (via Supabase viral_videos table).
  * Also attempts to pull trending food topics from Google Trends RSS.
+ *
+ * Discovery strategy:
+ *   1. YouTube search with order=viewCount for recipe queries (past 7 days)
+ *   2. YouTube search for "TikTok viral recipe" queries (marked platform: 'tiktok-via-youtube')
+ *   3. Fetch actual view counts via /videos?part=statistics
+ *   4. Filter: minimum 50,000 views
+ *   5. Sort by viewCount descending
  *
  * Query params:
  *   ?limit=10         — max results (default 10, max 25)
@@ -21,10 +29,13 @@ type TrendingVideo = {
   channelId: string
   thumbnail: string
   publishedAt: string
-  platform: 'youtube'
+  platform: 'youtube' | 'tiktok-via-youtube'
   url: string
   description: string
+  viewCount: number
 }
+
+type RawVideo = Omit<TrendingVideo, 'dishName'> & { dishName: string }
 
 type TrendingTopic = {
   title: string
@@ -35,6 +46,8 @@ type TrendingTopic = {
 // Simple in-memory cache (survives hot reloads in dev, resets on cold start)
 let cache: { videos: TrendingVideo[]; topics: TrendingTopic[]; ts: number } | null = null
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
+const MIN_VIEW_COUNT = 50_000
 
 export async function GET(req: NextRequest) {
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || '10'), 25)
@@ -55,20 +68,67 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'YOUTUBE_API_KEY not set' }, { status: 500 })
   }
 
-  // Fetch YouTube trending recipe videos + Google Trends in parallel
-  const [rawVideos, topics] = await Promise.all([
+  // Fetch YouTube trending recipe videos + TikTok-via-YouTube + Google Trends in parallel
+  const [youtubeRaw, tiktokRaw, topics] = await Promise.all([
     fetchYouTubeTrendingRecipes(apiKey, region, 25),
+    fetchTikTokViaYouTube(apiKey, region, 15),
     fetchGoogleTrendsFood(),
   ])
 
+  // Merge and deduplicate (YouTube results take priority over tiktok-via-youtube)
+  const seenIds = new Set<string>()
+  const merged: RawVideo[] = []
+
+  for (const v of youtubeRaw) {
+    if (!seenIds.has(v.videoId)) {
+      seenIds.add(v.videoId)
+      merged.push(v)
+    }
+  }
+  for (const v of tiktokRaw) {
+    if (!seenIds.has(v.videoId)) {
+      seenIds.add(v.videoId)
+      merged.push(v)
+    }
+  }
+
+  // Fetch actual view counts from YouTube Data API
+  const withStats = await fetchViewCounts(apiKey, merged)
+
+  // Filter by minimum view count and sort by views descending
+  const ranked = withStats
+    .filter(v => v.viewCount >= MIN_VIEW_COUNT)
+    .sort((a, b) => b.viewCount - a.viewCount)
+
   // Use Claude to extract clean dish names from clickbait YouTube titles
-  const videos = await extractDishNames(rawVideos)
+  const youtubeVideos = await extractDishNames(ranked)
+
+  // Merge with TikTok videos from Supabase (scraped separately)
+  const tiktokVideos = await fetchTikTokFromSupabase(15)
+  const allVideos: TrendingVideo[] = [
+    ...youtubeVideos,
+    ...tiktokVideos,
+  ]
+
+  // Sort all by view count, interleaving platforms
+  allVideos.sort((a, b) => b.viewCount - a.viewCount)
+
+  // Deduplicate by dish name (case-insensitive) — keep higher view count
+  const seenDishes = new Set<string>()
+  const dedupedVideos: TrendingVideo[] = []
+  for (const v of allVideos) {
+    const key = v.dishName.toLowerCase().trim()
+    if (!seenDishes.has(key)) {
+      seenDishes.add(key)
+      dedupedVideos.push(v)
+    }
+  }
 
   // Update cache
-  cache = { videos, topics, ts: Date.now() }
+  cache = { videos: dedupedVideos, topics, ts: Date.now() }
 
   return NextResponse.json({
-    videos: videos.slice(0, limit),
+    videos: dedupedVideos.slice(0, limit),
     trendingTopics: topics,
     cached: false,
   })
@@ -154,34 +214,17 @@ function isEnglishContent(title: string, description: string, channelName: strin
   return true
 }
 
-// ===== YOUTUBE SEARCH =====
+// ===== YOUTUBE SEARCH (viewCount ordered) =====
 
-async function fetchYouTubeTrendingRecipes(
+async function searchYouTube(
   apiKey: string,
+  queries: string[],
   region: string,
   maxResults: number,
-): Promise<TrendingVideo[]> {
-  // Strategy: search for popular single-recipe videos from the past 7 days,
-  // heavily targeting English-language North American food content.
+  platform: 'youtube' | 'tiktok-via-youtube',
+): Promise<RawVideo[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-
-  // Queries targeting single recipes popular with American audiences.
-  // More queries = broader coverage; each returns up to 10 results.
-  const queries = [
-    'viral recipe I made this week',
-    'this recipe is incredible you have to try',
-    'crockpot recipe easy family dinner',
-    'one pot recipe comfort food',
-    'air fryer recipe crispy easy',
-    'TikTok recipe I finally tried',
-    'easy weeknight dinner recipe homemade',
-    'best homemade recipe from scratch',
-    'baked chicken recipe juicy tender',
-    'pasta recipe creamy garlic',
-    'dessert recipe chocolate easy',
-    'slow cooker dump recipe',
-  ]
-  const allVideos: TrendingVideo[] = []
+  const allVideos: RawVideo[] = []
   const seenIds = new Set<string>()
 
   for (const q of queries) {
@@ -192,7 +235,7 @@ async function fetchYouTubeTrendingRecipes(
         part: 'snippet',
         q,
         type: 'video',
-        order: 'relevance',
+        order: 'viewCount',
         publishedAfter: weekAgo,
         regionCode: region,
         maxResults: String(Math.min(10, maxResults - allVideos.length)),
@@ -238,9 +281,10 @@ async function fetchYouTubeTrendingRecipes(
                      item.snippet.thumbnails?.medium?.url ||
                      item.snippet.thumbnails?.default?.url || '',
           publishedAt: item.snippet.publishedAt,
-          platform: 'youtube',
+          platform,
           url: `https://www.youtube.com/watch?v=${vid}`,
           description: (item.snippet.description || '').slice(0, 300),
+          viewCount: 0, // Will be filled by fetchViewCounts
         })
       }
     } catch (err) {
@@ -251,6 +295,95 @@ async function fetchYouTubeTrendingRecipes(
   return allVideos
 }
 
+async function fetchYouTubeTrendingRecipes(
+  apiKey: string,
+  region: string,
+  maxResults: number,
+): Promise<RawVideo[]> {
+  // Queries targeting single recipes popular with American audiences.
+  const queries = [
+    'viral recipe I made this week',
+    'this recipe is incredible you have to try',
+    'crockpot recipe easy family dinner',
+    'one pot recipe comfort food',
+    'air fryer recipe crispy easy',
+    'easy weeknight dinner recipe homemade',
+    'best homemade recipe from scratch',
+    'baked chicken recipe juicy tender',
+    'pasta recipe creamy garlic',
+    'dessert recipe chocolate easy',
+    'slow cooker dump recipe',
+  ]
+
+  return searchYouTube(apiKey, queries, region, maxResults, 'youtube')
+}
+
+// ===== TIKTOK-VIA-YOUTUBE SEARCH =====
+
+async function fetchTikTokViaYouTube(
+  apiKey: string,
+  region: string,
+  maxResults: number,
+): Promise<RawVideo[]> {
+  // Pragmatic TikTok sourcing: search YouTube for TikTok-viral recipe content.
+  // These are typically YouTube creators recreating or covering TikTok-viral dishes.
+  const queries = [
+    'tiktok viral recipe 2026',
+    'tiktok food hack trending',
+    'recipe going viral on tiktok',
+    'tiktok recipe I tried and it actually works',
+    'trending tiktok dinner recipe',
+  ]
+
+  return searchYouTube(apiKey, queries, region, maxResults, 'tiktok-via-youtube')
+}
+
+// ===== FETCH VIEW COUNTS =====
+
+/**
+ * Fetches actual view counts from the YouTube Data API /videos endpoint.
+ * Batches video IDs in groups of 50 (API limit).
+ */
+async function fetchViewCounts(apiKey: string, videos: RawVideo[]): Promise<RawVideo[]> {
+  if (videos.length === 0) return videos
+
+  const videoIds = videos.map(v => v.videoId)
+  const viewCountMap = new Map<string, number>()
+
+  // YouTube allows up to 50 IDs per request
+  const batchSize = 50
+  for (let i = 0; i < videoIds.length; i += batchSize) {
+    const batch = videoIds.slice(i, i + batchSize)
+    try {
+      const params = new URLSearchParams({
+        part: 'statistics',
+        id: batch.join(','),
+        key: apiKey,
+      })
+
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`)
+      if (!res.ok) {
+        console.error('[trending] YouTube statistics error:', res.status, await res.text())
+        continue
+      }
+
+      const data = await res.json()
+      for (const item of data.items || []) {
+        const count = parseInt(item.statistics?.viewCount || '0', 10)
+        viewCountMap.set(item.id, count)
+      }
+    } catch (err) {
+      console.error('[trending] YouTube statistics fetch error:', err)
+    }
+  }
+
+  // Attach view counts to videos
+  return videos.map(v => ({
+    ...v,
+    viewCount: viewCountMap.get(v.videoId) || 0,
+  }))
+}
+
 // ===== DISH NAME EXTRACTION (Claude) =====
 
 /**
@@ -258,7 +391,7 @@ async function fetchYouTubeTrendingRecipes(
  * One batch call for all videos — runs once per cache refresh (~1/hour).
  * Cost: ~$0.002 per call with Haiku.
  */
-async function extractDishNames(videos: TrendingVideo[]): Promise<TrendingVideo[]> {
+async function extractDishNames(videos: RawVideo[]): Promise<TrendingVideo[]> {
   if (videos.length === 0) return videos
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY
@@ -390,6 +523,53 @@ async function fetchGoogleTrendsFood(): Promise<TrendingTopic[]> {
     return items.slice(0, 5) // Top 5 food-related trends
   } catch (err) {
     console.error('[trending] Google Trends fetch error:', err)
+    return []
+  }
+}
+
+// ===== TIKTOK FROM SUPABASE =====
+
+/**
+ * Fetches trending TikTok videos from the viral_videos table.
+ * These are populated by the /api/scrape-tiktok cron job.
+ */
+async function fetchTikTokFromSupabase(limit: number): Promise<TrendingVideo[]> {
+  try {
+    const supabaseUrl = 'https://zacwsrcdvpglrcvirlng.supabase.co'
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
+
+    const supabase = createClient(supabaseUrl, supabaseKey)
+
+    const { data, error } = await supabase
+      .from('viral_videos')
+      .select('*')
+      .eq('platform', 'tiktok')
+      .eq('is_active', true)
+      .order('view_count', { ascending: false })
+      .limit(limit)
+
+    if (error || !data) {
+      console.log('[trending] No TikTok data from Supabase:', error?.message || 'empty')
+      return []
+    }
+
+    // Map to TrendingVideo format
+    return data.map((v: Record<string, unknown>) => ({
+      videoId: `tiktok-${v.platform_id}`,
+      title: (v.title as string) || '',
+      dishName: (v.dish_name as string) || '',
+      channelTitle: (v.author_name as string) || '',
+      channelId: '',
+      thumbnail: (v.thumbnail_url as string) || '',
+      publishedAt: (v.scraped_at as string) || new Date().toISOString(),
+      platform: 'tiktok-via-youtube' as const, // Reuse existing platform type for display
+      url: (v.video_url as string) || '',
+      description: '',
+      viewCount: (v.view_count as number) || 0,
+    }))
+  } catch (err) {
+    console.error('[trending] TikTok Supabase fetch error:', err)
     return []
   }
 }

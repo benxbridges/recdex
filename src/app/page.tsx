@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -1187,9 +1188,11 @@ const EXTERNAL_SOURCE_COLORS: Record<string, { bg: string; bgLight: string; text
   'NYT Cooking': { bg: '#8B7355', bgLight: '#F5F0E8', text: '#FFF' },
   'Bon Appétit': { bg: '#E8614D', bgLight: '#FDF0EC', text: '#FFF' },
   'Serious Eats': { bg: '#2B8C8C', bgLight: '#EBF5F5', text: '#FFF' },
+  'Epicurious': { bg: '#B8860B', bgLight: '#FDF5E6', text: '#FFF' },
+  'Food52': { bg: '#C25B28', bgLight: '#FDF0E8', text: '#FFF' },
 }
 
-function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: { ext: { id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
+function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: { ext: { id: string; title: string; source_name: string; source_url: string; description: string | null; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }; isMobile: boolean; commentCount?: number; onCommentClick?: (e: React.MouseEvent) => void }) {
   const w = isMobile ? CARD_W_M : CARD_W
   const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
   const h = isMobile ? CARD_H_M : CARD_H
@@ -1214,11 +1217,15 @@ function CarouselExternalCard({ ext, isMobile, commentCount, onCommentClick }: {
           }}>{ext.title}</h3>
         </div>
         <div style={{ padding: '10px 12px 8px', background: C.warm, flex: 1, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: ext.description ? 6 : 0 }}>
             {ext.cuisine && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.cuisine}</span>}
             {ext.cuisine && ext.time_estimate && <span style={{ color: C.rule, fontSize: 7 }}>·</span>}
             {ext.time_estimate && <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>{ext.time_estimate}</span>}
           </div>
+          {ext.description && <p style={{
+            fontSize: 11, fontFamily: SANS, color: C.text2, lineHeight: 1.4, margin: 0,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{ext.description}</p>}
         </div>
         <CardFooter commentCount={commentCount} cta={`Read on ${ext.source_name} →`} onCommentClick={onCommentClick} />
       </div>
@@ -1263,6 +1270,62 @@ function CarouselCommunityCard({ submission, isMobile, commentCount, onCommentCl
           {submission.author_name && <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: 0 }}>by {submission.author_name}</p>}
         </div>
         <CardFooter commentCount={commentCount} cta="Watch →" onCommentClick={onCommentClick} />
+      </div>
+    </a>
+  )
+}
+
+function formatViewCount(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M views`
+  if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K views`
+  return `${count} views`
+}
+
+function CarouselViralCard({ video, isMobile }: { video: { videoId: string; dishName: string; channelTitle: string; thumbnail: string; url: string; viewCount: number; platform: string }; isMobile: boolean }) {
+  const w = isMobile ? CARD_W_M : CARD_W
+  const imgH = isMobile ? CARD_IMG_H_M : CARD_IMG_H
+  const h = isMobile ? CARD_H_M : CARD_H
+  const isTikTok = video.platform === 'tiktok-via-youtube'
+  return (
+    <a href={video.url} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', flexShrink: 0, scrollSnapAlign: 'start' }}>
+      <div
+        style={{
+          width: w, height: h, borderRadius: 8, overflow: 'hidden', cursor: 'pointer',
+          border: `1px solid ${C.ruleLight}`, background: C.warm, transition: 'transform 0.15s, box-shadow 0.15s',
+          display: 'flex', flexDirection: 'column',
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(0,0,0,0.15)' }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'none' }}
+      >
+        <div style={{ width: w, height: imgH, flexShrink: 0, overflow: 'hidden', background: C.cool, position: 'relative' }}>
+          {video.thumbnail
+            ? <img src={video.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111' }}>
+                <span style={{ fontSize: 28, opacity: 0.6 }}>▶</span>
+              </div>
+          }
+          <div style={{ position: 'absolute', bottom: 6, left: 6, display: 'flex', gap: 4 }}>
+            <span style={{
+              fontSize: 9, fontFamily: MONO, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+              color: '#fff', background: isTikTok ? 'rgba(0,0,0,0.75)' : 'rgba(255,0,0,0.75)',
+            }}>
+              {isTikTok ? 'TikTok' : 'YouTube'}
+            </span>
+            <span style={{ fontSize: 9, fontFamily: MONO, fontWeight: 600, padding: '2px 6px', borderRadius: 4, color: '#fff', background: 'rgba(0,0,0,0.6)' }}>
+              {formatViewCount(video.viewCount)}
+            </span>
+          </div>
+        </div>
+        <div style={{ padding: '10px 12px 8px', flex: 1, overflow: 'hidden' }}>
+          <h3 style={{
+            fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, lineHeight: 1.25, margin: '0 0 4px',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+          }}>{video.dishName}</h3>
+          <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: 0 }}>{video.channelTitle}</p>
+        </div>
+        <div style={{ padding: '0 12px 10px' }}>
+          <span style={{ fontSize: 10, fontFamily: SANS, color: C.accent, fontWeight: 500 }}>Watch →</span>
+        </div>
       </div>
     </a>
   )
@@ -1804,11 +1867,20 @@ export default function Home() {
   const [showSubmitModal, setShowSubmitModal] = useState(false)
   const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
+  // Onboarding state
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  useEffect(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+      if (!profile.onboardingComplete) setShowOnboarding(true)
+    } catch { setShowOnboarding(true) }
+  }, [])
+
   // Community threads state
   const [communityThreads, setCommunityThreads] = useState<{ id: string; title: string; tag: string | null; author_display_name: string; reply_count: number; upvote_count: number; created_at: string; topReply?: { user: string; text: string } | null }[]>([])
 
   // External recipes state
-  const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
+  const [externalRecipes, setExternalRecipes] = useState<{ id: string; title: string; source_name: string; source_url: string; description: string | null; cuisine: string | null; time_estimate: string | null; matched_recipe_slug: string | null }[]>([])
 
   // Fetch recent community comments
   useEffect(() => {
@@ -1851,9 +1923,9 @@ export default function Home() {
 
   // Fetch external recipes
   useEffect(() => {
-    supabase.from('external_recipes').select('id, title, source_name, source_url, cuisine, time_estimate, matched_recipe_slug')
+    supabase.from('external_recipes').select('id, title, source_name, source_url, description, cuisine, time_estimate, matched_recipe_slug')
       .eq('status', 'active')
-      .order('created_at', { ascending: false }).limit(8)
+      .order('created_at', { ascending: false }).limit(24)
       .then(({ data }) => { if (data) setExternalRecipes(data) })
   }, [])
 
@@ -1972,6 +2044,7 @@ export default function Home() {
   const [featuredRecipes, setFeaturedRecipes] = useState<Recipe[]>([])
   const [quickRecipes, setQuickRecipes] = useState<Recipe[]>([])
   const [rotdRecipe, setRotdRecipe] = useState<Recipe | null>(null)
+  const [viralVideos, setViralVideos] = useState<{ videoId: string; dishName: string; channelTitle: string; thumbnail: string; url: string; viewCount: number; platform: string }[]>([])
 
   useEffect(() => { const c = () => setIsMobile(window.innerWidth < 700); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
   useEffect(() => { try { const p = JSON.parse(localStorage.getItem('recdex-pantry') || '[]'); setPantryCount(p.length) } catch { /* ignore */ } }, [])
@@ -2052,6 +2125,19 @@ export default function Home() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Fetch viral/trending videos from YouTube/TikTok
+  useEffect(() => {
+    async function fetchViral() {
+      try {
+        const res = await fetch('/api/trending?limit=8')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data.videos) setViralVideos(data.videos)
+      } catch { /* ignore */ }
+    }
+    fetchViral()
+  }, [])
+
   // Fetch browse recipes
   useEffect(() => {
     if (view !== 'browse' && !searchQuery) return
@@ -2096,6 +2182,11 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
+      {showOnboarding && (
+        <OnboardingFlow onComplete={(profile: OnboardingProfile) => {
+          setShowOnboarding(false)
+        }} />
+      )}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         *{box-sizing:border-box}body{margin:0;background:${C.bg}}::selection{background:rgba(200,74,42,0.15);color:${C.text}}input::placeholder{color:${C.text3}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${C.rule}}
@@ -2229,7 +2320,7 @@ export default function Home() {
           : THREADS.map(t => ({ id: t.id, title: t.title, tag: t.tag, author_display_name: t.author, reply_count: t.replies, upvote_count: t.upvotes, created_at: '', topReply: t.topReply }))
         const externals = externalRecipes.length > 0
           ? externalRecipes
-          : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
+          : EXTERNAL_RECIPES.map(e => ({ id: e.id, title: e.title, source_name: e.source, source_url: '#', description: null, cuisine: e.cuisine, time_estimate: e.time, matched_recipe_slug: e.similar?.slug || null }))
 
         // Pantry mode: show matches instead of carousels
         if (searchMode === 'pantry' && searchQuery.trim()) {
@@ -2306,9 +2397,9 @@ export default function Home() {
         return (
           <div style={{ maxWidth: 960, margin: '0 auto' }}>
 
-            {/* 1. TRENDING ON RECDEX */}
+            {/* 1. POPULAR RECIPES */}
             {featuredRecipes.length > 0 && (
-              <CarouselRow title="Trending on RecDex" seeAllHref="/trending">
+              <CarouselRow title="Popular on RecDex" seeAllHref="/trending">
                 {featuredRecipes.map(r => (
                   <CarouselRecipeCard key={r.id} recipe={r} onQuickView={setQuickViewId} isMobile={isMobile} saved={homeSavedIds.includes(r.id)} onToggleSave={toggleHomeSave} commentCount={commentCountsMap[r.id]} onCommentClick={() => openCommentDrawer('recipe', r.id, r.title)} />
                 ))}
@@ -2360,7 +2451,16 @@ export default function Home() {
               </div>
             )}
 
-            {/* 4. COMMUNITY PICKS — submissions */}
+            {/* 4. VIRAL — trending YouTube/TikTok recipe videos */}
+            {viralVideos.length > 0 && (
+              <CarouselRow title="Viral" seeAllHref="/trending">
+                {viralVideos.map(v => (
+                  <CarouselViralCard key={v.videoId} video={v} isMobile={isMobile} />
+                ))}
+              </CarouselRow>
+            )}
+
+            {/* 4b. COMMUNITY PICKS — user submissions (shows when available) */}
             {submissions.length > 0 && (
               <CarouselRow title="Community Picks" seeAllHref="/community">
                 {submissions.map(sub => (

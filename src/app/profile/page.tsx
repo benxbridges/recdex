@@ -681,6 +681,55 @@ export default function ProfilePage() {
 
         <div style={{ height: 1, background: C.rule, marginBottom: 28 }} />
 
+        {/* ========== TASTE PREFERENCES ========== */}
+        {(() => {
+          const raw = typeof window !== 'undefined' ? localStorage.getItem('recdex-profile') : null
+          const p = raw ? (() => { try { return JSON.parse(raw) } catch { return {} } })() : {}
+          const hasTaste = p.frequency || (p.cuisines && p.cuisines.length > 0) || (p.dietary && p.dietary.length > 0) || p.goDish || p.favRestaurantDish || (p.pantryItems && p.pantryItems.length > 0)
+          if (!hasTaste && p.onboardingComplete) return null
+          return (
+            <section style={{ marginBottom: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: 0 }}>Taste Profile</h3>
+                <button onClick={() => {
+                  try {
+                    const cur = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+                    localStorage.setItem('recdex-profile', JSON.stringify({ ...cur, onboardingComplete: false }))
+                    window.location.href = '/'
+                  } catch { window.location.href = '/' }
+                }} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, background: 'none', border: `1px solid ${C.ruleLight}`, borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>
+                  {hasTaste ? 'Edit preferences' : 'Set up preferences'}
+                </button>
+              </div>
+              {hasTaste ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {p.frequency && (
+                    <span style={{ padding: '6px 12px', borderRadius: 16, background: C.accentBg, border: `1px solid ${C.ruleLight}`, fontFamily: SANS, fontSize: 12, color: C.accent, fontWeight: 600 }}>
+                      {p.frequency === 'daily' ? 'Cooks daily' : p.frequency === 'sometimes' ? 'Cooks a few times/week' : 'Cooks occasionally'}
+                    </span>
+                  )}
+                  {(p.cuisines || []).map((c: string) => (
+                    <span key={c} style={{ padding: '6px 12px', borderRadius: 16, background: C.warm, border: `1px solid ${C.ruleLight}`, fontFamily: SANS, fontSize: 12, color: C.text2 }}>{c}</span>
+                  ))}
+                  {(p.dietary || []).filter((d: string) => d !== 'None').map((d: string) => (
+                    <span key={d} style={{ padding: '6px 12px', borderRadius: 16, background: C.greenBg, border: `1px solid ${C.ruleLight}`, fontFamily: SANS, fontSize: 12, color: C.green, fontWeight: 600 }}>{d}</span>
+                  ))}
+                  {p.goDish && (
+                    <span style={{ padding: '6px 12px', borderRadius: 16, background: C.blueBg, border: `1px solid ${C.ruleLight}`, fontFamily: SANS, fontSize: 12, color: C.blue }}>Go-to: {p.goDish}</span>
+                  )}
+                  {p.pantryItems && p.pantryItems.length > 0 && (
+                    <span style={{ padding: '6px 12px', borderRadius: 16, background: C.warm, border: `1px solid ${C.ruleLight}`, fontFamily: MONO, fontSize: 11, color: C.text3 }}>{p.pantryItems.length} pantry items</span>
+                  )}
+                </div>
+              ) : (
+                <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: 0, lineHeight: 1.5 }}>
+                  Set up your taste profile to get personalized recipe recommendations.
+                </p>
+              )}
+            </section>
+          )
+        })()}
+
         {/* ========== @USERNAME'S DISHES — the flex ========== */}
         {dishesList.length > 0 && (
           <section style={{ marginBottom: 32 }}>
