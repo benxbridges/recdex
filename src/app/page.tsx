@@ -2185,7 +2185,7 @@ export default function Home() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: isMobile ? 'relative' : 'sticky', top: isMobile ? undefined : 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setView('home'); setSearchQuery(''); setActiveCategory('all'); setMobileMenuOpen(false) }}>
@@ -2300,17 +2300,17 @@ export default function Home() {
               placeholder={searchMode === 'recipe' ? 'Search by recipe, ingredient, or cuisine...' : 'Type ingredients: chicken, garlic, lemon...'}
               style={{ width: '100%', padding: isMobile ? '12px 14px 12px 40px' : '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: isMobile ? 14 : 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box' }} />
           </div>
-          {/* Quick tags */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-            {searchMode === 'recipe'
-              ? ['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking'].map(tag => (
-                  <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
-                ))
-              : ['chicken, rice', 'pasta, tomato', 'eggs, cheese', 'ground beef', 'tofu, soy sauce'].map(tag => (
-                  <button key={tag} onClick={() => setSearchQuery(tag)} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
-                ))
-            }
-          </div>
+          {/* Quick tags — expand on focus */}
+          {(searchFocused || searchQuery.trim()) && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap', animation: 'fadeIn 0.15s ease' }}>
+              {(searchMode === 'recipe'
+                ? ['pasta', 'chicken', 'vegetarian', 'under 30 min', 'baking']
+                : ['chicken, rice', 'pasta, tomato', 'eggs, cheese', 'ground beef', 'tofu, soy sauce']
+              ).map(tag => (
+                <button key={tag} onMouseDown={e => { e.preventDefault(); setSearchQuery(tag) }} style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 11, fontFamily: SANS, cursor: 'pointer' }}>{tag}</button>
+              ))}
+            </div>
+          )}
           {/* Pantry count hint */}
           {searchMode === 'pantry' && pantryCount > 0 && !searchQuery.trim() && (
             <Link href="/pantry" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 12, fontSize: 12, fontFamily: SANS, color: C.green, fontWeight: 500, textDecoration: 'none' }}>
@@ -2557,11 +2557,17 @@ export default function Home() {
                 </div>
                 <div style={{ marginBottom: 20 }}>
                   <p style={{ fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: '0 0 8px' }}>By cuisine</p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <div style={{
+                    display: isMobile ? 'grid' : 'flex',
+                    ...(isMobile
+                      ? { gridTemplateColumns: '1fr 1fr', gap: 6 }
+                      : { gap: 6, flexWrap: 'wrap' as const }),
+                  }}>
                     {categories.slice(0, 12).map(cat => (
                       <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setView('browse') }} style={{
-                        padding: '5px 12px', borderRadius: 6, border: `1px solid ${C.ruleLight}`,
+                        padding: '7px 12px', borderRadius: 6, border: `1px solid ${C.ruleLight}`,
                         background: 'transparent', color: C.text2, fontSize: 11, fontFamily: SANS, cursor: 'pointer',
+                        textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>
                         {cat.name} <span style={{ color: C.text3, fontFamily: MONO, fontSize: 9 }}>{cat.recipe_count}</span>
                       </button>
