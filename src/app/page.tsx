@@ -1531,21 +1531,8 @@ function SubmitModal({ onClose, onSubmitted, categories }: {
     onClose()
   }
 
-  if (!displayName) {
-    return (
-      <div ref={backdropRef} onClick={e => { if (e.target === backdropRef.current) onClose() }} style={{
-        position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.6)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-        animation: 'backdropIn 0.2s ease',
-      }}>
-        <div style={{ background: C.warm, borderRadius: 12, padding: '32px 28px', maxWidth: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)', border: `1px solid ${C.ruleLight}` }}>
-          <p style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, marginBottom: 8 }}>Set up your profile first</p>
-          <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.5, marginBottom: 16 }}>You need a display name to share recipes with the community.</p>
-          <Link href="/profile" style={{ display: 'inline-block', padding: '9px 20px', borderRadius: 6, background: C.accent, color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>Go to profile</Link>
-        </div>
-      </div>
-    )
-  }
+  // Profile gate paused during testing — will re-enable for launch
+  // if (!displayName) { ... }
 
   const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`, background: C.cool, fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none' }
 
@@ -1865,6 +1852,7 @@ export default function Home() {
   const [communityRecipes, setCommunityRecipes] = useState<Recipe[]>([])
   const [submissionSort, setSubmissionSort] = useState<'recent' | 'top'>('recent')
   const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userUpvotes, setUserUpvotes] = useState<string[]>([])
 
   // Onboarding state
@@ -2046,7 +2034,7 @@ export default function Home() {
   const [rotdRecipe, setRotdRecipe] = useState<Recipe | null>(null)
   const [viralVideos, setViralVideos] = useState<{ videoId: string; dishName: string; channelTitle: string; thumbnail: string; url: string; viewCount: number; platform: string }[]>([])
 
-  useEffect(() => { const c = () => setIsMobile(window.innerWidth < 700); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
+  useEffect(() => { const c = () => setIsMobile(window.innerWidth < 768); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
   useEffect(() => { try { const p = JSON.parse(localStorage.getItem('recdex-pantry') || '[]'); setPantryCount(p.length) } catch { /* ignore */ } }, [])
   useEffect(() => {
     const onScroll = () => {
@@ -2198,37 +2186,84 @@ export default function Home() {
 
       {/* HEADER */}
       <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer' }} onClick={() => { setView('home'); setSearchQuery(''); setActiveCategory('all') }}>
-              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+            <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setView('home'); setSearchQuery(''); setActiveCategory('all'); setMobileMenuOpen(false) }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/community" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
-              <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
-              <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
-              <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
-              </Link>
-              <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
-                <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
-              </Link>
-              <ThemeToggle />
-            </div>
+            {/* Desktop nav */}
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
+                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/community" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
+                <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
+                <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
+                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
+                </Link>
+                <Link href="/profile" style={{ textDecoration: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, color: C.text2 }}>
+                  <RecipeBoxIcon /><span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>
+                </Link>
+                <ThemeToggle />
+              </div>
+            )}
+            {/* Mobile nav controls */}
+            {isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ThemeToggle />
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth="2" strokeLinecap="round">
+                    {mobileMenuOpen
+                      ? <><path d="M18 6L6 18" /><path d="M6 6l12 12" /></>
+                      : <><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></>
+                    }
+                  </svg>
+                </button>
+              </div>
+            )}
           </div>
         </div>
+        {/* Mobile menu dropdown */}
+        {isMobile && mobileMenuOpen && (
+          <div style={{
+            borderTop: `1px solid ${C.rule}`, background: C.bg,
+            padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {[
+              { href: '/browse', label: 'Browse', icon: null },
+              { href: '/community', label: 'Community', icon: null },
+              { href: '/lists', label: 'Lists', icon: null },
+              { href: '/trending', label: 'Trending', icon: '🔥' },
+              { href: '/contribute', label: '+ Contribute', icon: null, accent: true },
+              { href: '/pantry', label: 'Kitchen', icon: '🛒' },
+              { href: '/profile', label: 'Profile', icon: null },
+            ].map(item => (
+              <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
+                textDecoration: 'none', padding: '10px 8px', borderRadius: 6,
+                fontSize: 14, fontFamily: SANS, fontWeight: item.accent ? 600 : 500,
+                color: item.accent ? C.accent : C.text2,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                {item.icon && <span style={{ fontSize: 14 }}>{item.icon}</span>}
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </header>
 
       {/* SEARCH HERO */}
-      <div ref={searchHeroRef} style={{ background: C.warm, borderBottom: `1px solid ${C.rule}`, padding: '32px clamp(16px,4vw,24px) 16px' }}>
+      <div ref={searchHeroRef} style={{ background: C.warm, borderBottom: `1px solid ${C.rule}`, padding: isMobile ? '20px 16px 12px' : '32px clamp(16px,4vw,24px) 16px' }}>
         <div style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center' }}>
-          <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.text, marginBottom: 4 }}>
+          <p style={{ fontFamily: SERIF, fontSize: isMobile ? 18 : 22, fontWeight: 600, color: C.text, marginBottom: 4 }}>
             {searchMode === 'recipe' ? 'What are you cooking today?' : "What's in your kitchen?"}
           </p>
           <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, marginBottom: 14 }}>
@@ -2263,7 +2298,7 @@ export default function Home() {
             </svg>
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
               placeholder={searchMode === 'recipe' ? 'Search by recipe, ingredient, or cuisine...' : 'Type ingredients: chicken, garlic, lemon...'}
-              style={{ width: '100%', padding: '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s' }} />
+              style={{ width: '100%', padding: isMobile ? '12px 14px 12px 40px' : '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: isMobile ? 14 : 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box' }} />
           </div>
           {/* Quick tags */}
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -2296,9 +2331,9 @@ export default function Home() {
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
         background: C.bg, borderBottom: `1px solid ${C.rule}`,
         padding: '10px clamp(16px,4vw,24px)',
-        transform: searchPinned ? 'translateY(0)' : 'translateY(-100%)',
+        transform: (searchPinned && !isMobile) ? 'translateY(0)' : 'translateY(-100%)',
         transition: 'transform 0.25s ease',
-        pointerEvents: searchPinned ? 'auto' : 'none',
+        pointerEvents: (searchPinned && !isMobile) ? 'auto' : 'none',
       }}>
         <div style={{ maxWidth: 560, margin: '0 auto', position: 'relative' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}>
