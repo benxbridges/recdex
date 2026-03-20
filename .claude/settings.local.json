@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "recdex": {
+      "command": "bun",
+      "args": ["run", "mcp-server/index.ts"],
+      "cwd": "."
+    }
+  }
+}
