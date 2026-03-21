@@ -1,16 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-/**
- * POST /api/publish-recipe
- * Server-side recipe publish using service role key to bypass RLS.
- * Used by the /contribute page.
- */
+// Use service role key for writes to bypass RLS
+const supabaseAdmin = createClient(
+  'https://zacwsrcdvpglrcvirlng.supabase.co',
+  process.env.SUPABASE_SERVICE_KEY || ''
+)
 
-const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
+async function fetchUnsplashImage(query: string): Promise<string | null> {
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY
+  if (!accessKey) return null
 
-const supabaseWrite = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || ANON_KEY)
+  try {
+    const url = new URL('https://api.unsplash.com/search/photos')
+    url.searchParams.set('query', query)
+    url.searchParams.set('per_page', '1')
+    url.searchParams.set('orientation', 'landscape')
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+    })
+
+    if (!res.ok) return null
+
+    const data = await res.json()
+    const photo = data?.results?.[0]
+    return photo?.urls?.regular || null
+  } catch {
+    return null
+  }
+}
 
 export async function POST(req: NextRequest) {
   if (!process.env.SUPABASE_SERVICE_KEY) {
@@ -18,14 +37,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'server_config_error' }, { status: 500 })
   }
 
-  const body = await req.json()
+  let body
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'invalid JSON body' }, { status: 400 })
+  }
+
   const { recipe, submission } = body
 
   if (!recipe?.slug || !recipe?.title) {
     return NextResponse.json({ error: 'slug and title required' }, { status: 400 })
   }
 
-  const { error: insertError } = await supabaseWrite.from('recipes').insert({
+  // Dedup check — skip if slug already exists
+  const { data: existing } = await supabaseAdmin.from('recipes').select('slug').eq('slug', recipe.slug).single()
+  if (existing) {
+    return NextResponse.json({ success: true, slug: recipe.slug, skipped: true })
+  }
+
+  // If no image_url provided, try fetching one from Unsplash
+  let imageUrl = recipe.image_url || null
+  if (!imageUrl) {
+    imageUrl = await fetchUnsplashImage(recipe.title)
+  }
+
+  const { error: insertError } = await supabaseAdmin.from('recipes').insert({
     slug: recipe.slug,
     title: recipe.title,
     description: recipe.description || null,
@@ -41,10 +78,11 @@ export async function POST(req: NextRequest) {
     submitted_by: null,
     source: 'community',
     source_attribution: recipe.source_attribution || null,
+    source_url: recipe.source_url || null,
     video_url: recipe.video_url || null,
     creator_name: recipe.creator_name || null,
     creator_url: recipe.creator_url || null,
-    image_url: recipe.image_url || null,
+    image_url: imageUrl,
   })
 
   if (insertError) {
@@ -52,21 +90,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'save_failed' }, { status: 500 })
   }
 
-  // Log community submission (non-critical)
-  if (submission) {
+  // Insert community submission record if provided
+  if (submission?.url) {
     try {
-      await supabaseWrite.from('community_submissions').insert({
-        url: submission.url || null,
+      await supabaseAdmin.from('community_submissions').insert({
+        url: submission.url,
         platform: submission.platform || null,
         title: submission.title || null,
         author_name: submission.author_name || null,
         author_url: submission.author_url || null,
         thumbnail_url: submission.thumbnail_url || null,
         display_name: submission.display_name || null,
+        status: 'active',
         related_recipe_slug: recipe.slug,
       })
-    } catch { /* non-critical */ }
+    } catch {
+      // Non-critical: recipe is already saved
+    }
   }
 
-  return NextResponse.json({ slug: recipe.slug })
+  return NextResponse.json({ success: true, slug: recipe.slug })
 }

@@ -407,23 +407,21 @@ function BrowseContent() {
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
               Recipe Index<EggDot size={9} />
             </h1>
-            <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, fontFamily: MONO, letterSpacing: 0.3 }}>Browse</span>
-            <Link href="/community" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
-            <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
-            <div style={{ width: 1, height: 14, background: C.rule }} />
-            <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 13 }}>🛒</span>
-              {!isMobile && <span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>}
-            </Link>
-            <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <RecipeBoxIcon />
-              {!isMobile && <span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>}
-            </Link>
-            <ThemeToggle />
-          </div>
+          {!isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>Browse</span>
+              <div style={{ width: 1, height: 14, background: C.rule }} />
+              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
+              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ThemeToggle />
+            </div>
+          )}
         </div>
       </header>
 
