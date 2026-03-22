@@ -6,6 +6,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
 import { scaleAmount, highlightVerbs, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
 
 // Web Speech API types (not yet in all TS libs)
@@ -313,12 +314,11 @@ function FloatingTimerPanel({ timers, onGoToStep }: {
 
 // ─── Phase divider ───────────────────────────────────────────────────────
 
-function PhaseDivider({ phase }: { phase: 'prep' | 'cook' | 'finish' }) {
+function PhaseDivider({ phase }: { phase: 'prep' | 'cook' }) {
   const meta = PHASE_META[phase]
-  const icons = {
+  const icons: Record<string, React.ReactNode> = {
     prep: <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>,
     cook: <><path d="M12 12c0-3 2.5-5 2.5-8" /><path d="M8 12c0-3 2.5-5 2.5-8" /><path d="M16 12c0-3 2.5-5 2.5-8" /><rect x="4" y="14" width="16" height="6" rx="1" /></>,
-    finish: <><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" /></>,
   }
   return (
     <div style={{
@@ -434,6 +434,197 @@ function StepNote({ stepIndex, slug }: { stepIndex: number; slug: string }) {
   )
 }
 
+// ─── Substitution card ───────────────────────────────────────────────────
+
+function SubstitutionCard({ ingredientName, recipeName, recipeCuisine, stepText, onApply, onClose }: {
+  ingredientName: string
+  recipeName: string
+  recipeCuisine: string | null
+  stepText: string
+  onApply: (original: string, replacement: string, ratio: string) => void
+  onClose: () => void
+}) {
+  const [subs, setSubs] = useState<SubOption[]>([])
+  const [loading, setLoading] = useState(false)
+  const [source, setSource] = useState<'local' | 'ai'>('local')
+  const [showAll, setShowAll] = useState(false)
+
+  useEffect(() => {
+    // Try local database first
+    const localMatch = findSubstitutions(ingredientName)
+    if (localMatch) {
+      setSubs(localMatch.subs)
+      setSource('local')
+      return
+    }
+
+    // Fall back to API
+    setLoading(true)
+    fetch('/api/substitute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ingredient: ingredientName,
+        recipeTitle: recipeName,
+        recipeCuisine: recipeCuisine,
+        stepContext: stepText,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.subs) {
+          setSubs(data.subs)
+          setSource('ai')
+        }
+      })
+      .catch(() => { /* silently fail */ })
+      .finally(() => setLoading(false))
+  }, [ingredientName, recipeName, recipeCuisine, stepText])
+
+  const visibleSubs = showAll ? subs : subs.slice(0, 2)
+
+  return (
+    <div onClick={e => e.stopPropagation()} style={{
+      padding: '16px 16px 12px', borderRadius: 12,
+      background: C.warm, border: `1.5px solid ${C.accentMed}`,
+      animation: 'slideUp 0.15s ease',
+      marginTop: 8, marginBottom: 6,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>
+            Swap {ingredientName}
+          </span>
+        </div>
+        <button onClick={onClose} aria-label="Close substitution panel" style={{
+          background: 'none', border: 'none', color: C.text3, fontSize: 20,
+          cursor: 'pointer', padding: 4, lineHeight: 1,
+          minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          WebkitTapHighlightColor: 'transparent', borderRadius: '50%',
+        }}>×</button>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+          <div style={{ width: 14, height: 14, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+          <span style={{ fontSize: 11, color: C.text3, fontFamily: SANS }}>Finding substitutions...</span>
+        </div>
+      )}
+
+      {/* Options */}
+      {!loading && subs.length === 0 && (
+        <p style={{ fontSize: 11, color: C.text3, margin: 0, fontFamily: SANS }}>
+          No common substitutions found for this ingredient.
+        </p>
+      )}
+
+      {visibleSubs.map((sub, i) => (
+        <button key={i} onClick={() => onApply(ingredientName, sub.name, sub.ratio)} style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          padding: '12px 14px', borderRadius: 10, textAlign: 'left',
+          border: `1px solid ${C.ruleLight}`, marginBottom: 8,
+          background: C.bg, cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+          transition: 'border-color 0.15s',
+          minHeight: 48,
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.ruleLight }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>{sub.name}</span>
+              <span style={{ fontSize: 10, color: C.accent, fontFamily: MONO, fontWeight: 600 }}>{sub.ratio}</span>
+            </div>
+            {sub.notes && (
+              <p style={{ fontSize: 11, color: C.text3, margin: '3px 0 0', fontFamily: SANS, lineHeight: 1.4 }}>{sub.notes}</p>
+            )}
+            {sub.tags && sub.tags.length > 0 && (
+              <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
+                {sub.tags.map(tag => (
+                  <span key={tag} style={{
+                    fontSize: 8, fontWeight: 600, padding: '2px 6px', borderRadius: 3,
+                    background: C.greenBg, color: C.green, fontFamily: SANS, textTransform: 'uppercase', letterSpacing: 0.5,
+                  }}>{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: C.accent, fontFamily: SANS,
+            flexShrink: 0, padding: '6px 10px', borderRadius: 6,
+            background: C.accentBg, whiteSpace: 'nowrap',
+          }}>
+            Use →
+          </span>
+        </button>
+      ))}
+
+      {/* Show more / source */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        {subs.length > 2 && !showAll && (
+          <button onClick={() => setShowAll(true)} style={{
+            background: 'none', border: 'none', color: C.accent, fontSize: 11,
+            fontWeight: 600, cursor: 'pointer', fontFamily: SANS, padding: '6px 0',
+            minHeight: 36, WebkitTapHighlightColor: 'transparent',
+          }}>+{subs.length - 2} more options</button>
+        )}
+        {subs.length > 0 && (
+          <span style={{ fontSize: 9, color: C.text3, fontFamily: SANS, opacity: 0.6, marginLeft: 'auto', padding: '6px 0' }}>
+            {source === 'ai' ? 'AI suggestion' : 'Common sub'}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Swap banner (shows above active step when swaps are active) ─────────
+
+function SwapBanner({ swaps, onRemove }: {
+  swaps: Record<number, { original: string; replacement: string; ratio: string }>
+  onRemove: (index: number) => void
+}) {
+  const entries = Object.entries(swaps)
+  if (entries.length === 0) return null
+
+  return (
+    <div style={{
+      padding: '8px 16px', background: C.goldBg, borderBottom: `1px solid ${C.gold}30`,
+      display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
+      flexShrink: 0, animation: 'fadeIn 0.15s ease',
+    }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+        <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      </svg>
+      {entries.map(([idx, swap]) => (
+        <span key={idx} style={{
+          fontSize: 11, fontFamily: SANS, color: C.text2,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '4px 10px', borderRadius: 6, background: C.bg,
+          border: `1px solid ${C.gold}30`,
+        }}>
+          <s style={{ color: C.text3, fontSize: 10 }}>{swap.original}</s>
+          <span style={{ color: C.gold, fontSize: 10 }}>→</span>
+          <strong style={{ color: C.text, fontWeight: 600 }}>{swap.replacement}</strong>
+          <button onClick={() => onRemove(Number(idx))} style={{
+            background: 'none', border: 'none', color: C.text3, cursor: 'pointer',
+            fontSize: 16, padding: '0 2px', lineHeight: 1, marginLeft: 4,
+            minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </span>
+      ))}
+    </div>
+  )
+}
+
 // ─── Voice control + TTS ─────────────────────────────────────────────────
 
 function useVoiceControl(
@@ -453,20 +644,66 @@ function useVoiceControl(
   // Check if browser supports speech recognition
   const isSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
 
-  const speak = useCallback((text: string) => {
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 0.95
-    utterance.pitch = 1
-    utterance.volume = 0.8
-    // Prefer a natural-sounding voice
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google') || v.lang.startsWith('en'))
-    if (preferred) utterance.voice = preferred
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const ttsCache = useRef<Map<string, string>>(new Map()) // text → blob URL
+
+  const speak = useCallback(async (text: string) => {
+    // Stop any current playback
+    if (audioRef.current) {
+      audioRef.current.pause()
+      audioRef.current.currentTime = 0
+    }
+    window.speechSynthesis?.cancel()
     isSpeakingRef.current = true
-    utterance.onend = () => { isSpeakingRef.current = false }
-    window.speechSynthesis.speak(utterance)
+
+    // Check cache first
+    const cached = ttsCache.current.get(text)
+    if (cached) {
+      const audio = new Audio(cached)
+      audioRef.current = audio
+      audio.onended = () => { isSpeakingRef.current = false }
+      audio.onerror = () => { isSpeakingRef.current = false }
+      audio.play().catch(() => { isSpeakingRef.current = false })
+      return
+    }
+
+    // Try OpenAI TTS first
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (res.ok) {
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        ttsCache.current.set(text, url)
+        const audio = new Audio(url)
+        audioRef.current = audio
+        audio.onended = () => { isSpeakingRef.current = false }
+        audio.onerror = () => { isSpeakingRef.current = false }
+        audio.play().catch(() => { isSpeakingRef.current = false })
+        return
+      }
+    } catch {
+      // Fall through to browser TTS
+    }
+
+    // Fallback: browser SpeechSynthesis
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = 0.95
+      utterance.pitch = 1
+      utterance.volume = 0.8
+      const voices = window.speechSynthesis.getVoices()
+      const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google') || v.lang.startsWith('en'))
+      if (preferred) utterance.voice = preferred
+      utterance.onend = () => { isSpeakingRef.current = false }
+      window.speechSynthesis.speak(utterance)
+    } else {
+      isSpeakingRef.current = false
+    }
   }, [])
 
   const readCurrentStep = useCallback(() => {
@@ -518,6 +755,20 @@ function useVoiceControl(
         const items = getIngredientItems(recipe.ingredients)
         const list = items.slice(0, 5).map(i => `${i.amount || ''} ${i.unit || ''} ${i.name}`.trim()).join(', ')
         speak(`You need: ${list}${items.length > 5 ? ` and ${items.length - 5} more ingredients` : ''}`)
+      }
+      return
+    }
+    // Substitution voice commands: "what can I use instead of butter", "substitute for eggs"
+    const subMatch = cmd.match(/(?:substitute|replace|swap|instead of|use instead of)\s+(.+?)(?:\s*\?|$)/i)
+      || cmd.match(/what can I use (?:instead of |for )?(.+?)(?:\s*\?|$)/i)
+    if (subMatch) {
+      const ingredientQuery = subMatch[1].trim()
+      const localMatch = findSubstitutions(ingredientQuery)
+      if (localMatch && localMatch.subs.length > 0) {
+        const best = localMatch.subs[0]
+        speak(`You can use ${best.name} instead of ${ingredientQuery}. Ratio: ${best.ratio}. ${best.notes || ''}`)
+      } else {
+        speak(`Let me check... I'll look up a substitute for ${ingredientQuery}.`)
       }
       return
     }
@@ -575,6 +826,13 @@ function useVoiceControl(
     return () => {
       recognitionRef.current?.stop()
       window.speechSynthesis?.cancel()
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      // Revoke cached blob URLs
+      ttsCache.current.forEach(url => URL.revokeObjectURL(url))
+      ttsCache.current.clear()
     }
   }, [])
 
@@ -760,6 +1018,8 @@ export default function CookModePage() {
   const [openTip, setOpenTip] = useState<string | null>(null)
   const [autoShownTips] = useState<Set<string>>(() => new Set())
   const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([])
+  const [activeSwaps, setActiveSwaps] = useState<Record<number, { original: string; replacement: string; ratio: string }>>({})
+  const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null)
   const [servings, setServings] = useState<number>(4)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -783,11 +1043,33 @@ export default function CookModePage() {
   }
   const checkedCount = Object.values(checkedIngredients).filter(Boolean).length
 
-  // Load persisted ingredient checks
+  const applySwap = (index: number, original: string, replacement: string, ratio: string) => {
+    setActiveSwaps(prev => {
+      const next = { ...prev, [index]: { original, replacement, ratio } }
+      try { localStorage.setItem(`recdex-swaps-${slug}`, JSON.stringify(next)) } catch { /* */ }
+      return next
+    })
+    setOpenSwapIndex(null)
+  }
+
+  const removeSwap = (index: number) => {
+    setActiveSwaps(prev => {
+      const next = { ...prev }
+      delete next[index]
+      try { localStorage.setItem(`recdex-swaps-${slug}`, JSON.stringify(next)) } catch { /* */ }
+      return next
+    })
+  }
+
+  // Load persisted ingredient checks + swaps
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`recdex-checked-${slug}`)
       if (saved) setCheckedIngredients(JSON.parse(saved))
+    } catch { /* */ }
+    try {
+      const savedSwaps = localStorage.getItem(`recdex-swaps-${slug}`)
+      if (savedSwaps) setActiveSwaps(JSON.parse(savedSwaps))
     } catch { /* */ }
   }, [slug])
 
@@ -1007,7 +1289,7 @@ export default function CookModePage() {
 
   // Phase breaks for prep/cook/finish dividers
   const phaseBreaks = findPhaseBreaks(recipe.steps)
-  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook' | 'finish']))
+  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook']))
 
   // Dock magnification: compute style for each step
   function getStepStyle(index: number) {
@@ -1088,26 +1370,76 @@ export default function CookModePage() {
     const isHighlighted = options.showHighlight && highlightedIngredients.has(i) && !checkedIngredients[i]
     const scaledAmount = item.amount ? scaleAmount(item.amount, scaleFactor) : ''
     const isScaled = scaleFactor !== 1
+    const swap = activeSwaps[i]
+    const isSwapOpen = openSwapIndex === i
 
     return (
-      <p key={i} onClick={() => toggleIngredient(i)} style={{
-        fontSize: options.fontSize, color: checkedIngredients[i] ? C.text3 : C.text, margin: '4px 0', fontFamily: SANS, lineHeight: 1.55,
-        cursor: 'pointer', userSelect: 'none' as const,
-        textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
-        opacity: checkedIngredients[i] ? 0.45 : 1,
-        background: isHighlighted ? C.accentBg : 'transparent',
-        fontWeight: isHighlighted ? 600 : 400,
-        padding: '2px 6px', borderRadius: 4, marginLeft: -6,
-        transition: 'all 0.25s ease',
-      }}>
-        {scaledAmount && (
-          <span style={{ fontWeight: isHighlighted ? 600 : 400, color: isScaled ? C.accent : undefined }}>
-            {scaledAmount}{item.unit ? ` ${item.unit}` : ''}{' '}
-          </span>
+      <div key={i}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          margin: '1px 0',
+        }}>
+          <p onClick={() => toggleIngredient(i)} style={{
+            flex: 1, fontSize: options.fontSize, color: checkedIngredients[i] ? C.text3 : C.text, margin: 0, fontFamily: SANS, lineHeight: 1.55,
+            cursor: 'pointer', userSelect: 'none' as const,
+            textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
+            opacity: checkedIngredients[i] ? 0.45 : 1,
+            background: isHighlighted ? C.accentBg : 'transparent',
+            fontWeight: isHighlighted ? 600 : 400,
+            padding: '6px 8px', borderRadius: 6, marginLeft: -8,
+            transition: 'all 0.25s ease',
+          }}>
+            {scaledAmount && (
+              <span style={{ fontWeight: isHighlighted ? 600 : 400, color: isScaled ? C.accent : undefined }}>
+                {scaledAmount}{item.unit ? ` ${item.unit} ` : ' '}
+              </span>
+            )}
+            {swap ? (
+              <>
+                <s style={{ color: C.text3, textDecoration: 'line-through', fontWeight: 400 }}>{item.name}</s>
+                {' '}
+                <span style={{ color: C.gold, fontWeight: 600 }}>{swap.replacement}</span>
+              </>
+            ) : (
+              item.name
+            )}
+            {item.notes && <span style={{ color: C.text3, fontSize: options.fontSize - 1 }}> ({item.notes})</span>}
+          </p>
+          {/* Swap button — circular refresh/swap icon */}
+          <button
+            onClick={e => { e.stopPropagation(); setOpenSwapIndex(isSwapOpen ? null : i) }}
+            title={swap ? 'Change substitution' : `Swap ${item.name}`}
+            aria-label={swap ? `Change ${item.name} substitution` : `Find substitute for ${item.name}`}
+            style={{
+              width: 32, height: 32, minWidth: 32, borderRadius: '50%', border: 'none',
+              background: swap ? C.goldBg : isSwapOpen ? C.accentBg : 'transparent',
+              color: swap ? C.gold : isSwapOpen ? C.accent : C.text3,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: swap || isSwapOpen ? 1 : 0.5, transition: 'all 0.15s',
+              flexShrink: 0, padding: 0,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; if (!swap && !isSwapOpen) e.currentTarget.style.background = C.accentBg }}
+            onMouseLeave={e => { if (!swap && !isSwapOpen) { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent' } }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+          </button>
+        </div>
+        {/* Substitution card */}
+        {isSwapOpen && recipe && (
+          <SubstitutionCard
+            ingredientName={item.name}
+            recipeName={recipe.title}
+            recipeCuisine={recipe.cuisine}
+            stepText={recipe.steps[activeStep]?.text || ''}
+            onApply={(original, replacement, ratio) => applySwap(i, original, replacement, ratio)}
+            onClose={() => setOpenSwapIndex(null)}
+          />
         )}
-        {item.name}
-        {item.notes && <span style={{ color: C.text3, fontSize: options.fontSize - 1 }}> ({item.notes})</span>}
-      </p>
+      </div>
     )
   }
 
@@ -1126,15 +1458,22 @@ export default function CookModePage() {
       `}</style>
 
       {/* HEADER */}
-      <div style={{ padding: '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => router.push(`/recipe/${slug}`)} style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '6px 14px', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>← Exit</button>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>
-            <h2 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: '2px 0 0' }}>
-              {recipe.title}<EggDot size={6} />
+      <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
+          {/* Left: back button */}
+          <button onClick={() => router.push(`/recipe/${slug}`)} style={{
+            background: 'none', border: 'none', color: C.text2, fontSize: 18,
+            cursor: 'pointer', padding: isMobile ? '4px 6px' : '6px 14px', flexShrink: 0,
+            ...(isMobile ? {} : { border: `1px solid ${C.rule}`, borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: SANS }),
+          }}>{isMobile ? '←' : '← Exit'}</button>
+
+          {/* Center: title */}
+          <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+            {!isMobile && <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>}
+            <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 15 : 17, fontWeight: 600, color: C.text, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {recipe.title}<EggDot size={5} />
             </h2>
-            {recipe.creator_name && (
+            {!isMobile && recipe.creator_name && (
               <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
                 Recipe by{' '}
                 {recipe.creator_url ? (
@@ -1147,19 +1486,22 @@ export default function CookModePage() {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+          {/* Right: action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
             {/* Voice control button */}
             {voice.isSupported && (
               <button
                 onClick={voice.toggleListening}
-                title={voice.isListening ? 'Stop voice control' : 'Start voice control (say "next", "back", "read step", "start timer")'}
+                title={voice.isListening ? 'Stop voice control' : 'Start voice control'}
+                aria-label={voice.isListening ? 'Stop voice control' : 'Start voice control'}
                 style={{
-                  width: 32, height: 32, borderRadius: '50%', border: 'none',
+                  width: 36, height: 36, borderRadius: '50%', border: 'none',
                   background: voice.isListening ? C.accent : 'transparent',
                   color: voice.isListening ? '#fff' : C.text3,
                   cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   animation: voice.isListening ? 'micPulse 1.5s ease infinite' : 'none',
-                  transition: 'all 0.15s',
+                  transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
                 }}
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1173,11 +1515,12 @@ export default function CookModePage() {
             <button
               onClick={voice.readCurrentStep}
               title="Read current step aloud (R)"
+              aria-label="Read step aloud"
               style={{
-                width: 32, height: 32, borderRadius: '50%', border: `1px solid ${C.ruleLight}`,
+                width: 36, height: 36, borderRadius: '50%', border: `1px solid ${C.ruleLight}`,
                 background: 'transparent', color: C.text3,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s',
+                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
               }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -1186,15 +1529,27 @@ export default function CookModePage() {
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
               </svg>
             </button>
-            {isMobile && ingredientItems.length > 0 && (
-              <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{ background: showIngredientsMobile ? C.text : 'none', border: `1px solid ${showIngredientsMobile ? C.text : C.rule}`, borderRadius: 6, padding: '6px 14px', color: showIngredientsMobile ? C.bg : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>
-                Ingredients
+            {/* Mobile: step counter as ingredients toggle */}
+            {isMobile && ingredientItems.length > 0 ? (
+              <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{
+                background: showIngredientsMobile ? C.accent : 'transparent',
+                border: `1px solid ${showIngredientsMobile ? C.accent : C.rule}`, borderRadius: 20,
+                padding: '5px 12px', color: showIngredientsMobile ? '#fff' : C.text2,
+                fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', gap: 5,
+                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                {activeStep + 1}/{total}
               </button>
+            ) : (
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+                {activeStep + 1}/{total}
+              </span>
             )}
-            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
-              {activeStep + 1}/{total}
-            </span>
-            <ThemeToggle />
+            {!isMobile && <ThemeToggle />}
           </div>
         </div>
         {/* Progress bar */}
@@ -1243,6 +1598,9 @@ export default function CookModePage() {
         )
       })()}
 
+      {/* Active substitution banner */}
+      <SwapBanner swaps={activeSwaps} onRemove={removeSwap} />
+
       {/* Timer completion alerts */}
       {timerAlerts.length > 0 && (
         <div style={{ padding: '0 24px', flexShrink: 0 }}>
@@ -1271,16 +1629,24 @@ export default function CookModePage() {
 
       {/* Mobile ingredients panel */}
       {isMobile && showIngredientsMobile && ingredientItems.length > 0 && (
-        <div style={{ padding: '14px 24px', background: C.warm, borderBottom: `1px solid ${C.rule}`, flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+        <div style={{
+          padding: '14px 16px', background: C.warm, borderBottom: `1px solid ${C.rule}`,
+          flexShrink: 0, animation: 'slideUp 0.15s ease',
+          maxHeight: '55vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' as const,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length} used</span>}
-              <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
+              <p style={{ fontSize: 10, fontWeight: 700, color: C.text2, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+              {checkedCount > 0 && (
+                <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, padding: '1px 6px', borderRadius: 8, background: C.accentBg }}>
+                  {checkedCount}/{ingredientItems.length}
+                </span>
+              )}
             </div>
+            <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
           </div>
-          <div style={{ columns: 2, columnGap: 20 }}>
-            {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 12, showHighlight: false }))}
+          <div>
+            {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: false }))}
           </div>
         </div>
       )}
@@ -1292,9 +1658,9 @@ export default function CookModePage() {
         <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '20px 20px 120px' : '28px 40px 120px' }}>
           <div style={{ maxWidth: 620, margin: '0 auto' }}>
 
-            {/* Initial phase label */}
-            {recipe.steps.length > 0 && (
-              <PhaseDivider phase={classifyStep(recipe.steps[0].text) as 'prep' | 'cook' | 'finish'} />
+            {/* Initial phase label — only show if the recipe starts with prep (and has a prep→cook transition) */}
+            {recipe.steps.length > 0 && phaseBreakIndices.size > 0 && classifyStep(recipe.steps[0].text) === 'prep' && (
+              <PhaseDivider phase="prep" />
             )}
 
             {recipe.steps.map((step, i) => {
