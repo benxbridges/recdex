@@ -65,8 +65,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    console.log('[scan] Processing image, size:', Math.round(base64Data.length / 1024), 'KB')
-
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -105,7 +103,6 @@ export async function POST(req: NextRequest) {
 
     const claudeData = await res.json()
     const text: string = claudeData.content?.[0]?.text || ''
-    console.log('[scan] Claude response length:', text.length)
 
     // Strip any accidental markdown fences
     const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()

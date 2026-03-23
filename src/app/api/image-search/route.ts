@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
       credit: photo.user.name,
     }))
 
-    return NextResponse.json({ images, query }) // return processed query for debugging
+    return NextResponse.json({ images })
   } catch {
     return NextResponse.json({ images: [] })
   }
