@@ -1113,6 +1113,22 @@ export default function CookModePage() {
   useEffect(() => {
     async function fetchRecipe() {
       setLoading(true)
+
+      // Check sessionStorage for temporary scanned recipes (e.g. from /scan)
+      if (slug === 'temp-scan') {
+        try {
+          const stored = sessionStorage.getItem('recdex-temp-recipe')
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            setRecipe(parsed)
+            setLoading(false)
+            return
+          }
+        } catch {
+          console.error('[cook] Failed to load temp recipe from sessionStorage')
+        }
+      }
+
       try {
         const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
         if (error) throw error

@@ -2201,6 +2201,7 @@ export default function Home() {
                 <Link href="/community" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Community</Link>
                 <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Lists</Link>
                 <Link href="/trending" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>🔥</span>Trending</Link>
+                <Link href="/scan" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>📷</span>Scan</Link>
                 <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
                 <div style={{ width: 1, height: 14, background: C.rule }} />
                 <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -2242,6 +2243,7 @@ export default function Home() {
               { href: '/community', label: 'Community', icon: null },
               { href: '/lists', label: 'Lists', icon: null },
               { href: '/trending', label: 'Trending', icon: '🔥' },
+              { href: '/scan', label: 'Scan cookbook', icon: '📷' },
               { href: '/contribute', label: '+ Contribute', icon: null, accent: true },
               { href: '/pantry', label: 'Kitchen', icon: '🛒' },
               { href: '/profile', label: 'Profile', icon: null },
@@ -2298,7 +2300,7 @@ export default function Home() {
             </svg>
             <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
               placeholder={searchMode === 'recipe' ? 'Search by recipe, ingredient, or cuisine...' : 'Type ingredients: chicken, garlic, lemon...'}
-              style={{ width: '100%', padding: isMobile ? '12px 14px 12px 40px' : '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: isMobile ? 14 : 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box' }} />
+              style={{ width: '100%', padding: isMobile ? '12px 14px 12px 40px' : '14px 18px 14px 46px', border: `2px solid ${searchMode === 'pantry' ? C.green : C.accent}`, borderRadius: 8, fontSize: isMobile ? 14 : 15, color: C.text, fontFamily: SANS, outline: 'none', background: C.warm, boxShadow: searchFocused ? `0 2px 16px ${searchMode === 'pantry' ? 'rgba(107,158,98,0.15)' : 'rgba(232,123,90,0.15)'}` : 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box', textAlign: 'center' }} />
           </div>
           {/* Quick tags — expand on focus */}
           {(searchFocused || searchQuery.trim()) && (
@@ -2543,6 +2545,7 @@ export default function Home() {
                     { emoji: '💬', label: 'Community', href: '/community' },
                     { emoji: '📖', label: 'Browse all', href: '/browse' },
                     { emoji: '📋', label: 'Lists', href: '/lists' },
+                    { emoji: '📷', label: 'Scan a cookbook', href: '/scan' },
                     { emoji: '✏️', label: 'Contribute', href: '/contribute' },
                   ].map(link => (
                     <Link key={link.label} href={link.href} style={{
