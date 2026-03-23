@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
@@ -1020,6 +1020,7 @@ export default function CookModePage() {
   const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([])
   const [activeSwaps, setActiveSwaps] = useState<Record<number, { original: string; replacement: string; ratio: string }>>({})
   const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null)
+  const [showAmounts, setShowAmounts] = useState(false)
   const [servings, setServings] = useState<number>(4)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
@@ -1077,6 +1078,36 @@ export default function CookModePage() {
     const check = () => setIsMobile(window.innerWidth < 820)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Keep screen on during cook mode via Wake Lock API
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen')
+        }
+      } catch {
+        // Wake lock request failed (e.g., low battery, tab not visible)
+      }
+    }
+
+    requestWakeLock()
+
+    // Re-acquire wake lock when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      wakeLock?.release()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {
@@ -1245,6 +1276,30 @@ export default function CookModePage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [activeStep, recipe, timers, goToStep, startTimer, voice])
 
+  // ─── Build ingredient amount lookup for inline annotations ──────────
+  // (Must be before early returns to maintain hooks order)
+  const ingredientAmountMap = useMemo(() => {
+    if (!recipe || !showAmounts) return new Map<string, string>()
+    const items = getIngredientItems(recipe.ingredients)
+    const map = new Map<string, string>()
+    // Prefixes to strip for matching (ingredient says "Large egg yolks", step says "egg yolks")
+    const STRIP_PREFIX = /^(large|small|medium|fresh|dried|frozen|whole|unsalted|salted|extra-virgin|extra virgin|pure|raw|organic|ground|crushed|minced|chopped|diced|sliced|grated|shredded|packed|loosely packed|thinly sliced|finely|coarsely|freshly)\s+/i
+    for (const item of items) {
+      if (!item.name || !item.amount) continue
+      const scaled = scaleAmount(item.amount, scaleFactor)
+      const label = [scaled, item.unit].filter(Boolean).join(' ')
+      if (!label) continue
+      const rawName = item.name.toLowerCase()
+      map.set(rawName, label)
+      // Also add stripped version for fuzzy matching
+      const stripped = rawName.replace(STRIP_PREFIX, '').replace(STRIP_PREFIX, '') // double-pass for "freshly ground"
+      if (stripped !== rawName && stripped.length > 2) {
+        map.set(stripped, label)
+      }
+    }
+    return map
+  }, [recipe, showAmounts, scaleFactor])
+
   // ─── Loading / error states ──────────────────────────────────────────
 
   if (loading) {
@@ -1354,15 +1409,78 @@ export default function CookModePage() {
     }
   }
 
-  // ─── Render step text with bold action verbs ─────────────────────────
+  // ─── Render step text with bold action verbs + optional amounts ─────
   function renderStepText(text: string, isActive: boolean) {
     if (!isActive) return text
     const segments = highlightVerbs(text)
-    return segments.map((seg, i) =>
-      seg.bold
-        ? <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
-        : <span key={i}>{seg.text}</span>
-    )
+
+    if (!showAmounts || ingredientAmountMap.size === 0) {
+      return segments.map((seg, i) =>
+        seg.bold
+          ? <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
+          : <span key={i}>{seg.text}</span>
+      )
+    }
+
+    // With amounts: scan each non-bold segment for ingredient names and inject amount badges
+    return segments.map((seg, i) => {
+      if (seg.bold) {
+        return <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
+      }
+
+      // Try to find ingredient names in this text segment
+      const parts: React.ReactNode[] = []
+      let remaining = seg.text
+      let keyIdx = 0
+
+      // Sort ingredient names by length (longest first) to avoid partial matches
+      const sortedNames = [...ingredientAmountMap.keys()].sort((a, b) => b.length - a.length)
+
+      while (remaining.length > 0) {
+        let earliestMatch: { pos: number; name: string; matchLen: number } | null = null
+
+        for (const name of sortedNames) {
+          // Skip very short names (1-2 chars) to avoid false matches
+          if (name.length <= 2) continue
+          const pos = remaining.toLowerCase().indexOf(name)
+          if (pos !== -1 && (!earliestMatch || pos < earliestMatch.pos)) {
+            earliestMatch = { pos, name, matchLen: name.length }
+          }
+        }
+
+        if (!earliestMatch) {
+          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining}</span>)
+          break
+        }
+
+        // Text before the match
+        if (earliestMatch.pos > 0) {
+          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining.slice(0, earliestMatch.pos)}</span>)
+        }
+
+        // The ingredient name + amount badge
+        const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
+        const amount = ingredientAmountMap.get(earliestMatch.name)!
+        parts.push(
+          <span key={`${i}-${keyIdx++}`}>
+            {matchedText}
+            <span style={{
+              display: 'inline-block', fontSize: '0.65em', fontFamily: MONO,
+              color: C.gold, background: C.goldBg, padding: '1px 5px',
+              borderRadius: 4, marginLeft: 3, verticalAlign: 'middle',
+              fontWeight: 600, letterSpacing: -0.3, lineHeight: 1.3,
+              whiteSpace: 'nowrap',
+            }}>{amount}</span>
+          </span>
+        )
+
+        remaining = remaining.slice(earliestMatch.pos + earliestMatch.matchLen)
+        // Remove this name from future matches in this segment to avoid double-matching
+        sortedNames.splice(sortedNames.indexOf(earliestMatch.name), 1)
+      }
+
+      return <span key={i}>{parts}</span>
+    })
   }
 
   // ─── Ingredient rendering helper (with scaling) ──────────────────────
@@ -1527,6 +1645,24 @@ export default function CookModePage() {
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              </svg>
+            </button>
+            {/* Inline amounts toggle */}
+            <button
+              onClick={() => setShowAmounts(!showAmounts)}
+              title={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts in steps'}
+              aria-label={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts'}
+              style={{
+                width: 36, height: 36, borderRadius: '50%', border: `1px solid ${showAmounts ? C.gold : C.ruleLight}`,
+                background: showAmounts ? C.goldBg : 'transparent',
+                color: showAmounts ? C.gold : C.text3,
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2h8l-1 16H9L8 2z" /><path d="M12 6h4" /><path d="M11.5 10h4" /><path d="M11 14h3" />
+                <path d="M7 22h10" /><path d="M9 18h6" />
               </svg>
             </button>
             {/* Mobile: step counter as ingredients toggle */}
