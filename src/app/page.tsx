@@ -2168,13 +2168,23 @@ export default function Home() {
   const activeCategoryName = activeCategory === 'all' ? 'All Recipes' : categories.find(c => c.id === activeCategory)?.name || 'All Recipes'
   const quickViewRecipe = quickViewId ? (recipes.find(r => r.id === quickViewId) || featuredRecipes.find(r => r.id === quickViewId) || quickRecipes.find(r => r.id === quickViewId) || (rotdRecipe?.id === quickViewId ? rotdRecipe : null)) : null
 
-  return (
-    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
-      {showOnboarding && (
+  // Show onboarding fullscreen — don't render the page behind it
+  if (showOnboarding) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+          *{box-sizing:border-box}body{margin:0;background:${C.bg}}
+        `}</style>
         <OnboardingFlow onComplete={(profile: OnboardingProfile) => {
           setShowOnboarding(false)
         }} />
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
         *{box-sizing:border-box}body{margin:0;background:${C.bg}}::selection{background:rgba(200,74,42,0.15);color:${C.text}}input::placeholder{color:${C.text3}}::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${C.rule}}
