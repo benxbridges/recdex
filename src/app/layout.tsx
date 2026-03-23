@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Young_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import FeedbackButton from "./components/FeedbackButton";
 
 const youngSerif = Young_Serif({
   weight: "400",
@@ -62,6 +63,7 @@ export default function RootLayout({
         className={`${youngSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
+        <FeedbackButton />
         <script
           dangerouslySetInnerHTML={{
             __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){if(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){navigator.serviceWorker.register('/sw.js')}})}`,
