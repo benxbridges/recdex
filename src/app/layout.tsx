@@ -46,6 +46,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1C1917" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="RecDex" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('recdex-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})()`,
@@ -56,6 +62,11 @@ export default function RootLayout({
         className={`${youngSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} antialiased`}
       >
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){window.addEventListener('load',function(){if(location.hostname!=='localhost'&&location.hostname!=='127.0.0.1'){navigator.serviceWorker.register('/sw.js')}})}`,
+          }}
+        />
       </body>
     </html>
   );
