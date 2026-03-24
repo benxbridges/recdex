@@ -1,4 +1,6 @@
 'use client'
+/* eslint-disable react-compiler/react-compiler */
+'use no memo'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
