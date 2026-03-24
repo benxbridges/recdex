@@ -129,7 +129,7 @@ export default function TrendingPage() {
 
       // High confidence → straight to cook mode
       setCookProgress('Opening cook mode…')
-      router.push(`/recipe/${data.slug}/cook`)
+      window.location.href = `/recipe/${data.slug}/cook`
     } catch {
       setCookingId(null)
       setCookProgress('')

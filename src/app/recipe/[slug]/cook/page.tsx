@@ -1,6 +1,4 @@
 'use client'
-/* eslint-disable react-compiler/react-compiler */
-'use no memo'
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -2109,7 +2107,7 @@ export default function CookModePage() {
                           {suggestions.map(s => (
                             <button
                               key={s.slug}
-                              onClick={() => router.push(`/recipe/${s.slug}/cook`)}
+                              onClick={() => { window.location.href = `/recipe/${s.slug}/cook` }}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 12,
                                 padding: '12px 14px', borderRadius: 8,

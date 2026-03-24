@@ -712,7 +712,7 @@ export default function PantryPage() {
                           {addedMissing[recipe.id] ? '✓ Added to list' : `Add ${missing.length} missing to list`}
                         </button>
                       )}
-                      <button onClick={() => router.push(`/recipe/${recipe.slug}/cook`)} style={{
+                      <button onClick={() => { window.location.href = `/recipe/${recipe.slug}/cook` }} style={{
                         padding: '8px 16px', borderRadius: 6, border: 'none',
                         background: fraction >= 0.8 ? C.green : C.text,
                         color: '#fff',

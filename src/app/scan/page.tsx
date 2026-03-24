@@ -172,7 +172,7 @@ export default function ScanPage() {
     }
 
     sessionStorage.setItem(TEMP_RECIPE_KEY, JSON.stringify(tempRecipe))
-    router.push('/recipe/temp-scan/cook')
+    window.location.href = '/recipe/temp-scan/cook'
   }
 
   function handleReset() {

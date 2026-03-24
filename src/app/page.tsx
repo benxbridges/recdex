@@ -267,7 +267,7 @@ export default function Home() {
       steps: extractedRecipe.steps,
     }
     sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(tempRecipe))
-    router.push('/recipe/temp-scan/cook')
+    window.location.href = '/recipe/temp-scan/cook'
   }
 
   // Onboarding fullscreen

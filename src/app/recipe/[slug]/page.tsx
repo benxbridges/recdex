@@ -1296,11 +1296,11 @@ export default function RecipePage() {
                 </div>
               </div>
             ))}
-            <button onClick={() => router.push(`/recipe/${slug}/cook`)} style={{
-              width: '100%', marginTop: 8, padding: '14px', borderRadius: 6, border: 'none',
-              background: C.text, color: C.bg,
+            <a href={`/recipe/${slug}/cook`} style={{
+              display: 'block', width: '100%', marginTop: 8, padding: '14px', borderRadius: 6, border: 'none',
+              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-            }}>Cook mode →</button>
+            }}>Cook mode →</a>
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
