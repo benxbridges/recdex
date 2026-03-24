@@ -1,0 +1,345 @@
+/* ===== PORTFOLIO — DARK & MINIMAL ===== */
+
+.portfolio-body {
+  background: #0A0A0A;
+  color: #E8E4E0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== TYPOGRAPHY ===== */
+.heading-display {
+  font-family: "Playfair Display", Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.heading-section {
+  font-family: "Inter", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+/* ===== LAYOUT ===== */
+.portfolio-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ===== HERO ===== */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 4rem 0;
+}
+
+.hero-name {
+  font-size: clamp(3rem, 8vw, 6rem);
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+
+.hero-tagline {
+  font-size: 1.1rem;
+  color: #888;
+  line-height: 1.7;
+  max-width: 560px;
+}
+
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #444;
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  animation: fadeInUp 1s ease 1.5s both;
+}
+
+/* ===== SECTIONS ===== */
+.section {
+  padding: 6rem 0;
+  border-top: 1px solid #1A1A1A;
+}
+
+.section-label {
+  margin-bottom: 3rem;
+}
+
+/* ===== BIO ===== */
+.bio-text {
+  font-size: 1.25rem;
+  line-height: 1.8;
+  color: #B0AAA4;
+  max-width: 680px;
+}
+
+.bio-text strong {
+  color: #E8E4E0;
+  font-weight: 500;
+}
+
+.bio-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+}
+
+.bio-tag {
+  padding: 0.5rem 1rem;
+  background: #141414;
+  border: 1px solid #1E1E1E;
+  border-radius: 100px;
+  font-size: 0.8rem;
+  color: #888;
+  white-space: nowrap;
+}
+
+/* ===== DISCOGRAPHY ===== */
+.release-grid {
+  display: grid;
+  gap: 1px;
+  background: #1A1A1A;
+  border: 1px solid #1A1A1A;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.release-item {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  background: #0F0F0F;
+  transition: background 0.2s ease;
+}
+
+.release-item:hover {
+  background: #141414;
+}
+
+.release-year {
+  font-family: "Inter", monospace;
+  font-size: 0.85rem;
+  color: #555;
+  font-variant-numeric: tabular-nums;
+}
+
+.release-title {
+  font-size: 1rem;
+  color: #E8E4E0;
+  font-weight: 500;
+}
+
+.release-detail {
+  font-size: 0.85rem;
+  color: #666;
+  margin-top: 0.15rem;
+}
+
+.release-type {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #222;
+  border-radius: 100px;
+}
+
+/* ===== REMIXES & PRODUCTION ===== */
+.credit-list {
+  display: grid;
+  gap: 0;
+}
+
+.credit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 1rem 0;
+  border-bottom: 1px solid #141414;
+}
+
+.credit-item:last-child {
+  border-bottom: none;
+}
+
+.credit-artist {
+  font-size: 1rem;
+  color: #E8E4E0;
+  font-weight: 500;
+}
+
+.credit-song {
+  color: #777;
+  font-weight: 400;
+  margin-left: 0.5rem;
+}
+
+.credit-year {
+  font-size: 0.85rem;
+  color: #444;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  margin-left: 1.5rem;
+}
+
+/* ===== PRESS ===== */
+.press-list {
+  display: grid;
+  gap: 0;
+}
+
+.press-item {
+  display: block;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid #141414;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.press-item:hover {
+  opacity: 0.7;
+}
+
+.press-outlet {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #555;
+  margin-bottom: 0.5rem;
+}
+
+.press-headline {
+  font-size: 1.1rem;
+  color: #E8E4E0;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.press-date {
+  font-size: 0.8rem;
+  color: #444;
+  margin-top: 0.35rem;
+}
+
+/* ===== CONTACT ===== */
+.contact-section {
+  text-align: center;
+  padding: 8rem 0;
+}
+
+.contact-heading {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  color: #fff;
+  margin-bottom: 1.5rem;
+}
+
+.contact-email {
+  display: inline-block;
+  font-size: 1.1rem;
+  color: #888;
+  text-decoration: none;
+  padding: 0.75rem 2rem;
+  border: 1px solid #2A2A2A;
+  border-radius: 100px;
+  transition: all 0.3s ease;
+}
+
+.contact-email:hover {
+  color: #E8E4E0;
+  border-color: #444;
+  background: #141414;
+}
+
+/* ===== STREAMING LINKS ===== */
+.streaming-links {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.streaming-link {
+  font-size: 0.8rem;
+  color: #555;
+  text-decoration: none;
+  letter-spacing: 0.05em;
+  transition: color 0.2s ease;
+}
+
+.streaming-link:hover {
+  color: #E8E4E0;
+}
+
+/* ===== FOOTER ===== */
+.portfolio-footer {
+  padding: 3rem 0;
+  border-top: 1px solid #1A1A1A;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #333;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 640px) {
+  .portfolio-container {
+    padding: 0 1rem;
+  }
+
+  .section {
+    padding: 4rem 0;
+  }
+
+  .release-item {
+    grid-template-columns: 3rem 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .release-type {
+    display: none;
+  }
+
+  .credit-item {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .credit-year {
+    margin-left: 0;
+  }
+
+  .bio-highlights {
+    gap: 0.5rem;
+  }
+
+  .contact-section {
+    padding: 5rem 0;
+  }
+}
