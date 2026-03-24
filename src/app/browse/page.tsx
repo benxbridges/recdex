@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
@@ -271,14 +271,23 @@ function SectionHeader({ cuisine, count }: { cuisine: string; count: number }) {
 // ===== MAIN PAGE =====
 function BrowseContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(searchParams.get('q') || '')
   const [activeCuisine, setActiveCuisine] = useState<string>('all')
   const [activeTime, setActiveTime] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize from URL params
+  useEffect(() => {
+    const q = searchParams.get('q')
+    const cuisine = searchParams.get('cuisine')
+    if (q) setQuery(q)
+    if (cuisine) setActiveCuisine(cuisine)
+  }, [searchParams])
 
   // Load all recipes once
   useEffect(() => {

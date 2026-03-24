@@ -8,6 +8,7 @@ import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
 import { scaleAmount, highlightVerbs, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import CookModeTutorial from '@/app/components/CookModeTutorial'
 
 // Web Speech API types (not yet in all TS libs)
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -1022,6 +1023,7 @@ export default function CookModePage() {
   const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null)
   const [showAmounts, setShowAmounts] = useState(false)
   const [servings, setServings] = useState<number>(4)
+  const [tutorialDone, setTutorialDone] = useState(false)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const isScrollingRef = useRef(false)
@@ -1590,6 +1592,9 @@ export default function CookModePage() {
         @keyframes eggWobble{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
         @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,101,42,0.4)}50%{box-shadow:0 0 0 8px rgba(196,101,42,0)}}
       `}</style>
+
+      {/* First-time tutorial overlay */}
+      {!tutorialDone && <CookModeTutorial onComplete={() => setTutorialDone(true)} />}
 
       {/* HEADER */}
       <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
