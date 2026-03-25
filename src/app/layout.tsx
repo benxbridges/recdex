@@ -19,8 +19,23 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Recipe Index",
-  description: "A free, ad-free, open commons for cooking knowledge.",
+  title: {
+    default: "Recipe Index — The recipe site you actually want to use",
+    template: "%s | Recipe Index",
+  },
+  description: "A free, ad-free, community-driven recipe index. Structured recipes with cook mode, servings adjuster, and AI-powered recipe extraction from cooking videos.",
+  metadataBase: new URL("https://www.recipeindex.org"),
+  openGraph: {
+    type: "website",
+    siteName: "Recipe Index",
+    title: "Recipe Index",
+    description: "A free, ad-free, community-driven recipe index. No paywalls, no life stories. Just food.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Recipe Index",
+    description: "A free, ad-free, community-driven recipe index. No paywalls, no life stories. Just food.",
+  },
 };
 
 export default function RootLayout({
@@ -29,7 +44,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('recdex-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light')}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body
         className={`${youngSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} antialiased`}
       >

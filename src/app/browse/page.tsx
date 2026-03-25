@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -123,9 +124,11 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
           ? <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <BrokenEggCard />
         }
-        <div style={{ position: 'absolute', top: 8, left: 8 }}>
-          <DifficultyBadge difficulty={recipe.difficulty} />
-        </div>
+        {recipe.time_total && (
+          <div style={{ position: 'absolute', top: 8, left: 8 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.text, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '2px 7px', borderRadius: 3, fontFamily: MONO }}>{formatTime(recipe.time_total)}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -219,13 +222,63 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
         )}
       </div>
 
-      {/* Meta: difficulty + time */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <DifficultyBadge difficulty={recipe.difficulty} />
-        {recipe.time_total && (
-          <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, minWidth: 52, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
-        )}
+      {/* Meta: time */}
+      {recipe.time_total && (
+        <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, minWidth: 52, textAlign: 'right', flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>
+      )}
+    </div>
+  )
+}
+
+// ===== INDEX ROW (cookbook index style — small thumbnail + cuisine pill) =====
+function IndexRow({ recipe, matchedIngredient, onClick }: {
+  recipe: Recipe
+  matchedIngredient: string | null
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 4px',
+        cursor: 'pointer',
+        borderBottom: `1px solid ${C.ruleLight}`,
+        background: hovered ? C.warm : 'transparent',
+        transition: 'background 0.1s ease',
+      }}
+    >
+      {/* Tiny thumbnail */}
+      <div style={{ width: 36, height: 36, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}` }}>
+        {recipe.image_url
+          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="10" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.25 }}>
+                <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="4"/></g>
+              </svg>
+            </div>
+        }
       </div>
+      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
+        {recipe.title}
+      </span>
+      {matchedIngredient && (
+        <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '1px 6px', borderRadius: 3, letterSpacing: '0.04em', flexShrink: 0 }}>
+          {matchedIngredient}
+        </span>
+      )}
+      {recipe.cuisine && (
+        <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
+          {normalizeCuisine(recipe.cuisine)}
+        </span>
+      )}
+      {recipe.time_total && (
+        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0, minWidth: 48, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
+      )}
     </div>
   )
 }
@@ -270,25 +323,39 @@ function SectionHeader({ cuisine, count }: { cuisine: string; count: number }) {
 // ===== MAIN PAGE =====
 function BrowseContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(searchParams.get('q') || '')
   const [activeCuisine, setActiveCuisine] = useState<string>('all')
   const [activeTime, setActiveTime] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize from URL params
+  useEffect(() => {
+    const q = searchParams.get('q')
+    const cuisine = searchParams.get('cuisine')
+    if (q) setQuery(q)
+    if (cuisine) setActiveCuisine(cuisine)
+  }, [searchParams])
 
   // Load all recipes once
   useEffect(() => {
     async function load() {
       setLoading(true)
-      const { data } = await supabase
-        .from('recipes')
-        .select('id,slug,title,description,cuisine,category_id,difficulty,time_total,time_active,time_passive,time_passive_label,image_url,servings,servings_label,tags,ingredients,steps')
-        .eq('status', 'published')
-        .order('title', { ascending: true })
-      if (data) setRecipes(data as Recipe[])
+      try {
+        const { data, error } = await supabase
+          .from('recipes')
+          .select('id,slug,title,description,cuisine,category_id,difficulty,time_total,time_active,time_passive,time_passive_label,image_url,servings,servings_label,tags,ingredients,steps')
+          .eq('status', 'published')
+          .order('title', { ascending: true })
+        if (error) throw error
+        if (data) setRecipes(data as Recipe[])
+      } catch (err) {
+        console.error('[browse] Failed to load recipes:', err)
+      }
       setLoading(false)
     }
     load()
@@ -326,6 +393,7 @@ function BrowseContent() {
     // Time filter
     if (activeTime === 'under30') result = result.filter(r => r.time_total && r.time_total <= 30)
     else if (activeTime === 'under60') result = result.filter(r => r.time_total && r.time_total <= 60)
+    else if (activeTime === 'over60') result = result.filter(r => r.time_total && r.time_total > 60)
 
     // Text search across title, cuisine, description, tags, AND ingredients
     if (q.length >= 2) {
@@ -395,28 +463,27 @@ function BrowseContent() {
     <div style={{ background: C.bg, minHeight: '100vh', color: C.text }}>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1px solid ${C.ruleLight}`, padding: `16px ${pad}`, position: 'sticky', top: 0, background: C.bg, zIndex: 50 }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, background: C.bg, zIndex: 50 }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(20px, 3.5vw, 24px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -0.5, lineHeight: 1 }}>
-              Recipe Index<EggDot size={8} />
+            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+              Recipe Index<EggDot size={9} />
             </h1>
-            <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: '3px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
+            <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
           </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.accent, fontFamily: MONO, letterSpacing: 0.3 }}>Browse</span>
-            <Link href="/leaderboard" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Community</Link>
-            <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
-            <div style={{ width: 1, height: 14, background: C.rule }} />
-            <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ fontSize: 13 }}>🛒</span>
-              {!isMobile && <span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>}
-            </Link>
-            <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, display: 'flex', alignItems: 'center', gap: 5 }}>
-              <RecipeBoxIcon />
-              {!isMobile && <span style={{ fontSize: 11, fontWeight: 500 }}>Profile</span>}
-            </Link>
-          </div>
+          {!isMobile ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>Browse</span>
+              <div style={{ width: 1, height: 14, background: C.rule }} />
+              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
+              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ThemeToggle />
+            </div>
+          )}
         </div>
       </header>
 
@@ -427,10 +494,10 @@ function BrowseContent() {
             {loading ? '—' : `${recipes.length} recipes`}
           </p>
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.1, letterSpacing: -1 }}>
-            All Recipes<EggDot size={11} />
+            Index<EggDot size={11} />
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, margin: '8px 0 0', lineHeight: 1.5 }}>
-            Browse the full collection — or search by dish, ingredient, or cuisine.
+            Search by dish, ingredient, or cuisine.
           </p>
         </div>
 
@@ -468,8 +535,9 @@ function BrowseContent() {
           {/* Time filters */}
           {[
             { key: 'all', label: 'Any time' },
-            { key: 'under30', label: 'Under 30 min' },
-            { key: 'under60', label: 'Under 1 hr' },
+            { key: 'under30', label: 'Quick (< 30 min)' },
+            { key: 'under60', label: 'Weeknight (< 1 hr)' },
+            { key: 'over60', label: 'Weekend project' },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setActiveTime(key)} style={{
               background: activeTime === key ? C.accentBg : C.warm,
@@ -510,8 +578,9 @@ function BrowseContent() {
       <div style={{ padding: `24px ${pad} 80px`, maxWidth: 1100, margin: '0 auto' }}>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 0', fontFamily: MONO, fontSize: 11, color: C.text3, letterSpacing: 1 }}>
-            Loading recipes…
+          <div style={{ textAlign: 'center', padding: '80px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 20, height: 20, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            <span style={{ fontFamily: MONO, fontSize: 11, color: C.text3, letterSpacing: 1 }}>Loading recipes</span>
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
@@ -535,10 +604,10 @@ function BrowseContent() {
               )}
               {/* View toggle */}
               <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
-                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" aria-label="Grid view" aria-pressed={viewMode === 'grid'} style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <GridIcon active={viewMode === 'grid'} />
                 </button>
-                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('list')} title="List view" aria-label="List view" aria-pressed={viewMode === 'list'} style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <ListIcon active={viewMode === 'list'} />
                 </button>
               </div>
@@ -550,45 +619,42 @@ function BrowseContent() {
                 ))}
               </div>
             ) : (
-              <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
+              <div>
                 {filtered.map(recipe => (
-                  <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
+                  <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
                 ))}
               </div>
             )}
           </>
         ) : (
-          /* GROUPED BY CUISINE — default cookbook view */
+          /* FLAT ALPHABETICAL INDEX — default cookbook view */
           <>
-            {/* View toggle for default state */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontFamily: SERIF, fontSize: 20, color: C.text, margin: 0, flex: 1 }}>
+                {filtered.length} recipes
+              </p>
               <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
-                <button onClick={() => setViewMode('grid')} title="Grid view" style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('grid')} title="Grid view" aria-label="Grid view" aria-pressed={viewMode === 'grid'} style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <GridIcon active={viewMode === 'grid'} />
                 </button>
-                <button onClick={() => setViewMode('list')} title="List view" style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <button onClick={() => setViewMode('list')} title="List view" aria-label="List view" aria-pressed={viewMode === 'list'} style={{ background: viewMode === 'list' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <ListIcon active={viewMode === 'list'} />
                 </button>
               </div>
             </div>
-            {grouped?.map(([cuisine, items]) => (
-              <div key={cuisine}>
-                <SectionHeader cuisine={cuisine} count={items.length} />
-                {viewMode === 'grid' ? (
-                  <div style={gridStyle}>
-                    {items.map(recipe => (
-                      <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
-                    ))}
-                  </div>
-                ) : (
-                  <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
-                    {items.map(recipe => (
-                      <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
-                    ))}
-                  </div>
-                )}
+            {viewMode === 'grid' ? (
+              <div style={gridStyle}>
+                {[...filtered].sort((a, b) => a.title.localeCompare(b.title)).map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                ))}
               </div>
-            ))}
+            ) : (
+              <div>
+                {[...filtered].sort((a, b) => a.title.localeCompare(b.title)).map(recipe => (
+                  <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>

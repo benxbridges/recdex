@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -20,8 +21,9 @@ type Recipe = {
   image_url: string | null; servings: number | null; servings_label: string | null
   tags: string[] | null
   ingredients: RawIngredients; steps: Step[]
-  submitted_by?: string | null; source?: string | null
+  submitted_by?: string | null; source?: string | null; source_attribution?: string | null
   video_url?: string | null; creator_name?: string | null; creator_url?: string | null
+  photo_credit?: string | null
 }
 
 type Comment = {
@@ -35,6 +37,22 @@ type PrivateNote = {
 }
 
 // ===== HELPERS =====
+function relativeTime(dateStr: string): string {
+  const now = Date.now()
+  const then = new Date(dateStr).getTime()
+  const diff = now - then
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
+}
+
 function capitalizeIngredient(name: string): string {
   if (!name) return name
   return name.charAt(0).toUpperCase() + name.slice(1)
@@ -177,18 +195,10 @@ function BrokenEggSVG({ width = 60 }: { width?: number }) {
   )
 }
 
-function ContributePhotoCTA() {
-  const [hovered, setHovered] = useState(false)
+function NoPhotoPlaceholder() {
   return (
-    <div onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ width: '100%', height: '100%', background: hovered ? C.cool : C.warm, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.15s', gap: 10 }}>
+    <div style={{ width: '100%', height: '100%', background: C.warm, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <BrokenEggSVG width={50} />
-      <div style={{ padding: '8px 16px', borderRadius: 6, border: `1.5px dashed ${hovered ? C.accent : C.rule}`, background: hovered ? C.accentBg : C.warm, transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={hovered ? C.accent : C.text3} strokeWidth="2" strokeLinecap="round" style={{ transition: 'stroke 0.15s' }}>
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" /><circle cx="12" cy="13" r="4" />
-        </svg>
-        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: SANS, color: hovered ? C.accent : C.text3, transition: 'color 0.15s' }}>Add a photo</span>
-      </div>
     </div>
   )
 }
@@ -291,8 +301,8 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
     // Copy added items, or all items if none selected
     const toCopy = addedCount > 0 ? items.filter((_, i) => added[i]) : items
     const lines = toCopy.map(ing => {
-      const amt = ing.amount ? ` / ${ing.amount}${ing.unit ? ` ${ing.unit}` : ''}` : ''
-      return `${ing.name}${amt}${ing.notes ? ` (${ing.notes})` : ''}`
+      const amt = ing.amount ? `${ing.amount}${ing.unit ? ` ${ing.unit}` : ''} ` : ''
+      return `${amt}${ing.name}${ing.notes ? ` (${ing.notes})` : ''}`
     })
     await navigator.clipboard?.writeText(`${recipe.title}\n${lines.join('\n')}`)
     setListCopied(true)
@@ -330,8 +340,8 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
                   fontStyle: isAdded ? 'italic' : 'normal',
                   transition: 'all 0.15s',
                 }}>
+                  {ing.amount && <span style={{ fontWeight: 400 }}>{ing.amount}{ing.unit ? ` ${ing.unit}` : ''} </span>}
                   {ing.name}
-                  {ing.amount && <span style={{ color: C.text3, fontWeight: 400 }}> / {ing.amount}{ing.unit ? ` ${ing.unit}` : ''}</span>}
                   {ing.notes && <span style={{ color: C.text3 }}> ({ing.notes})</span>}
                 </span>
                 <div style={{
@@ -459,7 +469,7 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
               <div style={{ columns: 2, columnGap: 16, marginBottom: 16 }}>
                 {items.map((ing, i) => (
                   <p key={i} style={{ fontSize: 12, color: C.text, margin: '3px 0', fontFamily: SANS, lineHeight: 1.4, breakInside: 'avoid' as const }}>
-                    {ing.name}{ing.amount && <span style={{ color: C.text3 }}> / {ing.amount}{ing.unit ? ` ${ing.unit}` : ''}</span>}
+                    {ing.amount && <span>{ing.amount}{ing.unit ? ` ${ing.unit}` : ''} </span>}{ing.name}
                   </p>
                 ))}
               </div>
@@ -546,7 +556,6 @@ function IngredientEggCard({ point }: { point: ConsensusPoint }) {
 }
 
 function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean }) {
-  const [expanded, setExpanded] = useState(false)
   const data = CONSENSUS_DATA[slug]
   if (!data) return null
 
@@ -554,18 +563,12 @@ function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean 
     <>
       <div style={{ height: 1, background: C.rule }} />
       <div style={{ paddingTop: 24, paddingBottom: 24 }}>
-        {/* Collapsed header bar */}
-        <button
-          onClick={() => setExpanded(!expanded)}
-          style={{
-            width: '100%', display: 'flex', flexWrap: isMobile ? 'wrap' : 'nowrap', alignItems: 'center', gap: isMobile ? 6 : 10,
-            padding: isMobile ? '10px 14px' : '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
-            borderLeft: `3px solid ${C.blue}`, borderRadius: expanded ? '8px 8px 0 0' : 8, cursor: 'pointer',
-            transition: 'background 0.15s, border-radius 0.15s',
-          }}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = C.warm }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = C.cool }}
-        >
+        {/* Header */}
+        <div style={{
+          width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? 6 : 10,
+          padding: isMobile ? '10px 14px' : '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
+          borderLeft: `3px solid ${C.blue}`, borderRadius: '8px 8px 0 0',
+        }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 3h6" /><path d="M10 3v6.5L4 20h16l-6-10.5V3" />
             <circle cx="12" cy="16" r="1" fill={C.blue} />
@@ -581,26 +584,19 @@ function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean 
           }}>
             {data.recipesAnalyzed} recipes analyzed
           </span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2.5" strokeLinecap="round"
-            style={{ transition: 'transform 0.2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
           {isMobile && (
             <div style={{ width: '100%', paddingLeft: 28, marginTop: -2 }}>
               <span style={{ fontFamily: SERIF, fontSize: 11, fontStyle: 'italic', color: C.text3 }}>how most cooks make this dish</span>
             </div>
           )}
-        </button>
+        </div>
 
-        {/* Expanded content */}
-        {expanded && (
-          <div style={{
-            padding: '20px 16px', background: C.cool,
-            border: `1px solid ${C.ruleLight}`, borderTop: 'none',
-            borderLeft: `3px solid ${C.blue}`, borderRadius: '0 0 8px 8px',
-            animation: 'fadeIn 0.2s ease',
-          }}>
+        {/* Content — always visible */}
+        <div style={{
+          padding: '20px 16px', background: C.cool,
+          border: `1px solid ${C.ruleLight}`, borderTop: 'none',
+          borderLeft: `3px solid ${C.blue}`, borderRadius: '0 0 8px 8px',
+        }}>
             <p style={{ fontSize: 11, fontFamily: SANS, color: C.text3, margin: '0 0 20px', lineHeight: 1.4, textAlign: 'center' }}>
               We compared {data.recipesAnalyzed} versions of this dish. Here&apos;s what most cooks agree on.
             </p>
@@ -678,7 +674,6 @@ function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean 
               Synthesized from {data.recipesAnalyzed} versions across {data.sources.slice(0, 3).join(', ')}, and others.
             </p>
           </div>
-        )}
       </div>
     </>
   )
@@ -706,6 +701,9 @@ export default function RecipePage() {
   const [commentPosting, setCommentPosting] = useState(false)
   const commentInputRef = useRef<HTMLTextAreaElement>(null)
 
+  // Shopping list toast
+  const [shoppingToast, setShoppingToast] = useState(false)
+
   // Private notes state
   const [privateNote, setPrivateNote] = useState('')
   const [editingNote, setEditingNote] = useState(false)
@@ -720,8 +718,13 @@ export default function RecipePage() {
   useEffect(() => {
     async function fetchRecipe() {
       setLoading(true)
-      const { data } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
-      if (data) setRecipe(data)
+      try {
+        const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
+        if (error) throw error
+        if (data) setRecipe(data)
+      } catch (err) {
+        console.error('[recipe] Failed to load recipe:', err)
+      }
       setLoading(false)
     }
     if (slug) fetchRecipe()
@@ -824,8 +827,9 @@ export default function RecipePage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 14, color: C.text3 }}>Loading...</p>
+      <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ width: 22, height: 22, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+        <span style={{ fontSize: 13, color: C.text3 }}>Loading recipe</span>
       </div>
     )
   }
@@ -861,14 +865,21 @@ export default function RecipePage() {
                 Recipe Index<EggDot size={9} />
               </h1>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
-              <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <span onClick={() => router.push('/pantry')} style={{ color: C.text2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span style={{ fontSize: 13 }}>🛒</span><span style={{ fontSize: 11, fontWeight: 500 }}>Kitchen</span>
-              </span>
-              <RecipeBoxNav />
-            </div>
+            {!isMobile ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
+                <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</span>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <span onClick={() => router.push('/pantry')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Kitchen</span>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <span onClick={() => router.push('/profile')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Profile</span>
+                <ThemeToggle />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span onClick={() => router.back()} style={{ color: C.text2, cursor: 'pointer', fontSize: 12, fontFamily: SANS }}>←</span>
+                <ThemeToggle />
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -898,9 +909,19 @@ export default function RecipePage() {
                   {recipe.title}
                 </h1>
               </div>
+              {recipe.photo_credit && (
+                <div style={{
+                  position: 'absolute', top: 8, right: 10,
+                  fontSize: 9, fontFamily: SANS, color: 'rgba(255,255,255,0.6)',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  letterSpacing: '0.02em',
+                }}>
+                  Photo: {recipe.photo_credit}
+                </div>
+              )}
             </>
           ) : (
-            <ContributePhotoCTA />
+            <NoPhotoPlaceholder />
           )}
         </div>
       </div>
@@ -955,6 +976,36 @@ export default function RecipePage() {
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                 </svg>
               </a>
+            </div>
+          )}
+
+          {/* AI-extracted badge + creator credit for video-sourced recipes */}
+          {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
+            <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 6, background: C.accentBg, border: `1px solid ${C.accentMed}`, alignSelf: 'flex-start' }}>
+                <span style={{ fontSize: 12 }}>🤖</span>
+                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>AI-extracted from video</span>
+                <span style={{ color: C.rule }}>·</span>
+                <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+                  Verify or edit
+                </a>
+              </div>
+              {recipe.creator_name && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontFamily: SANS, color: C.text3 }}>
+                  <span>Recipe by</span>
+                  {recipe.creator_url ? (
+                    <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+                      {recipe.creator_name}
+                    </a>
+                  ) : (
+                    <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
+                  )}
+                  <span style={{ color: C.text3 }}>·</span>
+                  <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'none' }}>
+                    Watch original →
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -1048,26 +1099,191 @@ export default function RecipePage() {
               <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
                 {ingredientItems.map((item, i) => (
                   <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
-                    {item.name}
                     {item.amount && (
-                      <span style={{ color: servingsMultiplier !== 1 ? C.accent : C.text3, fontWeight: servingsMultiplier !== 1 ? 600 : 400, transition: 'color 0.15s' }}>
-                        {' / '}{scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}
+                      <span style={{ color: servingsMultiplier !== 1 ? C.accent : C.text, fontWeight: servingsMultiplier !== 1 ? 600 : 400, transition: 'color 0.15s' }}>
+                        {scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}{' '}
                       </span>
                     )}
+                    {item.name}
                     {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
                   </p>
                 ))}
               </div>
             </div>
+            {/* Add to shopping list button */}
+            <button
+              onClick={() => {
+                const stored = localStorage.getItem('recdex-shopping-list')
+                let existing: { recipe: string; name: string; amount: string; unit: string }[] = []
+                if (stored) {
+                  try { existing = JSON.parse(stored) } catch { /* ignore */ }
+                }
+                const newItems = ingredientItems
+                  .filter(item => !existing.some(e => e.recipe === recipe.title && e.name === item.name))
+                  .map(item => ({
+                    recipe: recipe.title,
+                    name: item.name,
+                    amount: scaleAmount(item.amount, servingsMultiplier),
+                    unit: item.unit,
+                  }))
+                if (newItems.length > 0) {
+                  localStorage.setItem('recdex-shopping-list', JSON.stringify([...existing, ...newItems]))
+                }
+                setShoppingToast(true)
+                setTimeout(() => setShoppingToast(false), 2500)
+              }}
+              style={{
+                marginTop: 12, padding: '10px 18px', borderRadius: 6,
+                border: `1.5px solid ${C.green}`, background: C.greenBg,
+                color: C.green, fontSize: 12, fontWeight: 600,
+                cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', gap: 7,
+                transition: 'all 0.15s',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round">
+                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              </svg>
+              Add to shopping list
+            </button>
+            {/* Shopping list toast */}
+            {shoppingToast && (
+              <div style={{
+                position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+                padding: '10px 20px', borderRadius: 8,
+                background: C.text, color: C.bg,
+                fontSize: 13, fontWeight: 600, fontFamily: SANS,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                zIndex: 500, animation: 'fadeIn 0.2s ease',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                Added to shopping list
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
             <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Ingredients</h2>
-            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Full ingredient list coming soon. Know this recipe? You can help by contributing.</p>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No ingredients listed yet for this recipe.</p>
           </div>
         )}
 
         <div style={{ height: 1, background: C.rule }} />
+
+        {/* ===== COMMUNITY FEEDBACK (Kitchen Consensus) ===== */}
+        {comments.length > 0 && (() => {
+          const RATING_LABELS = ['Amazing', 'Good', 'Just ok', 'Tricky'] as const
+          const ratingCounts: Record<string, number> = {}
+          const substitutions: { text: string; author: string; date: string }[] = []
+          const tips: { text: string; author: string; date: string }[] = []
+
+          comments.forEach(c => {
+            if (c.rating) {
+              ratingCounts[c.rating] = (ratingCounts[c.rating] || 0) + 1
+            }
+            const lines = c.body.split('\n')
+            lines.forEach(line => {
+              const subMatch = line.match(/🔄\s*Substitution:\s*(.+)/i)
+              if (subMatch) substitutions.push({ text: subMatch[1].trim(), author: c.display_name, date: c.created_at })
+              const tipMatch = line.match(/💡\s*Tip:\s*(.+)/i)
+              if (tipMatch) tips.push({ text: tipMatch[1].trim(), author: c.display_name, date: c.created_at })
+            })
+          })
+
+          const hasRatings = Object.keys(ratingCounts).length > 0
+          const hasTips = substitutions.length > 0 || tips.length > 0
+
+          if (!hasRatings && !hasTips) return null
+
+          return (
+            <>
+              <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.08s both' }}>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Kitchen Consensus</h2>
+                <div style={{
+                  padding: '20px 22px', borderRadius: 10,
+                  background: `linear-gradient(135deg, ${C.warm} 0%, ${C.cool} 100%)`,
+                  border: `1.5px solid ${C.ruleLight}`,
+                }}>
+                  {/* Aggregated ratings */}
+                  {hasRatings && (
+                    <div style={{ marginBottom: hasTips ? 20 : 0 }}>
+                      <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 10px' }}>
+                        How it turned out
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {RATING_LABELS.map(label => {
+                          const count = ratingCounts[label] || 0
+                          if (count === 0) return null
+                          const color = label === 'Amazing' ? C.green : label === 'Good' ? C.blue : label === 'Just ok' ? C.gold : C.accent
+                          const bg = label === 'Amazing' ? C.greenBg : label === 'Good' ? C.blueBg : label === 'Just ok' ? C.goldBg : C.accentBg
+                          return (
+                            <div key={label} style={{
+                              display: 'flex', alignItems: 'center', gap: 6,
+                              padding: '6px 12px', borderRadius: 6,
+                              background: bg, border: `1px solid ${color}20`,
+                            }}>
+                              <span style={{ fontSize: 13, fontFamily: MONO, fontWeight: 700, color }}>{count}</span>
+                              <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 500, color }}>{label}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Substitution tips */}
+                  {substitutions.length > 0 && (
+                    <div style={{ marginBottom: tips.length > 0 ? 16 : 0 }}>
+                      <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.gold, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px' }}>
+                        Substitutions
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {substitutions.map((sub, i) => (
+                          <div key={i} style={{
+                            padding: '8px 12px', borderRadius: 6,
+                            background: C.bg, border: `1px solid ${C.ruleLight}`,
+                            borderLeft: `3px solid ${C.gold}`,
+                          }}>
+                            <p style={{ fontSize: 13, fontFamily: SANS, color: C.text, margin: 0, lineHeight: 1.5 }}>{sub.text}</p>
+                            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '4px 0 0' }}>
+                              @{sub.author} · {relativeTime(sub.date)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cooking tips */}
+                  {tips.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px' }}>
+                        Cooking Tips
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {tips.map((tip, i) => (
+                          <div key={i} style={{
+                            padding: '8px 12px', borderRadius: 6,
+                            background: C.bg, border: `1px solid ${C.ruleLight}`,
+                            borderLeft: `3px solid ${C.green}`,
+                          }}>
+                            <p style={{ fontSize: 13, fontFamily: SANS, color: C.text, margin: 0, lineHeight: 1.5 }}>{tip.text}</p>
+                            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '4px 0 0' }}>
+                              @{tip.author} · {relativeTime(tip.date)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div style={{ height: 1, background: C.rule }} />
+            </>
+          )
+        })()}
 
         {/* Steps preview */}
         {hasSteps ? (
@@ -1091,18 +1307,23 @@ export default function RecipePage() {
                 </div>
               </div>
             ))}
-            <button onClick={() => router.push(`/recipe/${slug}/cook`)} style={{
-              width: '100%', marginTop: 8, padding: '14px', borderRadius: 6, border: 'none',
-              background: C.text, color: C.bg,
+            <a href={`/recipe/${slug}/cook`} style={{
+              display: 'block', width: '100%', marginTop: 8, padding: '14px', borderRadius: 6, border: 'none',
+              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-            }}>Cook mode →</button>
+            }}>Cook mode →</a>
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
             <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
-            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>Step-by-step instructions coming soon.</p>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
           </div>
         )}
+
+        <div style={{ height: 1, background: C.rule }} />
+
+        {/* ===== KITCHEN CONSENSUS ===== */}
+        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         <div style={{ height: 1, background: C.rule }} />
 
@@ -1116,11 +1337,6 @@ export default function RecipePage() {
             </div>
           </div>
         )}
-
-        <div style={{ height: 1, background: C.rule }} />
-
-        {/* ===== KITCHEN CONSENSUS ===== */}
-        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         {/* ===== COMMUNITY NOTES ===== */}
         <div style={{ paddingTop: 28, paddingBottom: 28 }}>

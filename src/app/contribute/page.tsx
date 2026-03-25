@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
-type Platform = 'youtube' | 'tiktok' | 'instagram' | 'other'
+type Platform = 'youtube' | 'tiktok' | 'instagram' | 'web' | 'other'
 type Mode = 'video' | 'manual'
 type FlowStep = 'url' | 'extracting' | 'review' | 'publishing' | 'success'
 
@@ -43,6 +44,8 @@ function detectPlatform(url: string): Platform {
     if (h.includes('tiktok.com')) return 'tiktok'
     if (h.includes('youtube.com') || h.includes('youtu.be')) return 'youtube'
     if (h.includes('instagram.com')) return 'instagram'
+    // Any other valid URL with a hostname is a web recipe
+    if (h.length > 0) return 'web'
   } catch { /* invalid */ }
   return 'other'
 }
@@ -92,10 +95,10 @@ function getDisplayName(): string {
 }
 
 const PLATFORM_COLORS: Record<Platform, string> = {
-  youtube: '#FF0000', tiktok: '#69C9D0', instagram: '#E1306C', other: C.text3,
+  youtube: '#FF0000', tiktok: '#69C9D0', instagram: '#E1306C', web: C.accent, other: C.text3,
 }
 const PLATFORM_LABELS: Record<Platform, string> = {
-  youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', other: 'Link',
+  youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', web: 'Website', other: 'Link',
 }
 
 // ===== PLATFORM ICONS =====
@@ -116,6 +119,12 @@ function PlatformIcon({ platform, size = 14 }: { platform: Platform; size?: numb
       <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
       <circle cx="12" cy="12" r="4" />
       <circle cx="17.5" cy="6.5" r="0.5" fill={color} />
+    </svg>
+  )
+  if (platform === 'web') return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
     </svg>
   )
   return (
@@ -151,6 +160,7 @@ export default function ContributePage() {
 }
 
 function ContributeInner() {
+  const router = useRouter()
   const [mode, setMode] = useState<Mode>('video')
   const [flowStep, setFlowStep] = useState<FlowStep>('url')
   const [displayName, setDisplayName] = useState('')
@@ -164,6 +174,7 @@ function ContributeInner() {
   const [showPasteBox, setShowPasteBox] = useState(false)
   const [pastedText, setPastedText] = useState('')
   const oembedTimer = useRef<ReturnType<typeof setTimeout>>(null)
+  const autoExtractPending = useRef(false)
 
   // Shared review state
   const [extracted, setExtracted] = useState<ExtractedRecipe | null>(null)
@@ -178,6 +189,18 @@ function ContributeInner() {
   const [steps, setSteps] = useState<string[]>([''])
   const [publishError, setPublishError] = useState('')
   const [similarWarning, setSimilarWarning] = useState('')
+  const [copyrightCertified, setCopyrightCertified] = useState(false)
+
+  // Image selection
+  const [imageOptions, setImageOptions] = useState<{ url: string; thumb: string; credit: string }[]>([])
+  const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [imagesLoading, setImagesLoading] = useState(false)
+
+  // Web source author (extracted from page meta)
+  const [webAuthor, setWebAuthor] = useState<string | null>(null)
+
+  // Responsive
+  const [isMobile, setIsMobile] = useState(false)
 
   // Success
   const [publishedSlug, setPublishedSlug] = useState('')
@@ -186,15 +209,23 @@ function ContributeInner() {
 
   useEffect(() => { setDisplayName(getDisplayName()) }, [])
 
-  // Pre-fill URL from query params (used by /trending page)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Pre-fill URL from query params and auto-extract
   useEffect(() => {
     const prefillUrl = searchParams.get('url')
     if (prefillUrl && !url) {
       setUrl(prefillUrl)
+      autoExtractPending.current = true
     }
   }, [searchParams]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // oEmbed debounce
+  // oEmbed debounce + auto-extract for URL prefills
   useEffect(() => {
     const trimmed = url.trim()
     if (!trimmed) { setOembed(null); setPlatform('other'); return }
@@ -208,27 +239,37 @@ function ContributeInner() {
         const data = await fetchOembed(trimmed)
         setOembed(data)
         setOembedLoading(false)
+        // Auto-extract after oembed loads for video URLs
+        if (autoExtractPending.current && data) {
+          autoExtractPending.current = false
+          setTimeout(() => handleExtract(p), 100)
+        }
       }, 400)
+    } else if ((p === 'web' || p === 'instagram') && autoExtractPending.current) {
+      // For web/instagram, no oembed needed — extract immediately
+      autoExtractPending.current = false
+      setTimeout(() => handleExtract(p), 100)
     }
     return () => { if (oembedTimer.current) clearTimeout(oembedTimer.current) }
-  }, [url])
+  }, [url]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const canExtract = Boolean(url.trim() && platform !== 'other' && !oembedLoading && (oembed || platform === 'instagram'))
+  const canExtract = Boolean(url.trim() && platform !== 'other' && !oembedLoading && (oembed || platform === 'instagram' || platform === 'web'))
 
-  const handleExtract = async () => {
+  const handleExtract = async (overridePlatform?: Platform) => {
+    const effectivePlatform = overridePlatform || platform
     setExtractError('')
     setFlowStep('extracting')
     try {
       // For YouTube, try to fetch transcript client-side as fallback
       let transcript: string | null = pastedText.trim() || null
-      if (!transcript && platform === 'youtube') {
+      if (!transcript && effectivePlatform === 'youtube') {
         transcript = await fetchYouTubeTranscript(url.trim())
       }
 
       const res = await fetch('/api/extract-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim(), platform, authorName: oembed?.author_name || null, authorUrl: oembed?.author_url || null, oembedTitle: oembed?.title || null, transcript }),
+        body: JSON.stringify({ url: url.trim(), platform: effectivePlatform, authorName: oembed?.author_name || null, authorUrl: oembed?.author_url || null, oembedTitle: oembed?.title || null, transcript }),
       })
       const data = await res.json()
 
@@ -247,6 +288,7 @@ function ContributeInner() {
 
       const recipe: ExtractedRecipe = data.recipe
       setExtracted(recipe)
+      if (data.authorName) setWebAuthor(data.authorName)
       setTitle(recipe.title || '')
       setDescription(recipe.description || '')
       setCuisine(recipe.cuisine || '')
@@ -257,10 +299,27 @@ function ContributeInner() {
       setIngredients(recipe.ingredients?.length > 0 ? recipe.ingredients : [BLANK_INGREDIENT()])
       setSteps(recipe.steps?.length > 0 ? recipe.steps.map(s => s.text) : [''])
       setFlowStep('review')
+
+      // Fetch image options from Unsplash
+      if (recipe.title) fetchImageOptions(recipe.title)
     } catch {
       setFlowStep('url')
       setExtractError('Something went wrong. Try again.')
     }
+  }
+
+  // Fetch image options from Unsplash
+  const fetchImageOptions = async (query: string) => {
+    setImagesLoading(true)
+    try {
+      const res = await fetch(`/api/image-search?q=${encodeURIComponent(query + ' food recipe')}`)
+      if (res.ok) {
+        const data = await res.json()
+        setImageOptions(data.images || [])
+        if (data.images?.length > 0) setSelectedImage(data.images[0].url)
+      }
+    } catch { /* ignore */ }
+    setImagesLoading(false)
   }
 
   // Switch mode — reset to fresh state
@@ -303,46 +362,53 @@ function ContributeInner() {
 
     const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36)
 
-    const { error } = await supabase.from('recipes').insert({
-      slug,
-      title: title.trim(),
-      description: description.trim() || null,
-      cuisine: cuisine.trim() || null,
-      difficulty,
-      time_total: timeTotal ? parseInt(timeTotal) : null,
-      time_active: timeActive ? parseInt(timeActive) : null,
-      servings: servings ? parseInt(servings) : null,
-      ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim(), notes: i.notes?.trim() || '' })),
-      steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: extracted?.steps?.[i]?.timer_minutes ?? null })),
-      tags: [],
-      status: 'published',
-      submitted_by: displayName,
-      source: 'community',
-      video_url: mode === 'video' ? url.trim() : null,
-      creator_name: mode === 'video' ? (oembed?.author_name || null) : null,
-      creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
-    })
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            title: title.trim(),
+            description: description.trim() || null,
+            cuisine: cuisine.trim() || null,
+            difficulty,
+            time_total: timeTotal ? parseInt(timeTotal) : null,
+            time_active: timeActive ? parseInt(timeActive) : null,
+            servings: servings ? parseInt(servings) : null,
+            ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim(), notes: i.notes?.trim() || '' })),
+            steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: extracted?.steps?.[i]?.timer_minutes ?? null })),
+            video_url: mode === 'video' && platform !== 'web' ? url.trim() : null,
+            creator_name: platform === 'web' ? (webAuthor || null) : (oembed?.author_name || null),
+            creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
+            image_url: selectedImage || (mode === 'video' ? (oembed?.thumbnail_url || null) : null),
+            source_url: platform === 'web' ? url.trim() : (mode === 'video' ? url.trim() : null),
+            source_attribution: platform === 'web' ? (() => { try { return new URL(url.trim()).hostname.replace('www.', '') } catch { return null } })() : null,
+          },
+          submission: mode === 'video' ? {
+            url: url.trim(), platform,
+            title: oembed?.title || title.trim(),
+            author_name: oembed?.author_name || null,
+            author_url: oembed?.author_url || null,
+            thumbnail_url: oembed?.thumbnail_url || null,
+            display_name: displayName,
+          } : null,
+        }),
+      })
 
-    if (error) {
+      if (!res.ok) {
+        setFlowStep('review')
+        setPublishError('Something went wrong publishing. Try again.')
+        return
+      }
+    } catch {
       setFlowStep('review')
       setPublishError('Something went wrong publishing. Try again.')
       return
     }
 
-    if (mode === 'video') {
-      await supabase.from('community_submissions').insert({
-        url: url.trim(), platform,
-        title: oembed?.title || title.trim(),
-        author_name: oembed?.author_name || null,
-        author_url: oembed?.author_url || null,
-        thumbnail_url: oembed?.thumbnail_url || null,
-        display_name: displayName,
-        related_recipe_slug: slug,
-      })
-    }
-
-    setPublishedSlug(slug)
-    setFlowStep('success')
+    // Go straight to cook mode
+    router.push(`/recipe/${slug}/cook`)
   }
 
   const resetFlow = () => {
@@ -371,18 +437,33 @@ function ContributeInner() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
-      {/* Nav */}
-      <div style={{ borderBottom: `1px solid ${C.ruleLight}`, padding: '14px clamp(16px,4vw,32px)' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ fontFamily: MONO, fontSize: 13, color: C.text2, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, letterSpacing: '-0.01em' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 12H5M12 5l-7 7 7 7" />
-            </svg>
-            RecDex
-          </Link>
-          {displayName && <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>@{displayName}</span>}
+      {/* Header */}
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Link href="/" style={{ textDecoration: 'none', cursor: 'pointer' }}>
+              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
+                Recipe Index<span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
+              </h1>
+              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
+            </Link>
+            {!isMobile ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
+                <Link href="/" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <Link href="/pantry" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
+                <div style={{ width: 1, height: 14, background: C.rule }} />
+                <Link href="/profile" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Profile</Link>
+                <ThemeToggle />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ThemeToggle />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </header>
 
       <div style={{ maxWidth: 620, margin: '0 auto', padding: 'clamp(40px,8vw,72px) clamp(16px,4vw,24px)' }}>
 
@@ -390,13 +471,13 @@ function ContributeInner() {
         {flowStep !== 'extracting' && flowStep !== 'success' && (
           <div style={{ marginBottom: 36 }}>
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px,5vw,38px)', fontWeight: 700, color: C.text, margin: '0 0 24px', lineHeight: 1.1, letterSpacing: -0.5 }}>
-              Contribute a Recipe
+              Cook a Recipe
             </h1>
             {/* Mode tabs — only visible when not deep in video flow */}
             {showTabs && (
               <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.ruleLight}` }}>
                 {([
-                  { key: 'video', label: 'From a video', icon: '▶' },
+                  { key: 'video', label: 'From a URL', icon: '▶' },
                   { key: 'manual', label: 'Write it in', icon: '✎' },
                 ] as { key: Mode; label: string; icon: string }[]).map(({ key, label, icon }) => (
                   <button
@@ -437,7 +518,7 @@ function ContributeInner() {
             {mode === 'video' && flowStep === 'url' && (
               <div style={{ animation: 'fadeUp 0.3s ease' }}>
                 <p style={{ fontFamily: SANS, fontSize: 15, color: C.text2, lineHeight: 1.65, margin: '0 0 24px', maxWidth: 480 }}>
-                  Paste a TikTok, YouTube, or Instagram link. Claude reads the description or caption and extracts a structured recipe — ready to review and publish.
+                  Paste any recipe URL — YouTube, TikTok, Instagram, NYT Cooking, or any cooking blog. We extract the recipe and give you a structured version to review and publish.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -450,7 +531,7 @@ function ContributeInner() {
                       type="url"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
-                      placeholder="https://www.youtube.com/watch?v=..."
+                      placeholder="https://cooking.nytimes.com/recipes/..."
                       autoFocus
                       style={{ ...inp, paddingLeft: 40, fontSize: 14 }}
                       onKeyDown={e => { if (e.key === 'Enter' && canExtract) handleExtract() }}
@@ -499,7 +580,7 @@ function ContributeInner() {
                         <span style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text }}>Paste the recipe</span>
                       </div>
                       <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 12px', lineHeight: 1.5 }}>
-                        Copy the ingredients and steps from the video, its comments, or description — Claude will structure it into a clean recipe.
+                        Paste the ingredient list and basic steps from the video description. Claude will extract the factual recipe information and rewrite it in clear, original language.
                       </p>
                       <textarea
                         value={pastedText}
@@ -515,7 +596,7 @@ function ContributeInner() {
                         }}
                       />
                       <button
-                        onClick={handleExtract}
+                        onClick={() => handleExtract()}
                         disabled={!pastedText.trim()}
                         style={{
                           marginTop: 10, fontFamily: SANS, fontSize: 14, fontWeight: 700,
@@ -526,21 +607,21 @@ function ContributeInner() {
                           letterSpacing: '-0.01em',
                         }}
                       >
-                        Extract Recipe →
+                        Cook this →
                       </button>
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', gap: 16, marginBottom: 24, marginTop: 4 }}>
-                    {(['youtube', 'tiktok', 'instagram'] as Platform[]).map(p => (
+                  <div style={{ display: 'flex', gap: 16, marginBottom: 24, marginTop: 4, flexWrap: 'wrap' }}>
+                    {(['youtube', 'tiktok', 'instagram', 'web'] as Platform[]).map(p => (
                       <span key={p} style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: SANS, fontSize: 12, color: C.text3 }}>
-                        <PlatformIcon platform={p} size={12} />{PLATFORM_LABELS[p]}
+                        <PlatformIcon platform={p} size={12} />{p === 'web' ? 'Any recipe site' : PLATFORM_LABELS[p]}
                       </span>
                     ))}
                   </div>
 
                   <button
-                    onClick={handleExtract}
+                    onClick={() => handleExtract()}
                     disabled={!canExtract}
                     style={{
                       width: '100%', padding: '15px 24px', borderRadius: 8, border: 'none',
@@ -550,7 +631,7 @@ function ContributeInner() {
                       fontFamily: SANS, transition: 'all 0.15s', letterSpacing: '-0.01em',
                     }}
                   >
-                    Extract Recipe →
+                    Cook this →
                   </button>
                 </div>
               </div>
@@ -560,16 +641,23 @@ function ContributeInner() {
             {flowStep === 'extracting' && (
               <div style={{ textAlign: 'center', paddingTop: 80, animation: 'fadeUp 0.2s ease' }}>
                 <div style={{ width: 52, height: 52, border: `3px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 28px' }} />
-                <h2 style={{ fontFamily: SERIF, fontSize: 24, color: C.text, margin: '0 0 10px', fontWeight: 700 }}>Analyzing video…</h2>
+                <h2 style={{ fontFamily: SERIF, fontSize: 24, color: C.text, margin: '0 0 10px', fontWeight: 700 }}>
+                  {platform === 'web' ? 'Reading recipe page…' : 'Analyzing video…'}
+                </h2>
                 <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, lineHeight: 1.6, maxWidth: 380, margin: '0 auto' }}>
                   {platform === 'youtube'
                     ? 'Fetching transcript and description, then extracting a structured recipe with Claude.'
                     : platform === 'tiktok'
                     ? 'Fetching TikTok transcript and caption, then extracting a structured recipe with Claude.'
+                    : platform === 'web'
+                    ? 'Scraping the recipe page and extracting ingredients, steps, and cooking tips with Claude.'
                     : 'Reading the Instagram caption and extracting ingredients and steps.'}
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 28 }}>
-                  {['Fetching video data', 'Reading transcript', 'Extracting recipe'].map((step, i) => (
+                  {(platform === 'web'
+                    ? ['Fetching page', 'Reading content', 'Extracting recipe']
+                    : ['Fetching video data', 'Reading transcript', 'Extracting recipe']
+                  ).map((step, i) => (
                     <span key={i} style={{
                       fontFamily: MONO, fontSize: 10, color: C.text3,
                       padding: '4px 10px', borderRadius: 20,
@@ -597,22 +685,74 @@ function ContributeInner() {
                       </button>
                     )}
                     <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: 0 }}>
-                      {mode === 'video' ? 'Edit anything before publishing.' : 'Fill in your recipe details below.'}
+                      {mode === 'video' ? 'Review the recipe — edit anything that looks off.' : 'Fill in your recipe details below.'}
                     </p>
                   </div>
                   {extracted && <ConfidenceBadge confidence={extracted.confidence} />}
                 </div>
 
-                {/* Attribution card (video mode only) */}
-                {mode === 'video' && (oembed?.author_name || oembed?.thumbnail_url) && (
+                {/* Attribution card */}
+                {mode === 'video' && (oembed?.author_name || oembed?.thumbnail_url || platform === 'web') && (
                   <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '13px 16px', background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}`, marginBottom: 24 }}>
-                    {oembed.thumbnail_url && <img src={oembed.thumbnail_url} alt="" style={{ width: 64, height: 46, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />}
+                    {oembed?.thumbnail_url && (
+                      <img src={oembed.thumbnail_url} alt="" style={{ width: 64, height: 46, objectFit: 'cover', borderRadius: 5, flexShrink: 0 }} />
+                    )}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 3px' }}>Credit</p>
-                      <p style={{ fontFamily: SANS, fontSize: 13, color: C.text, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{oembed.author_name || 'Original creator'}</p>
-                      <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: 0 }}>Originally on {PLATFORM_LABELS[platform]}</p>
+                      <p style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: '0.07em', margin: '0 0 3px' }}>Source</p>
+                      <p style={{ fontFamily: SANS, fontSize: 13, color: C.text, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                        {platform === 'web'
+                          ? (webAuthor || (() => { try { return new URL(url.trim()).hostname.replace('www.', '') } catch { return 'Website' } })())
+                          : (oembed?.author_name || 'Original creator')}
+                      </p>
+                      <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: 0 }}>
+                        {platform === 'web'
+                          ? (() => { try { return new URL(url.trim()).hostname.replace('www.', '') } catch { return '' } })()
+                          : `Originally on ${PLATFORM_LABELS[platform]}`}
+                      </p>
                     </div>
                     <PlatformIcon platform={platform} size={18} />
+                  </div>
+                )}
+
+                {/* Image picker */}
+                {(imageOptions.length > 0 || imagesLoading) && (
+                  <div style={{ marginBottom: 24 }}>
+                    {lbl('Choose a photo')}
+                    {imagesLoading ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {[0,1,2,3].map(i => (
+                          <div key={i} style={{ flex: 1, aspectRatio: '16/10', borderRadius: 8, background: C.cool, animation: 'fadeUp 0.3s ease' }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 8 }}>
+                        {imageOptions.map((img, i) => (
+                          <div key={i} onClick={() => setSelectedImage(img.url)} style={{
+                            position: 'relative', cursor: 'pointer', borderRadius: 8, overflow: 'hidden',
+                            border: selectedImage === img.url ? `3px solid ${C.accent}` : `3px solid transparent`,
+                            opacity: selectedImage === img.url ? 1 : 0.6,
+                            transition: 'all 0.15s',
+                          }}>
+                            <img src={img.thumb} alt="" style={{ width: '100%', aspectRatio: '16/10', objectFit: 'cover', display: 'block' }} />
+                            {selectedImage === img.url && (
+                              <div style={{ position: 'absolute', top: 6, right: 6, width: 20, height: 20, borderRadius: '50%', background: C.accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span style={{ color: '#fff', fontSize: 12, fontWeight: 700 }}>✓</span>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                      <button onClick={() => { setSelectedImage(null); setImageOptions([]) }} style={{
+                        background: 'none', border: 'none', fontSize: 11, fontFamily: SANS, color: C.text3, cursor: 'pointer', padding: 0,
+                      }}>No photo</button>
+                      {selectedImage && imageOptions.find(i => i.url === selectedImage)?.credit && (
+                        <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
+                          Photo by {imageOptions.find(i => i.url === selectedImage)?.credit} · Unsplash
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -655,7 +795,27 @@ function ContributeInner() {
                     </div>
                     <div>
                       {lbl('Serves')}
-                      <input type="number" min="1" value={servings} onChange={e => setServings(e.target.value)} style={inp} placeholder="4" />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+                        <button
+                          onClick={() => setServings(prev => String(Math.max(1, (parseInt(prev) || 2) - 1)))}
+                          style={{
+                            width: 36, height: 38, border: `1.5px solid ${C.ruleLight}`, borderRight: 'none',
+                            borderRadius: '6px 0 0 6px', background: C.cool, cursor: 'pointer',
+                            fontSize: 18, fontWeight: 600, color: C.text2, fontFamily: SANS,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}
+                        >-</button>
+                        <input type="number" min="1" value={servings} onChange={e => setServings(e.target.value)} style={{ ...inp, borderRadius: 0, textAlign: 'center', MozAppearance: 'textfield', WebkitAppearance: 'none' } as React.CSSProperties} placeholder="4" />
+                        <button
+                          onClick={() => setServings(prev => String((parseInt(prev) || 0) + 1))}
+                          style={{
+                            width: 36, height: 38, border: `1.5px solid ${C.ruleLight}`, borderLeft: 'none',
+                            borderRadius: '0 6px 6px 0', background: C.cool, cursor: 'pointer',
+                            fontSize: 18, fontWeight: 600, color: C.text2, fontFamily: SANS,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                          }}
+                        >+</button>
+                      </div>
                     </div>
                   </div>
 
@@ -675,7 +835,41 @@ function ContributeInner() {
                         <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 1.2fr 24px', gap: 6, alignItems: 'center' }}>
                           <input value={ing.name} onChange={e => updateIngredient(i, 'name', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="e.g. flour" />
                           <input value={ing.amount} onChange={e => updateIngredient(i, 'amount', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="2" />
-                          <input value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 12px' }} placeholder="cups" />
+                          <select value={ing.unit} onChange={e => updateIngredient(i, 'unit', e.target.value)} style={{ ...inp, fontSize: 13, padding: '8px 10px', appearance: 'none', backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', paddingRight: 24 }}>
+                            <option value="">—</option>
+                            {/* Volume */}
+                            <option value="cups">cups</option>
+                            <option value="tbsp">tbsp</option>
+                            <option value="tsp">tsp</option>
+                            <option value="ml">ml</option>
+                            <option value="L">L</option>
+                            {/* Weight */}
+                            <option value="oz">oz</option>
+                            <option value="lbs">lbs</option>
+                            <option value="g">g</option>
+                            <option value="kg">kg</option>
+                            {/* Count / Descriptive */}
+                            <option value="whole">whole</option>
+                            <option value="large">large</option>
+                            <option value="medium">medium</option>
+                            <option value="small">small</option>
+                            <option value="cloves">cloves</option>
+                            <option value="slices">slices</option>
+                            <option value="pieces">pieces</option>
+                            <option value="heads">heads</option>
+                            <option value="stalks">stalks</option>
+                            <option value="leaves">leaves</option>
+                            <option value="sprigs">sprigs</option>
+                            <option value="bunch">bunch</option>
+                            <option value="pinch">pinch</option>
+                            <option value="dash">dash</option>
+                            <option value="can">can</option>
+                            <option value="pkg">pkg</option>
+                            {/* Allow custom value if Claude returns something not in list */}
+                            {ing.unit && !['','cups','tbsp','tsp','ml','L','oz','lbs','g','kg','whole','large','medium','small','cloves','slices','pieces','heads','stalks','leaves','sprigs','bunch','pinch','dash','can','pkg'].includes(ing.unit) && (
+                              <option value={ing.unit}>{ing.unit}</option>
+                            )}
+                          </select>
                           <button onClick={() => setIngredients(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.text3, cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, textAlign: 'center' }}>×</button>
                         </div>
                       ))}
@@ -706,6 +900,25 @@ function ContributeInner() {
                   </div>
                 </div>
 
+                {/* Copyright certification */}
+                <div style={{
+                  marginTop: 24, padding: '16px 18px', background: C.warm,
+                  border: `1px solid ${C.ruleLight}`, borderRadius: 10,
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={copyrightCertified}
+                      onChange={e => setCopyrightCertified(e.target.checked)}
+                      style={{ marginTop: 2, accentColor: C.accent, width: 16, height: 16, flexShrink: 0 }}
+                    />
+                    <span style={{ fontFamily: SANS, fontSize: 12, color: C.text2, lineHeight: 1.6 }}>
+                      I certify that this recipe contains only factual cooking information (ingredients, quantities, temperatures, times, and techniques) and does not copy creative expression, personal stories, or distinctive language from another source. I have reviewed and accept the{' '}
+                      <Link href="/terms" target="_blank" style={{ color: C.accent, textDecoration: 'underline' }}>Terms of Use</Link>.
+                    </span>
+                  </label>
+                </div>
+
                 {publishError && (
                   <div style={{ marginTop: 16, padding: '12px 16px', background: C.accentBg, borderRadius: 8, border: `1px solid rgba(232,123,90,0.2)` }}>
                     <p style={{ fontFamily: SANS, fontSize: 13, color: C.accent, margin: 0 }}>{publishError}</p>
@@ -714,19 +927,19 @@ function ContributeInner() {
 
                 <button
                   onClick={handlePublish}
-                  disabled={flowStep === 'publishing'}
+                  disabled={flowStep === 'publishing' || !copyrightCertified}
                   style={{
                     width: '100%', padding: '15px 24px', borderRadius: 8, border: 'none',
-                    background: flowStep === 'publishing' ? C.rule : C.accent,
-                    color: flowStep === 'publishing' ? C.text3 : '#fff',
-                    fontSize: 15, fontWeight: 700, cursor: flowStep === 'publishing' ? 'default' : 'pointer',
-                    fontFamily: SANS, marginTop: 28, letterSpacing: '-0.01em',
+                    background: (flowStep === 'publishing' || !copyrightCertified) ? C.rule : C.accent,
+                    color: (flowStep === 'publishing' || !copyrightCertified) ? C.text3 : '#fff',
+                    fontSize: 15, fontWeight: 700, cursor: (flowStep === 'publishing' || !copyrightCertified) ? 'default' : 'pointer',
+                    fontFamily: SANS, marginTop: 16, letterSpacing: '-0.01em',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                   }}
                 >
                   {flowStep === 'publishing' ? (
                     <><div style={{ width: 16, height: 16, border: `2px solid ${C.text3}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />Publishing…</>
-                  ) : 'Publish to RecDex →'}
+                  ) : 'Save & Start Cooking →'}
                 </button>
               </div>
             )}
@@ -734,21 +947,22 @@ function ContributeInner() {
             {/* ===== SUCCESS ===== */}
             {flowStep === 'success' && (
               <div style={{ textAlign: 'center', paddingTop: 60, animation: 'fadeUp 0.4s ease' }}>
-                <div style={{ fontSize: 52, marginBottom: 20, lineHeight: 1 }}>🎉</div>
-                <h2 style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 700, color: C.text, margin: '0 0 12px', letterSpacing: -0.5 }}>Recipe published!</h2>
+                <div style={{ fontSize: 52, marginBottom: 20, lineHeight: 1 }}>✓</div>
+                <h2 style={{ fontFamily: SERIF, fontSize: 30, fontWeight: 700, color: C.text, margin: '0 0 12px', letterSpacing: -0.5 }}>Recipe saved!</h2>
                 <p style={{ fontFamily: SANS, fontSize: 15, color: C.text2, marginBottom: 36, lineHeight: 1.6 }}>
-                  {mode === 'video'
-                    ? "It's live on RecDex — with the original video embedded, full instructions, and creator credit."
-                    : "It's live on RecDex — searchable, scalable, and cook-mode ready."}
+                  Added to your recipe index — ready to cook with step-by-step guidance.
                 </p>
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  <Link href={`/recipe/${publishedSlug}`} style={{ padding: '12px 24px', borderRadius: 8, background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: SANS, textDecoration: 'none', letterSpacing: '-0.01em' }}>
-                    View recipe →
+                  <Link href={`/recipe/${publishedSlug}/cook`} style={{ padding: '12px 24px', borderRadius: 8, background: C.accent, color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: SANS, textDecoration: 'none', letterSpacing: '-0.01em' }}>
+                    Start cooking →
                   </Link>
-                  <button onClick={resetFlow} style={{ padding: '12px 24px', borderRadius: 8, border: `1.5px solid ${C.rule}`, background: 'none', color: C.text2, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>
-                    Contribute another
-                  </button>
+                  <Link href={`/recipe/${publishedSlug}`} style={{ padding: '12px 24px', borderRadius: 8, border: `1.5px solid ${C.rule}`, background: 'none', color: C.text2, fontSize: 14, fontWeight: 600, fontFamily: SANS, textDecoration: 'none' }}>
+                    View recipe
+                  </Link>
                 </div>
+                <button onClick={resetFlow} style={{ marginTop: 16, padding: '8px 16px', border: 'none', background: 'none', color: C.text3, fontSize: 13, cursor: 'pointer', fontFamily: SANS }}>
+                  ← Cook another recipe
+                </button>
               </div>
             )}
           </>
