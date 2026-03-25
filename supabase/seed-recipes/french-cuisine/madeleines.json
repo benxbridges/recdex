@@ -1,0 +1,43 @@
+{
+  "title": "Madeleines",
+  "slug": "madeleines",
+  "description": "Buttery French tea cakes with a delicate lemon perfume and the signature bump on top. The batter rests in the fridge before baking, which is the secret to that distinctive rise.",
+  "cuisine": "French",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 15,
+  "time_passive": null,
+  "time_passive_label": "1 hr chill",
+  "servings": 24,
+  "servings_label": "about 24 madeleines",
+  "tags": ["french", "baking", "dessert", "tea cakes", "butter", "lemon", "classic"],
+  "ingredients": [
+    { "name": "large eggs", "amount": "2", "unit": "whole", "notes": "at room temperature" },
+    { "name": "granulated sugar", "amount": "2/3", "unit": "cup" },
+    { "name": "all-purpose flour", "amount": "1", "unit": "cup" },
+    { "name": "unsalted butter", "amount": "1/2", "unit": "cup", "notes": "1 stick, melted and cooled, plus more for greasing" },
+    { "name": "honey", "amount": "1", "unit": "tbsp" },
+    { "name": "vanilla extract", "amount": "1", "unit": "tsp" },
+    { "name": "lemon zest", "amount": "1", "unit": "tsp", "notes": "finely grated" },
+    { "name": "salt", "amount": "1/4", "unit": "tsp" },
+    { "name": "baking powder", "amount": "1/2", "unit": "tsp" },
+    { "name": "powdered sugar", "amount": "", "unit": "", "notes": "for dusting" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Whisk the eggs and sugar together in a large bowl until pale and thick, about 2 minutes by hand or 1 minute with an electric mixer. The mixture should fall in thick ribbons when you lift the whisk.", "timer_minutes": 2, "phase": "prep", "tip": "Getting this mixture properly aerated is what gives madeleines their light, spongy texture. Don't rush it." },
+    { "step": 2, "text": "Whisk in the honey, vanilla, and lemon zest.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 3, "text": "Sift the flour, baking powder, and salt over the egg mixture. Fold gently with a spatula until just combined \u2014 no dry streaks, but don't overmix.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 4, "text": "Drizzle in the melted butter and fold until the batter is smooth and glossy.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 5, "text": "Cover the bowl with plastic wrap and refrigerate for at least 1 hour, or up to overnight.", "timer_minutes": 60, "phase": "prep", "tip": "Chilling firms the butter in the batter. When it hits the hot oven, the cold butter creates steam that pushes up the signature bump." },
+    { "step": 6, "text": "Preheat the oven to 375\u00b0F. Brush a madeleine pan with melted butter and dust lightly with flour, tapping out the excess.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 7, "text": "Spoon about 1 tablespoon of batter into each mold, filling them about three-quarters full. Don't spread the batter \u2014 it will flow into the shell shape on its own in the oven.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 8, "text": "Bake until the edges are golden and the tops spring back when lightly pressed, about 10 to 12 minutes. The bump on top should be puffed and set.", "timer_minutes": 11, "phase": "cook", "tip": null },
+    { "step": 9, "text": "Immediately unmold the madeleines onto a wire rack by tapping the pan firmly against the counter. Dust with powdered sugar while still warm.", "timer_minutes": null, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["Bon Appetit", "NYT Cooking", "Epicurious", "Food52"],
+    "model": "manual-import"
+  }
+}

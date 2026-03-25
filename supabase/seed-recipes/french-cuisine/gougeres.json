@@ -1,0 +1,41 @@
+{
+  "title": "Goug\u00e8res",
+  "slug": "gougeres",
+  "description": "Airy French cheese puffs made from choux pastry and gruy\u00e8re. They come out of the oven with a crisp shell and a hollow, cheesy center \u2014 dangerous in the best way.",
+  "cuisine": "French",
+  "difficulty": "medium",
+  "time_total": 50,
+  "time_active": 25,
+  "time_passive": 25,
+  "time_passive_label": "baking",
+  "servings": 36,
+  "servings_label": "about 36 puffs",
+  "tags": ["french", "appetizer", "cheese", "choux", "baking", "party food", "vegetarian"],
+  "ingredients": [
+    { "name": "water", "amount": "1", "unit": "cup" },
+    { "name": "unsalted butter", "amount": "1/2", "unit": "cup", "notes": "1 stick, cut into pieces" },
+    { "name": "salt", "amount": "1/2", "unit": "tsp" },
+    { "name": "all-purpose flour", "amount": "1", "unit": "cup" },
+    { "name": "large eggs", "amount": "4", "unit": "whole", "notes": "at room temperature" },
+    { "name": "gruy\u00e8re cheese", "amount": "1 1/2", "unit": "cups", "notes": "grated, about 5 oz" },
+    { "name": "black pepper", "amount": "1/2", "unit": "tsp" },
+    { "name": "nutmeg", "amount": "1/4", "unit": "tsp", "notes": "freshly grated" },
+    { "name": "Dijon mustard", "amount": "1", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Preheat the oven to 400\u00b0F. Line two baking sheets with parchment paper.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 2, "text": "Combine the water, butter, and salt in a medium saucepan over medium-high heat. Bring to a rolling boil, making sure all the butter is melted.", "timer_minutes": 3, "phase": "cook", "tip": null },
+    { "step": 3, "text": "Remove from heat and add all the flour at once. Stir vigorously with a wooden spoon until the dough pulls away from the sides of the pan and forms a smooth ball, about 1 minute. Return to medium heat and cook, stirring constantly, for 2 minutes to dry out the dough slightly. You'll see a thin film form on the bottom of the pan.", "timer_minutes": 3, "phase": "cook", "tip": "Drying the dough on the heat removes excess moisture, which lets the eggs be absorbed properly and gives you maximum puff in the oven." },
+    { "step": 4, "text": "Transfer the dough to a large bowl (or stand mixer). Let it cool for 3 minutes. Beat in the eggs one at a time, mixing thoroughly after each addition. The dough will look broken after each egg \u2014 keep mixing until it comes together and turns glossy.", "timer_minutes": 5, "phase": "prep", "tip": "After each egg, the dough separates and looks wrong. This is normal. Keep beating and it will come together into a smooth, pipe-able paste." },
+    { "step": 5, "text": "Fold in 1 cup of the gruy\u00e8re, the pepper, nutmeg, and mustard until evenly distributed.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 6, "text": "Using two spoons or a piping bag, drop rounded tablespoons of dough onto the prepared baking sheets, spacing them about 2 inches apart. Sprinkle the remaining gruy\u00e8re on top of each mound.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 7, "text": "Bake for 10 minutes at 400\u00b0F, then reduce the oven to 350\u00b0F and continue baking until the goug\u00e8res are puffed, golden, and feel light when picked up, about 15 minutes more. Resist opening the oven during the first 20 minutes or they may deflate.", "timer_minutes": 25, "phase": "cook", "tip": "They're done when the shell feels firm and hollow. If they collapse when you take them out, they needed another few minutes." },
+    { "step": 8, "text": "Serve warm. They're best straight from the oven, but they hold well for 30 minutes at room temperature.", "timer_minutes": null, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["NYT Cooking", "Bon Appetit", "Serious Eats", "Food52"],
+    "model": "manual-import"
+  }
+}

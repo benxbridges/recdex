@@ -552,4 +552,18 @@ export const RECIPE_URLS: RecipeUrl[] = [
   { url: 'https://www.bonappetit.com/recipe/vegetable-samosas', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/tandoori-chicken', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/grilled-lamb-kebabs', source: 'ba', category: 'Indian' },
+
+  // ============================================================
+  // FRENCH CUISINE (10 recipes — added 2026-03-25)
+  // ============================================================
+  { url: 'https://cooking.nytimes.com/recipes/1017085-coq-au-vin', source: 'nyt', category: 'French' },
+  { url: 'https://www.bonappetit.com/recipe/beef-bourguignon', source: 'ba', category: 'French' },
+  { url: 'https://cooking.nytimes.com/recipes/1014721-ratatouille', source: 'nyt', category: 'French' },
+  { url: 'https://www.seriouseats.com/duck-confit-recipe', source: 'nyt', category: 'French' },
+  { url: 'https://cooking.nytimes.com/recipes/1018529-cassoulet', source: 'nyt', category: 'French' },
+  { url: 'https://www.bonappetit.com/recipe/croque-monsieur', source: 'ba', category: 'French' },
+  { url: 'https://www.bonappetit.com/recipe/nicoise-salad', source: 'ba', category: 'French' },
+  { url: 'https://cooking.nytimes.com/recipes/1013264-tarte-tatin', source: 'nyt', category: 'French' },
+  { url: 'https://cooking.nytimes.com/recipes/1012748-gougeres', source: 'nyt', category: 'French' },
+  { url: 'https://www.bonappetit.com/recipe/madeleines', source: 'ba', category: 'French' },
 ]

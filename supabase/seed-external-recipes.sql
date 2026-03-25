@@ -76,4 +76,36 @@ INSERT INTO external_recipes (title, source_name, source_url, description, cuisi
 ('Detroit-Style Pizza', 'Serious Eats', 'https://www.seriouseats.com/detroit-style-pizza-recipe', 'A thick, airy crust baked in an oiled pan with cheese pushed to the edges for crispy, caramelized corners.', 'American', '2 hr', NULL, 'active'),
 
 -- 24. NYT Cooking
-('Gochujang Buttered Noodles', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1024136-gochujang-buttered-noodles', 'A 15-minute weeknight noodle toss with butter, gochujang, and a hit of lime.', 'Korean-Inspired', '15 min', NULL, 'active');
+('Gochujang Buttered Noodles', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1024136-gochujang-buttered-noodles', 'A 15-minute weeknight noodle toss with butter, gochujang, and a hit of lime.', 'Korean-Inspired', '15 min', NULL, 'active'),
+
+-- ===== FRENCH CUISINE (added 2026-03-25) =====
+
+-- 25. NYT Cooking
+('Coq au Vin', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1017085-coq-au-vin', 'Chicken braised in red wine with bacon, mushrooms, and pearl onions until the sauce turns glossy and deeply flavored.', 'French', '1 hr 30 min', 'coq-au-vin', 'active'),
+
+-- 26. Bon Appétit
+('Beef Bourguignon', 'Bon Appétit', 'https://www.bonappetit.com/recipe/beef-bourguignon', 'Beef chuck braised low and slow in a full bottle of red wine with bacon, mushrooms, and pearl onions.', 'French', '3 hr', 'beef-bourguignon', 'active'),
+
+-- 27. NYT Cooking
+('Ratatouille', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1014721-ratatouille', 'A Provençal vegetable stew where eggplant, zucchini, and peppers keep their identity in a garlicky tomato base.', 'French', '1 hr', 'ratatouille', 'active'),
+
+-- 28. Serious Eats
+('Duck Confit', 'Serious Eats', 'https://www.seriouseats.com/duck-confit-recipe', 'Duck legs cured in salt and herbs, then slowly submerged in their own fat until impossibly tender.', 'French', '1 hr active + overnight cure', 'duck-confit', 'active'),
+
+-- 29. NYT Cooking
+('Cassoulet', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1018529-cassoulet', 'A slow-baked casserole of white beans, pork sausage, and duck confit from southwestern France.', 'French', '4 hr', 'cassoulet', 'active'),
+
+-- 30. Bon Appétit
+('Croque Monsieur', 'Bon Appétit', 'https://www.bonappetit.com/recipe/croque-monsieur', 'A French ham and cheese sandwich blanketed in béchamel and broiled until bubbling and golden.', 'French', '30 min', 'croque-monsieur', 'active'),
+
+-- 31. Bon Appétit
+('Niçoise Salad', 'Bon Appétit', 'https://www.bonappetit.com/recipe/nicoise-salad', 'A composed salad from Nice with seared tuna, tender potatoes, green beans, and a sharp Dijon vinaigrette.', 'French', '40 min', 'nicoise-salad', 'active'),
+
+-- 32. NYT Cooking
+('Tarte Tatin', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1013264-tarte-tatin', 'An upside-down apple tart where fruit caramelizes in butter and sugar before being topped with pastry.', 'French', '1 hr 15 min', 'tarte-tatin', 'active'),
+
+-- 33. NYT Cooking
+('Gougères', 'NYT Cooking', 'https://cooking.nytimes.com/recipes/1012748-gougeres', 'Airy French cheese puffs made from choux pastry and gruyère — crisp shell, hollow cheesy center.', 'French', '50 min', 'gougeres', 'active'),
+
+-- 34. Bon Appétit
+('Madeleines', 'Bon Appétit', 'https://www.bonappetit.com/recipe/madeleines', 'Buttery French tea cakes with a lemon perfume and the signature bump on top.', 'French', '30 min + 1 hr chill', 'madeleines', 'active');

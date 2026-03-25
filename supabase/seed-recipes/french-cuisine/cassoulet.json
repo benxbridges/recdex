@@ -1,0 +1,50 @@
+{
+  "title": "Cassoulet",
+  "slug": "cassoulet",
+  "description": "A slow-baked casserole of white beans, pork sausage, and duck confit from southwestern France. The breadcrumb crust gets pushed down and reformed multiple times during baking, building layers of golden crunch.",
+  "cuisine": "French",
+  "difficulty": "hard",
+  "time_total": 195,
+  "time_active": 60,
+  "time_passive": null,
+  "time_passive_label": "overnight bean soak",
+  "servings": 8,
+  "servings_label": "8-10 people",
+  "tags": ["french", "beans", "pork", "duck", "casserole", "weekend project", "comfort food", "special occasion"],
+  "ingredients": [
+    { "name": "dried white beans", "amount": "1", "unit": "lb", "notes": "Great Northern or cannellini, soaked overnight and drained" },
+    { "name": "pork sausages", "amount": "1", "unit": "lb", "notes": "Toulouse-style, garlic sausage, or Italian pork sausage" },
+    { "name": "duck confit legs", "amount": "4", "unit": "whole", "notes": "or substitute bone-in chicken thighs" },
+    { "name": "salt pork or pancetta", "amount": "1/2", "unit": "lb", "notes": "cut into 1/2-inch cubes" },
+    { "name": "yellow onion", "amount": "1", "unit": "large", "notes": "diced" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "carrots", "amount": "2", "unit": "medium", "notes": "peeled and diced" },
+    { "name": "crushed tomatoes", "amount": "14", "unit": "oz", "notes": "one can" },
+    { "name": "chicken stock", "amount": "2", "unit": "cups" },
+    { "name": "dry white wine", "amount": "1", "unit": "cup" },
+    { "name": "bay leaves", "amount": "2", "unit": "whole" },
+    { "name": "fresh thyme", "amount": "4", "unit": "sprigs" },
+    { "name": "breadcrumbs", "amount": "1", "unit": "cup", "notes": "coarse, preferably from day-old bread" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp", "notes": "melted" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Place the soaked, drained beans in a large pot with fresh water to cover by 2 inches. Bring to a boil, reduce to a simmer, and cook until the beans are just tender but not mushy, about 45 minutes. Drain, reserving 2 cups of the cooking liquid.", "timer_minutes": 45, "phase": "cook", "tip": "Slightly undercooking the beans here is key. They'll continue to absorb liquid and cook in the oven for hours." },
+    { "step": 2, "text": "Preheat the oven to 325\u00b0F. Cook the salt pork in a large Dutch oven or oven-safe pot over medium heat until the fat renders and the cubes are golden, about 8 minutes. Transfer to a plate.", "timer_minutes": 8, "phase": "cook", "tip": null },
+    { "step": 3, "text": "Brown the sausages in the rendered fat until golden on all sides, about 6 minutes total. Transfer to the plate. Slice the sausages into 1-inch rounds when cool enough to handle.", "timer_minutes": 6, "phase": "cook", "tip": null },
+    { "step": 4, "text": "If using duck confit, remove the legs from the fat, scrape off excess, and brown skin-side down in the pot until crisp, about 4 minutes. Transfer to the plate. Shred the meat from the bones when cool, discarding skin and bones (or keep the skin if you like it crispy).", "timer_minutes": 4, "phase": "cook", "tip": null },
+    { "step": 5, "text": "Pour off all but 2 tablespoons of fat. Add the onion, carrots, and a pinch of salt. Cook over medium heat until softened, about 5 minutes. Add the garlic and cook 1 minute more.", "timer_minutes": 6, "phase": "cook", "tip": null },
+    { "step": 6, "text": "Add the white wine and scrape up any browned bits. Stir in the tomatoes, chicken stock, reserved bean cooking liquid, bay leaves, and thyme. Bring to a simmer.", "timer_minutes": 3, "phase": "cook", "tip": null },
+    { "step": 7, "text": "Layer the cassoulet in a large, deep baking dish or the Dutch oven: start with half the beans, then the salt pork, sausage, and duck. Top with the remaining beans and pour the sauce over everything. The liquid should just reach the top of the beans.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 8, "text": "Toss the breadcrumbs with melted butter. Spread evenly over the top of the cassoulet.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 9, "text": "Bake uncovered for 1 1/2 hours. Every 30 minutes, use the back of a spoon to gently push the breadcrumb crust down into the beans, then let a new crust form. Add a splash of stock if the cassoulet looks dry.", "timer_minutes": 90, "phase": "cook", "tip": "Pushing the crust down and re-forming it is the traditional technique. Each layer adds depth and texture to the finished dish." },
+    { "step": 10, "text": "The cassoulet is done when the top is deeply golden and the beans are creamy and tender. Let rest for 15 minutes before serving.", "timer_minutes": 15, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["NYT Cooking", "Bon Appetit", "Serious Eats", "Epicurious", "Food52"],
+    "model": "manual-import"
+  }
+}

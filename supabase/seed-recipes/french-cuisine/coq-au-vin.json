@@ -1,0 +1,50 @@
+{
+  "title": "Coq au Vin",
+  "slug": "coq-au-vin",
+  "description": "Chicken braised in red wine with bacon, mushrooms, and pearl onions until the sauce turns glossy and deeply flavored. A centerpiece dish that rewards slow cooking.",
+  "cuisine": "French",
+  "difficulty": "medium",
+  "time_total": 90,
+  "time_active": 45,
+  "time_passive": 45,
+  "time_passive_label": "braising",
+  "servings": 6,
+  "servings_label": "4-6 people",
+  "tags": ["french", "braised", "chicken", "red wine", "weeknight-adjacent", "one-pot", "comfort food"],
+  "ingredients": [
+    { "name": "whole chicken", "amount": "1", "unit": "whole", "notes": "about 3 1/2 to 4 lbs, cut into 8 pieces" },
+    { "name": "thick-cut bacon", "amount": "6", "unit": "oz", "notes": "cut into 1/2-inch pieces" },
+    { "name": "pearl onions", "amount": "1", "unit": "lb", "notes": "peeled, or frozen and thawed" },
+    { "name": "cremini mushrooms", "amount": "10", "unit": "oz", "notes": "quartered" },
+    { "name": "carrots", "amount": "2", "unit": "medium", "notes": "peeled and cut into 1-inch pieces" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "dry red wine", "amount": "1", "unit": "bottle", "notes": "750ml, Pinot Noir or Burgundy" },
+    { "name": "chicken stock", "amount": "1", "unit": "cup" },
+    { "name": "tomato paste", "amount": "2", "unit": "tbsp" },
+    { "name": "cognac or brandy", "amount": "3", "unit": "tbsp" },
+    { "name": "all-purpose flour", "amount": "2", "unit": "tbsp" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "bay leaves", "amount": "2", "unit": "whole" },
+    { "name": "fresh thyme", "amount": "4", "unit": "sprigs" },
+    { "name": "fresh parsley", "amount": "2", "unit": "tbsp", "notes": "chopped, for garnish" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Season chicken pieces generously with salt and pepper on all sides. Let sit at room temperature for 15 minutes.", "timer_minutes": 15, "phase": "prep", "tip": null },
+    { "step": 2, "text": "Cook bacon in a large Dutch oven over medium heat until the fat renders and the pieces turn golden and crisp, about 8 minutes. Transfer bacon to a plate with a slotted spoon, leaving the fat in the pot.", "timer_minutes": 8, "phase": "cook", "tip": "The bacon fat is your cooking medium for the chicken. Don't discard it." },
+    { "step": 3, "text": "Working in batches to avoid crowding, brown the chicken pieces skin-side down in the bacon fat over medium-high heat until deeply golden, about 4 minutes per side. Transfer to a plate as they finish.", "timer_minutes": 8, "phase": "cook", "tip": "Resist moving the chicken while it sears. A good crust builds flavor for the entire braise." },
+    { "step": 4, "text": "Pour off all but 2 tablespoons of fat. Add pearl onions and carrots to the pot and cook over medium heat, stirring occasionally, until lightly browned, about 5 minutes.", "timer_minutes": 5, "phase": "cook", "tip": null },
+    { "step": 5, "text": "Add mushrooms and garlic and cook until the mushrooms release their liquid and start to brown at the edges, about 4 minutes. Stir in the tomato paste and flour and cook for 1 minute.", "timer_minutes": 5, "phase": "cook", "tip": null },
+    { "step": 6, "text": "Remove the pot from heat, add the cognac, and return to heat. Let it bubble for 30 seconds to cook off the alcohol. Pour in the wine and chicken stock, scraping the browned bits from the bottom of the pot.", "timer_minutes": 2, "phase": "cook", "tip": "Removing the pot from heat before adding the cognac prevents flare-ups. The alcohol vapors can ignite over an open flame." },
+    { "step": 7, "text": "Nestle the chicken pieces back into the pot along with the bay leaves and thyme sprigs. The liquid should come about two-thirds up the chicken. Bring to a simmer, then reduce heat to low, cover, and cook until the chicken is tender and the sauce has thickened, about 45 minutes.", "timer_minutes": 45, "phase": "cook", "tip": null },
+    { "step": 8, "text": "Remove the bay leaves and thyme sprigs. Stir in the butter until melted and glossy. Taste the sauce and adjust seasoning with salt and pepper. Scatter the reserved bacon and chopped parsley over the top.", "timer_minutes": null, "phase": "cook", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["NYT Cooking", "Bon Appetit", "Serious Eats", "Julia Child", "David Lebovitz"],
+    "model": "manual-import"
+  }
+}

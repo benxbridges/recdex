@@ -1,0 +1,38 @@
+{
+  "title": "Duck Confit",
+  "slug": "duck-confit",
+  "description": "Duck legs cured in salt and herbs, then slowly submerged in their own fat until impossibly tender. The skin crisps under a broiler at the end, giving you the best of both textures.",
+  "cuisine": "French",
+  "difficulty": "medium",
+  "time_total": 210,
+  "time_active": 30,
+  "time_passive": null,
+  "time_passive_label": "24-36 hr cure",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["french", "duck", "confit", "slow-cooked", "classic", "special occasion"],
+  "ingredients": [
+    { "name": "duck legs", "amount": "4", "unit": "whole", "notes": "about 2 lbs total" },
+    { "name": "duck fat", "amount": "4", "unit": "cups", "notes": "about 2 lbs, melted (available at specialty grocers)" },
+    { "name": "kosher salt", "amount": "2", "unit": "tbsp" },
+    { "name": "black pepper", "amount": "1", "unit": "tsp", "notes": "freshly cracked" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "fresh thyme", "amount": "4", "unit": "sprigs" },
+    { "name": "bay leaves", "amount": "2", "unit": "whole" },
+    { "name": "sugar", "amount": "1", "unit": "tsp", "notes": "optional, for the cure" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Mix the salt, pepper, and sugar (if using) together. Rub the mixture all over the duck legs, pressing it into the skin and flesh. Place the legs in a baking dish with the garlic, thyme, and bay leaves. Cover tightly and refrigerate for 24 to 36 hours.", "timer_minutes": null, "phase": "prep", "tip": "The cure draws out moisture and seasons the meat to its core. Don't skip or rush this step." },
+    { "step": 2, "text": "Preheat the oven to 285\u00b0F. Rinse the duck legs under cold water to remove excess salt. Pat thoroughly dry with paper towels.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 3, "text": "Place the duck legs snugly in a single layer in an oven-safe pot or deep baking dish. Pour the melted duck fat over the legs until they are fully submerged. Tuck in the garlic, thyme, and bay leaves from the cure.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 4, "text": "Cover tightly with a lid or aluminum foil. Cook in the oven until the meat is very tender and pulls easily from the bone, about 3 hours. A paring knife should slide in and out without resistance.", "timer_minutes": 180, "phase": "cook", "tip": "Low and slow is the whole point. The fat isn't frying — it's acting as a gentle, even-heating medium." },
+    { "step": 5, "text": "Let the duck cool in the fat. At this point, you can refrigerate the legs submerged in fat for up to 2 weeks, or continue to the crisping step.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 6, "text": "When ready to serve, remove the legs from the fat and scrape off any excess. Heat the broiler to high. Place the duck legs skin-side up on a sheet pan and broil until the skin is golden and crackling, about 5 to 7 minutes. Watch closely — it goes from perfect to burnt quickly.", "timer_minutes": 6, "phase": "cook", "tip": "If you don't have a broiler, sear the legs skin-side down in a dry skillet over medium-high heat until the skin shatters." }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["Serious Eats", "NYT Cooking", "Bon Appetit", "David Lebovitz"],
+    "model": "manual-import"
+  }
+}

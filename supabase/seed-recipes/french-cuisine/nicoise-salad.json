@@ -1,0 +1,46 @@
+{
+  "title": "Ni\u00e7oise Salad",
+  "slug": "nicoise-salad",
+  "description": "A composed salad from Nice built on seared tuna, tender potatoes, green beans, soft-boiled eggs, and a sharp Dijon vinaigrette. Every element is prepared separately so nothing is under- or overcooked.",
+  "cuisine": "French",
+  "difficulty": "easy",
+  "time_total": 40,
+  "time_active": 35,
+  "time_passive": 5,
+  "time_passive_label": "resting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["french", "salad", "tuna", "composed", "summer", "gluten-free", "lunch"],
+  "ingredients": [
+    { "name": "fresh tuna steaks", "amount": "12", "unit": "oz", "notes": "sushi-grade, about 1 inch thick" },
+    { "name": "small potatoes", "amount": "1", "unit": "lb", "notes": "fingerling or Yukon Gold, halved" },
+    { "name": "green beans", "amount": "8", "unit": "oz", "notes": "trimmed" },
+    { "name": "large eggs", "amount": "4", "unit": "whole" },
+    { "name": "cherry tomatoes", "amount": "1", "unit": "cup", "notes": "halved" },
+    { "name": "Ni\u00e7oise or Kalamata olives", "amount": "1/2", "unit": "cup" },
+    { "name": "anchovy fillets", "amount": "4", "unit": "whole", "notes": "oil-packed" },
+    { "name": "red onion", "amount": "1", "unit": "small", "notes": "thinly sliced" },
+    { "name": "butter lettuce", "amount": "1", "unit": "head", "notes": "leaves separated" },
+    { "name": "red wine vinegar", "amount": "3", "unit": "tbsp" },
+    { "name": "Dijon mustard", "amount": "1", "unit": "tsp" },
+    { "name": "extra-virgin olive oil", "amount": "1/2", "unit": "cup", "notes": "plus 1 tbsp for searing" },
+    { "name": "garlic", "amount": "1", "unit": "clove", "notes": "minced" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Make the vinaigrette: whisk together the red wine vinegar, Dijon mustard, and minced garlic. Stream in the 1/2 cup olive oil while whisking until emulsified. Season with salt and pepper. Set aside.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 2, "text": "Place the potatoes in a saucepan, cover with cold salted water by 1 inch, and bring to a boil. Cook until tender when pierced with a knife, about 12 to 15 minutes. Drain and toss with a spoonful of the vinaigrette while still warm.", "timer_minutes": 15, "phase": "cook", "tip": "Dressing the potatoes while warm lets them absorb the vinaigrette instead of just sitting in it." },
+    { "step": 3, "text": "While the potatoes cook, bring a separate pot of salted water to a boil. Prepare a bowl of ice water. Blanch the green beans until crisp-tender and bright green, about 3 minutes. Transfer immediately to the ice bath. Drain and pat dry.", "timer_minutes": 3, "phase": "cook", "tip": null },
+    { "step": 4, "text": "Lower the eggs into the same boiling water and cook for 7 minutes for a jammy yolk. Transfer to the ice bath. Peel and halve when cool.", "timer_minutes": 7, "phase": "cook", "tip": "Seven minutes gives you a yolk that's set around the edges but still soft and golden in the center." },
+    { "step": 5, "text": "Pat the tuna steaks very dry and season generously with salt and pepper. Heat 1 tablespoon of olive oil in a skillet over high heat until it just begins to smoke. Sear the tuna for 1 1/2 to 2 minutes per side for medium-rare \u2014 the center should still be pink. Let rest for 2 minutes, then slice against the grain.", "timer_minutes": 4, "phase": "cook", "tip": "A screaming-hot pan is essential. If the pan isn't hot enough, the tuna will steam and turn gray." },
+    { "step": 6, "text": "Arrange the butter lettuce leaves on a large platter. Group the potatoes, green beans, tomatoes, olives, onion, and anchovy fillets in sections around the platter. Place the sliced tuna in the center and nestle the egg halves alongside.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 7, "text": "Drizzle the remaining vinaigrette over the entire platter. Season with a final pinch of flaky salt and a few grinds of pepper.", "timer_minutes": null, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["Bon Appetit", "NYT Cooking", "Serious Eats", "Epicurious", "Food52"],
+    "model": "manual-import"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "title": "Croque Monsieur",
+  "slug": "croque-monsieur",
+  "description": "A French ham and cheese sandwich blanketed in b\u00e9chamel and broiled until the top is bubbling and golden. More indulgent than a grilled cheese, and entirely worth it.",
+  "cuisine": "French",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 25,
+  "time_passive": 5,
+  "time_passive_label": "broiling",
+  "servings": 4,
+  "servings_label": "4 sandwiches",
+  "tags": ["french", "sandwich", "ham", "cheese", "bechamel", "lunch", "quick"],
+  "ingredients": [
+    { "name": "white bread", "amount": "8", "unit": "slices", "notes": "pain de mie, Pullman, or good-quality sandwich bread" },
+    { "name": "ham", "amount": "8", "unit": "slices", "notes": "about 8 oz, good-quality deli ham or jambon de Paris" },
+    { "name": "gruy\u00e8re cheese", "amount": "2", "unit": "cups", "notes": "grated, about 6 oz" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "all-purpose flour", "amount": "2", "unit": "tbsp" },
+    { "name": "whole milk", "amount": "1 1/2", "unit": "cups", "notes": "warmed" },
+    { "name": "Dijon mustard", "amount": "1", "unit": "tbsp" },
+    { "name": "nutmeg", "amount": "1/4", "unit": "tsp", "notes": "freshly grated" },
+    { "name": "kosher salt", "amount": "1/4", "unit": "tsp" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Melt 2 tablespoons of butter in a small saucepan over medium heat. Add the flour and whisk constantly for 1 minute until the mixture smells nutty but hasn't taken on color.", "timer_minutes": 1, "phase": "cook", "tip": "This is a white roux \u2014 cook it just long enough to lose the raw flour taste but not so long that it browns." },
+    { "step": 2, "text": "Gradually pour in the warm milk while whisking. Continue whisking until the sauce is smooth and thick enough to coat the back of a spoon, about 3 to 4 minutes. Remove from heat and stir in the nutmeg, salt, and pepper.", "timer_minutes": 4, "phase": "cook", "tip": null },
+    { "step": 3, "text": "Preheat the broiler to high. Lightly toast the bread slices under the broiler or in a toaster until just golden, about 1 minute per side.", "timer_minutes": 2, "phase": "cook", "tip": null },
+    { "step": 4, "text": "Spread Dijon mustard on one side of 4 bread slices. Layer 2 slices of ham and a generous handful of gruy\u00e8re on each. Top with the remaining bread slices.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 5, "text": "Place the sandwiches on a sheet pan. Spoon the b\u00e9chamel generously over the top of each sandwich, spreading it to the edges. Sprinkle the remaining gruy\u00e8re over the b\u00e9chamel.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 6, "text": "Broil until the cheese is melted, bubbling, and deeply golden in spots, about 3 to 4 minutes. Watch closely \u2014 broilers are unforgiving. Let cool for 2 minutes before cutting.", "timer_minutes": 4, "phase": "cook", "tip": "For a croque madame, top each finished sandwich with a fried egg." }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["Bon Appetit", "NYT Cooking", "Serious Eats", "Epicurious"],
+    "model": "manual-import"
+  }
+}

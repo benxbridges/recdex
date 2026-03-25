@@ -1,0 +1,46 @@
+{
+  "title": "Ratatouille",
+  "slug": "ratatouille",
+  "description": "A Proven\u00e7al vegetable stew where eggplant, zucchini, and peppers are cooked separately, then brought together in a garlicky tomato base. Each vegetable keeps its identity while the whole becomes something greater.",
+  "cuisine": "French",
+  "difficulty": "easy",
+  "time_total": 60,
+  "time_active": 35,
+  "time_passive": 25,
+  "time_passive_label": "simmering",
+  "servings": 6,
+  "servings_label": "4-6 people",
+  "tags": ["french", "vegetarian", "vegan", "provencal", "vegetables", "summer", "one-pot"],
+  "ingredients": [
+    { "name": "eggplant", "amount": "1", "unit": "medium", "notes": "about 1 lb, cut into 1-inch cubes" },
+    { "name": "zucchini", "amount": "2", "unit": "medium", "notes": "cut into 1-inch cubes" },
+    { "name": "yellow squash", "amount": "1", "unit": "medium", "notes": "cut into 1-inch cubes" },
+    { "name": "red bell pepper", "amount": "1", "unit": "large", "notes": "cut into 1-inch pieces" },
+    { "name": "yellow bell pepper", "amount": "1", "unit": "large", "notes": "cut into 1-inch pieces" },
+    { "name": "ripe tomatoes", "amount": "4", "unit": "medium", "notes": "roughly chopped, or one 28-oz can whole peeled tomatoes, crushed by hand" },
+    { "name": "yellow onion", "amount": "1", "unit": "medium", "notes": "diced" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "olive oil", "amount": "1/4", "unit": "cup", "notes": "plus more for drizzling" },
+    { "name": "tomato paste", "amount": "2", "unit": "tbsp" },
+    { "name": "herbes de Provence", "amount": "1", "unit": "tsp" },
+    { "name": "fresh basil", "amount": "1/4", "unit": "cup", "notes": "torn, for finishing" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Toss the eggplant cubes with 1 teaspoon of salt in a colander and let sit for 15 minutes. Pat dry with paper towels.", "timer_minutes": 15, "phase": "prep", "tip": "Salting draws out excess moisture from the eggplant so it browns instead of steaming in the pan." },
+    { "step": 2, "text": "Heat 2 tablespoons of olive oil in a large Dutch oven or deep skillet over medium-high heat. Sear the eggplant cubes, turning occasionally, until golden brown on most sides, about 5 minutes. Transfer to a bowl.", "timer_minutes": 5, "phase": "cook", "tip": null },
+    { "step": 3, "text": "Add another tablespoon of oil to the pot. Cook the zucchini and yellow squash over medium-high heat until lightly browned, about 4 minutes. Transfer to the bowl with the eggplant.", "timer_minutes": 4, "phase": "cook", "tip": null },
+    { "step": 4, "text": "Add the remaining oil. Cook the bell peppers until softened and charred at the edges, about 4 minutes. Transfer to the bowl.", "timer_minutes": 4, "phase": "cook", "tip": null },
+    { "step": 5, "text": "Reduce heat to medium. Add the onion to the pot with a pinch of salt and cook, stirring occasionally, until translucent and soft, about 5 minutes. Add the garlic and tomato paste and cook until fragrant, about 1 minute.", "timer_minutes": 6, "phase": "cook", "tip": null },
+    { "step": 6, "text": "Add the tomatoes and herbes de Provence. Season with salt and pepper. Simmer until the tomatoes break down into a loose sauce, about 10 minutes.", "timer_minutes": 10, "phase": "cook", "tip": null },
+    { "step": 7, "text": "Return all the vegetables to the pot and stir gently to combine without breaking them apart. Simmer together for 15 minutes, letting the flavors merge. The vegetables should be tender but still hold their shape.", "timer_minutes": 15, "phase": "cook", "tip": null },
+    { "step": 8, "text": "Taste and adjust salt and pepper. Finish with torn basil and a generous drizzle of olive oil.", "timer_minutes": null, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["NYT Cooking", "Bon Appetit", "Serious Eats", "Epicurious", "Food52"],
+    "model": "manual-import"
+  }
+}

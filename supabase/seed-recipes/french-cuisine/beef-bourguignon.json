@@ -1,0 +1,51 @@
+{
+  "title": "Beef Bourguignon",
+  "slug": "beef-bourguignon",
+  "description": "Beef chuck braised low and slow in a full bottle of red wine with bacon, mushrooms, and pearl onions. The kind of dish that fills the house with an aroma that makes everyone ask when dinner is ready.",
+  "cuisine": "French",
+  "difficulty": "medium",
+  "time_total": 190,
+  "time_active": 55,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 6,
+  "servings_label": "6-8 people",
+  "tags": ["french", "braised", "beef", "red wine", "stew", "comfort food", "weekend project"],
+  "ingredients": [
+    { "name": "beef chuck", "amount": "3", "unit": "lbs", "notes": "cut into 2-inch cubes, patted dry" },
+    { "name": "thick-cut bacon", "amount": "6", "unit": "oz", "notes": "cut into 1/2-inch pieces" },
+    { "name": "dry red wine", "amount": "1", "unit": "bottle", "notes": "750ml, Burgundy or Pinot Noir" },
+    { "name": "beef stock", "amount": "2", "unit": "cups" },
+    { "name": "tomato paste", "amount": "2", "unit": "tbsp" },
+    { "name": "all-purpose flour", "amount": "3", "unit": "tbsp" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "pearl onions", "amount": "1", "unit": "lb", "notes": "peeled, or frozen and thawed" },
+    { "name": "cremini mushrooms", "amount": "1", "unit": "lb", "notes": "halved or quartered if large" },
+    { "name": "carrots", "amount": "3", "unit": "large", "notes": "peeled, cut into 1-inch pieces" },
+    { "name": "yellow onion", "amount": "1", "unit": "medium", "notes": "diced" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "bay leaves", "amount": "2", "unit": "whole" },
+    { "name": "fresh thyme", "amount": "4", "unit": "sprigs" },
+    { "name": "fresh parsley", "amount": "3", "unit": "tbsp", "notes": "chopped, for garnish" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Preheat the oven to 325°F. Season beef cubes generously with salt and pepper.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 2, "text": "Cook bacon in a large Dutch oven over medium heat until crisp, about 8 minutes. Transfer to a plate with a slotted spoon, leaving the fat behind.", "timer_minutes": 8, "phase": "cook", "tip": null },
+    { "step": 3, "text": "Working in batches, brown the beef on all sides in the bacon fat over medium-high heat, about 3 minutes per side. Don't crowd the pot — each piece needs contact with the surface. Transfer browned beef to the plate with the bacon.", "timer_minutes": 12, "phase": "cook", "tip": "Browning in batches is non-negotiable. Crowding drops the temperature and steams the meat instead of searing it." },
+    { "step": 4, "text": "Pour off all but 2 tablespoons of fat. Add the diced onion and carrots and cook over medium heat until softened and lightly browned, about 5 minutes. Add the garlic and tomato paste and stir for 1 minute until fragrant.", "timer_minutes": 6, "phase": "cook", "tip": null },
+    { "step": 5, "text": "Sprinkle the flour over the vegetables and stir for 1 minute. Pour in the wine and stock, scraping up every browned bit from the bottom. Bring to a simmer.", "timer_minutes": 3, "phase": "cook", "tip": null },
+    { "step": 6, "text": "Return the beef and bacon to the pot. Add the bay leaves and thyme. The liquid should nearly cover the meat — add a splash of stock if needed. Cover with a tight-fitting lid and transfer to the oven.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 7, "text": "Braise in the oven until the beef is fork-tender, about 2 to 2 1/2 hours. Check halfway through — the liquid should be gently bubbling, not boiling.", "timer_minutes": 135, "phase": "cook", "tip": null },
+    { "step": 8, "text": "While the beef braises, melt the butter in a skillet over medium-high heat. Sauté the pearl onions until golden, about 5 minutes, then add mushrooms and cook until browned and any liquid has evaporated, about 6 minutes. Season with salt.", "timer_minutes": 11, "phase": "cook", "tip": null },
+    { "step": 9, "text": "When the beef is tender, remove the Dutch oven from the oven. Discard the bay leaves and thyme. Fold in the sautéed mushrooms and pearl onions. If the sauce seems thin, simmer uncovered on the stovetop for 10 minutes to reduce. Taste and adjust seasoning. Finish with chopped parsley.", "timer_minutes": 10, "phase": "cook", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["Bon Appetit", "NYT Cooking", "Serious Eats", "Julia Child", "Epicurious"],
+    "model": "manual-import"
+  }
+}

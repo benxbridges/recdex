@@ -1,0 +1,39 @@
+{
+  "title": "Tarte Tatin",
+  "slug": "tarte-tatin",
+  "description": "An upside-down apple tart where fruit caramelizes in butter and sugar before being topped with pastry and baked. The flip at the end reveals a glossy, amber crown of apples.",
+  "cuisine": "French",
+  "difficulty": "medium",
+  "time_total": 75,
+  "time_active": 30,
+  "time_passive": 45,
+  "time_passive_label": "baking and cooling",
+  "servings": 8,
+  "servings_label": "8 slices",
+  "tags": ["french", "baking", "dessert", "apple", "tart", "pastry", "caramel", "classic"],
+  "ingredients": [
+    { "name": "puff pastry", "amount": "1", "unit": "sheet", "notes": "thawed if frozen, rolled to fit your skillet" },
+    { "name": "Granny Smith or Golden Delicious apples", "amount": "6", "unit": "medium", "notes": "about 2 1/2 lbs, peeled, cored, and quartered" },
+    { "name": "granulated sugar", "amount": "3/4", "unit": "cup" },
+    { "name": "unsalted butter", "amount": "6", "unit": "tbsp", "notes": "cut into pieces" },
+    { "name": "lemon juice", "amount": "1", "unit": "tsp" },
+    { "name": "salt", "amount": "1/4", "unit": "tsp" },
+    { "name": "cr\u00e8me fra\u00eeche", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Preheat the oven to 400\u00b0F. Roll the puff pastry into a circle about 1 inch wider than a 10-inch oven-safe skillet. Place on a parchment-lined baking sheet and refrigerate while you prepare the apples.", "timer_minutes": null, "phase": "prep", "tip": "Cold pastry puffs better. Keep it chilled until the moment it goes on top of the apples." },
+    { "step": 2, "text": "Sprinkle the sugar evenly in the bottom of a 10-inch oven-safe skillet. Add the butter pieces and salt. Cook over medium heat without stirring until the sugar melts and the mixture turns a deep amber caramel, about 8 to 10 minutes. Swirl the pan gently if it's browning unevenly.", "timer_minutes": 10, "phase": "cook", "tip": "Watch the caramel closely once it starts to color \u2014 it can go from amber to burnt in seconds. If in doubt, pull it a shade lighter than you think; it'll darken in the oven." },
+    { "step": 3, "text": "Remove from heat. Toss the apple quarters with lemon juice, then arrange them tightly in the caramel, standing on their edges in concentric circles. Pack them as tightly as possible \u2014 they'll shrink as they cook.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 4, "text": "Return the skillet to medium heat and cook the apples in the caramel for 15 minutes, pressing them gently with a spatula. The caramel will bubble and the apples will begin to soften and release their juices.", "timer_minutes": 15, "phase": "cook", "tip": null },
+    { "step": 5, "text": "Remove from heat. Lay the chilled puff pastry over the apples, tucking the edges down around the fruit with a butter knife or spoon.", "timer_minutes": null, "phase": "prep", "tip": null },
+    { "step": 6, "text": "Bake until the pastry is deeply golden and puffed, about 25 to 30 minutes.", "timer_minutes": 28, "phase": "cook", "tip": null },
+    { "step": 7, "text": "Let cool in the skillet for 5 minutes \u2014 no longer, or the caramel will set and the tart will stick. Place a serving plate over the skillet, hold them firmly together, and flip in one confident motion. Lift the skillet away. Rearrange any apples that shifted.", "timer_minutes": 5, "phase": "prep", "tip": "Commit to the flip. Hesitation causes spills. Use oven mitts \u2014 the caramel is molten." },
+    { "step": 8, "text": "Serve warm with a dollop of cr\u00e8me fra\u00eeche.", "timer_minutes": null, "phase": "prep", "tip": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["NYT Cooking", "Bon Appetit", "Serious Eats", "Epicurious", "Food52"],
+    "model": "manual-import"
+  }
+}
