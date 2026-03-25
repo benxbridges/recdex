@@ -1,0 +1,49 @@
+{
+  "title": "Black Pepper Tofu",
+  "slug": "black-pepper-tofu",
+  "description": "Crispy-coated tofu tossed in a buttery, aggressively peppery sauce with caramelized shallots and chiles. The amount of black pepper here is not a typo — it's what makes the dish.",
+  "cuisine": "Asian",
+  "difficulty": "medium",
+  "time_total": 35,
+  "time_active": 30,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "tofu", "vegetarian", "asian", "spicy", "dinner", "wok"],
+  "ingredients": [
+    { "name": "extra-firm tofu", "amount": "2", "unit": "blocks", "notes": "14 oz each, drained" },
+    { "name": "cornstarch", "amount": "¼", "unit": "cup" },
+    { "name": "vegetable oil", "amount": "3", "unit": "tbsp" },
+    { "name": "unsalted butter", "amount": "3", "unit": "tbsp" },
+    { "name": "small shallots", "amount": "12", "unit": "", "notes": "or 6 medium, thinly sliced" },
+    { "name": "garlic", "amount": "8", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "red chiles", "amount": "2", "unit": "", "notes": "Fresno or red jalapeño, sliced" },
+    { "name": "sweet soy sauce (kecap manis)", "amount": "3", "unit": "tbsp", "notes": "or 2 tbsp soy sauce + 1 tbsp brown sugar" },
+    { "name": "light soy sauce", "amount": "2", "unit": "tbsp" },
+    { "name": "oyster sauce", "amount": "2", "unit": "tbsp", "notes": "or mushroom sauce for vegetarian" },
+    { "name": "coarsely ground black pepper", "amount": "1½", "unit": "tbsp" },
+    { "name": "scallions", "amount": "1", "unit": "bunch", "notes": "cut into 1-inch pieces, about 1 cup" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Cut each tofu block into 1-inch cubes and pat thoroughly dry with paper towels — every bit of moisture you remove is more crispiness you gain. Toss cubes gently with cornstarch until evenly coated, shaking off excess.", "timer_minutes": null },
+    { "step": 2, "text": "Heat vegetable oil in a large nonstick skillet or wok over high heat until shimmering. Add tofu in a single layer (work in batches if needed) and cook undisturbed until golden and crisp on the bottom, 3 to 4 minutes. Flip and crisp the other side, about 3 more minutes. Transfer to a plate.", "timer_minutes": 7 },
+    { "step": 3, "text": "Reduce heat to medium and add butter to the same pan. Once melted and foaming, add shallots and cook, stirring often, until softened and beginning to caramelize at the edges, 5 to 6 minutes.", "timer_minutes": 6 },
+    { "step": 4, "text": "Add garlic and chiles and cook for 1 minute. Stir in sweet soy sauce, light soy sauce, oyster sauce, and black pepper. Let the sauce bubble and thicken for 30 seconds.", "timer_minutes": 1 },
+    { "step": 5, "text": "Return tofu to the pan along with scallions. Toss gently to coat everything in the sauce, cooking for another minute until heated through. Serve immediately over steamed rice.", "timer_minutes": 1 }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "ottolenghi"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Yotam Ottolenghi",
+        "publication": "Plenty / NYT Cooking adaptations",
+        "note": "Based on Ottolenghi's iconic black pepper tofu from Plenty, widely adapted by NYT and food blogs"
+      }
+    ]
+  }
+}

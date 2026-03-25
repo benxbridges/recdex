@@ -1,6 +1,6 @@
 export type RecipeUrl = {
   url: string
-  source: 'nyt' | 'ba'
+  source: 'nyt' | 'ba' | 'manual'
   category: string
 }
 
@@ -552,4 +552,20 @@ export const RECIPE_URLS: RecipeUrl[] = [
   { url: 'https://www.bonappetit.com/recipe/vegetable-samosas', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/tandoori-chicken', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/grilled-lamb-kebabs', source: 'ba', category: 'Indian' },
+
+  // ============================================================
+  // QUICK WEEKNIGHT MEALS — Batch 1 (manually sourced, 2026-03-25)
+  // Synthesized in RecDex voice from curated NYT/BA inspirations.
+  // Pipeline files: pipeline-data/synthesized/{slug}.json
+  // ============================================================
+  { url: 'manual://sheet-pan-chicken-thighs-with-potatoes', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://miso-glazed-salmon', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://caramelized-shallot-pasta', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://orecchiette-with-sausage-and-broccoli-rabe', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://black-pepper-tofu', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://crispy-ginger-chicken-thighs', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://white-beans-with-spinach-and-lemon', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://soy-glazed-pork-chops', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://harissa-lamb-chops', source: 'manual', category: 'Weeknight' },
+  { url: 'manual://coconut-turmeric-chicken', source: 'manual', category: 'Weeknight' },
 ]

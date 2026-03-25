@@ -1,0 +1,52 @@
+{
+  "title": "Coconut-Turmeric Chicken",
+  "slug": "coconut-turmeric-chicken",
+  "description": "A golden, fragrant one-pot chicken dinner where turmeric and ginger bloom in oil before getting softened by a full can of coconut milk. Searing the chicken first builds a fond that makes the sauce taste like it simmered all day.",
+  "cuisine": "Southeast Asian",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 20,
+  "time_passive": 10,
+  "time_passive_label": "simmering",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "chicken", "coconut", "curry", "one-pot", "gluten-free", "dairy-free", "dinner"],
+  "ingredients": [
+    { "name": "boneless, skinless chicken thighs", "amount": "2", "unit": "lbs", "notes": "cut into 2-inch pieces" },
+    { "name": "full-fat coconut milk", "amount": "1", "unit": "can", "notes": "13.5 oz" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp" },
+    { "name": "yellow onion", "amount": "1", "unit": "medium", "notes": "diced" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "from a 2-inch piece, grated" },
+    { "name": "ground turmeric", "amount": "1", "unit": "tbsp" },
+    { "name": "ground coriander", "amount": "1", "unit": "tsp" },
+    { "name": "ground cumin", "amount": "½", "unit": "tsp" },
+    { "name": "cayenne pepper", "amount": "¼", "unit": "tsp" },
+    { "name": "fish sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh lime juice", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh cilantro", "amount": "¼", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "steamed jasmine rice", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Season chicken pieces generously with salt. Heat vegetable oil in a large Dutch oven or deep skillet over medium-high heat. Add chicken in a single layer and sear until golden on the underside, about 4 minutes. Flip and cook another 2 minutes — the chicken doesn't need to be cooked through. Transfer to a plate.", "timer_minutes": 6 },
+    { "step": 2, "text": "Reduce heat to medium. Add onion to the same pot and cook, stirring, until softened and translucent, 3 to 4 minutes.", "timer_minutes": 4 },
+    { "step": 3, "text": "Add garlic, ginger, turmeric, coriander, cumin, and cayenne. Stir constantly until fragrant and the spices coat the onions evenly, about 1 minute.", "timer_minutes": 1 },
+    { "step": 4, "text": "Pour in coconut milk and fish sauce, scraping up any browned bits from the bottom of the pot. Bring to a simmer, then return the chicken and any collected juices. Cover and simmer until the chicken is cooked through and the sauce has thickened slightly, 10 to 12 minutes.", "timer_minutes": 11 },
+    { "step": 5, "text": "Remove from heat and stir in lime juice. Taste for salt. Serve over jasmine rice, topped with cilantro.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["bon-appetit", "nyt-cooking"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Kay Chun",
+        "publication": "NYT Cooking / Bon Appétit",
+        "note": "Inspired by the broader NYT and BA tradition of quick coconut-milk curries, drawing on Southeast Asian flavor profiles"
+      }
+    ]
+  }
+}

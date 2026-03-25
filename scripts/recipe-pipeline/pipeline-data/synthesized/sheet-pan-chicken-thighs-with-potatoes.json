@@ -1,0 +1,48 @@
+{
+  "title": "Sheet Pan Chicken Thighs with Potatoes",
+  "slug": "sheet-pan-chicken-thighs-with-potatoes",
+  "description": "Bone-in chicken thighs roasted on a sheet pan until the skin shatters and the potatoes crisp in the rendered fat. The hot arugula-and-lemon finish cuts through the richness and makes this feel like more than the sum of its parts.",
+  "cuisine": "American",
+  "difficulty": "easy",
+  "time_total": 45,
+  "time_active": 10,
+  "time_passive": 35,
+  "time_passive_label": "roasting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "sheet pan", "chicken", "one-pan", "gluten-free", "dinner"],
+  "ingredients": [
+    { "name": "bone-in, skin-on chicken thighs", "amount": "8", "unit": "pieces", "notes": "about 3 lbs total" },
+    { "name": "baby potatoes", "amount": "1½", "unit": "lbs", "notes": "halved" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp" },
+    { "name": "smoked paprika", "amount": "1", "unit": "tsp" },
+    { "name": "garlic powder", "amount": "1", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "½", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "baby arugula", "amount": "4", "unit": "cups" },
+    { "name": "lemon", "amount": "1", "unit": "", "notes": "cut into wedges" },
+    { "name": "flaky sea salt", "amount": "", "unit": "", "notes": "for finishing" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oven to 425°F. Pat chicken thighs dry with paper towels — this is non-negotiable for crispy skin. Season generously on both sides with smoked paprika, garlic powder, red pepper flakes, salt, and pepper.", "timer_minutes": null },
+    { "step": 2, "text": "Toss halved potatoes with 2 tablespoons olive oil, salt, and pepper on a rimmed sheet pan. Spread them toward the edges of the pan, cut-side down.", "timer_minutes": null },
+    { "step": 3, "text": "Nestle chicken thighs skin-side up among the potatoes. Drizzle the remaining 1 tablespoon olive oil over the chicken skin.", "timer_minutes": null },
+    { "step": 4, "text": "Roast until the chicken skin is deeply golden and crisp and the potatoes are fork-tender, 35 to 40 minutes. An instant-read thermometer inserted into the thickest part of a thigh should read 165°F.", "timer_minutes": 38 },
+    { "step": 5, "text": "Scatter arugula over the hot pan — it will wilt slightly from the residual heat. Squeeze lemon wedges over everything and finish with flaky salt.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Melissa Clark",
+        "publication": "NYT Cooking",
+        "note": "Inspired by her sheet pan chicken recipes and one-pan dinner philosophy"
+      }
+    ]
+  }
+}

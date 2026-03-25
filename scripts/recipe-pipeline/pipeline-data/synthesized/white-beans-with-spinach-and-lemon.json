@@ -1,0 +1,49 @@
+{
+  "title": "White Beans with Spinach and Lemon",
+  "slug": "white-beans-with-spinach-and-lemon",
+  "description": "A 15-minute dinner built entirely from pantry staples and a bag of spinach. Smashing some of the beans thickens everything into a creamy, brothish situation that begs for crusty bread.",
+  "cuisine": "Mediterranean",
+  "difficulty": "easy",
+  "time_total": 15,
+  "time_active": 15,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "vegetarian", "pantry", "beans", "quick", "mediterranean", "dinner", "15-minute"],
+  "ingredients": [
+    { "name": "cannellini beans", "amount": "2", "unit": "cans", "notes": "15 oz each, drained and rinsed" },
+    { "name": "baby spinach", "amount": "5", "unit": "oz", "notes": "about 5 cups" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp", "notes": "plus more for finishing" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "red pepper flakes", "amount": "½", "unit": "tsp" },
+    { "name": "chicken or vegetable broth", "amount": "½", "unit": "cup" },
+    { "name": "fresh lemon juice", "amount": "2", "unit": "tbsp" },
+    { "name": "lemon zest", "amount": "1", "unit": "tsp" },
+    { "name": "Parmesan", "amount": "¼", "unit": "cup", "notes": "finely grated, optional" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "crusty bread", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat olive oil in a large skillet over medium heat. Add garlic and red pepper flakes and cook, stirring, until the garlic is just golden at the edges, about 1 minute. Don't let it burn.", "timer_minutes": 1 },
+    { "step": 2, "text": "Add drained beans and broth. Season with salt and pepper. Increase heat to medium-high and cook, stirring occasionally, until the liquid reduces slightly and the beans are warmed through, 4 to 5 minutes. Smash a few beans against the side of the pan with a wooden spoon to thicken the sauce.", "timer_minutes": 5 },
+    { "step": 3, "text": "Add spinach in handfuls, tossing with tongs as each batch wilts before adding the next. This takes about 2 minutes total.", "timer_minutes": 2 },
+    { "step": 4, "text": "Remove from heat. Stir in lemon juice and lemon zest. Taste and adjust salt and pepper.", "timer_minutes": null },
+    { "step": 5, "text": "Divide among shallow bowls. Top with Parmesan if using, a generous drizzle of olive oil, and more black pepper. Serve with crusty bread for soaking up every last drop.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Ali Slagle",
+        "publication": "NYT Cooking",
+        "note": "Inspired by NYT's pantry-forward weeknight dinner philosophy, particularly Ali Slagle's bean-centric quick meals"
+      }
+    ]
+  }
+}

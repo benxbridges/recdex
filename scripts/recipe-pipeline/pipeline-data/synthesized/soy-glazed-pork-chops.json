@@ -1,0 +1,49 @@
+{
+  "title": "Soy-Glazed Pork Chops",
+  "slug": "soy-glazed-pork-chops",
+  "description": "Thick-cut pork chops seared in cast iron and basted in a soy-brown sugar glaze that turns sticky and lacquered as the butter melts into it. The whole thing takes less time than ordering delivery.",
+  "cuisine": "American",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 20,
+  "time_passive": 5,
+  "time_passive_label": "resting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "pork", "skillet", "glaze", "quick", "dinner", "cast-iron"],
+  "ingredients": [
+    { "name": "bone-in pork chops", "amount": "4", "unit": "pieces", "notes": "about 1 inch thick, 8-10 oz each" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "brown sugar", "amount": "2", "unit": "tbsp" },
+    { "name": "rice vinegar", "amount": "1", "unit": "tbsp" },
+    { "name": "sambal oelek or sriracha", "amount": "1", "unit": "tbsp" },
+    { "name": "garlic", "amount": "2", "unit": "cloves", "notes": "grated on a microplane" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tsp", "notes": "grated" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "scallions", "amount": "2", "unit": "", "notes": "thinly sliced" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Stir together soy sauce, brown sugar, rice vinegar, sambal, garlic, and ginger in a small bowl until the sugar dissolves. Set aside.", "timer_minutes": null },
+    { "step": 2, "text": "Pat pork chops very dry with paper towels and season generously with salt and pepper on both sides.", "timer_minutes": null },
+    { "step": 3, "text": "Heat vegetable oil in a large cast-iron or heavy skillet over medium-high heat until just smoking. Add pork chops and sear without moving until a dark golden crust forms, 4 to 5 minutes. Flip and cook the other side for another 4 minutes.", "timer_minutes": 9 },
+    { "step": 4, "text": "Reduce heat to medium. Pour the soy glaze into the pan and add butter. As the butter melts and the sauce bubbles, tilt the pan and spoon the glaze over the chops repeatedly for 2 to 3 minutes, until the pork reaches 145°F on an instant-read thermometer and the glaze is thick and lacquered.", "timer_minutes": 3 },
+    { "step": 5, "text": "Transfer chops to plates and pour any remaining pan sauce over the top. Scatter with scallions and let rest 5 minutes before cutting in.", "timer_minutes": 5 }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["bon-appetit", "nyt-cooking"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Chris Morocco",
+        "publication": "Bon Appétit",
+        "note": "Inspired by BA's quick-glaze pork chop technique and the test kitchen's cast-iron basting approach"
+      }
+    ]
+  }
+}

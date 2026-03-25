@@ -1,0 +1,49 @@
+{
+  "title": "Caramelized Shallot Pasta",
+  "slug": "caramelized-shallot-pasta",
+  "description": "A pantry-friendly pasta where thinly sliced shallots cook low and slow in olive oil until they collapse into something jammy and sweet. Tossed with Parmesan and lemon, it proves that patience is the best seasoning.",
+  "cuisine": "Italian",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "pasta", "vegetarian", "pantry", "italian", "dinner"],
+  "ingredients": [
+    { "name": "spaghetti or linguine", "amount": "1", "unit": "lb" },
+    { "name": "medium shallots", "amount": "6", "unit": "", "notes": "about 12 oz, peeled and thinly sliced into rings" },
+    { "name": "olive oil", "amount": "⅓", "unit": "cup" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "red pepper flakes", "amount": "½", "unit": "tsp" },
+    { "name": "reserved pasta cooking water", "amount": "1", "unit": "cup" },
+    { "name": "Parmesan", "amount": "¾", "unit": "cup", "notes": "finely grated, plus more for serving" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "fresh lemon juice", "amount": "2", "unit": "tbsp" },
+    { "name": "fresh parsley", "amount": "¼", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Bring a large pot of generously salted water to a boil. Cook pasta according to package directions until just al dente. Reserve 1 cup of pasta cooking water before draining.", "timer_minutes": null },
+    { "step": 2, "text": "While the pasta cooks, heat olive oil in a large skillet over medium heat. Add shallot rings and a pinch of salt. Cook, stirring occasionally, until the shallots are deeply golden and caramelized — soft, sweet, and jammy, 15 to 18 minutes. Reduce the heat if they start to darken too quickly.", "timer_minutes": 17 },
+    { "step": 3, "text": "Add sliced garlic and red pepper flakes to the shallots and cook until the garlic is fragrant, about 1 minute.", "timer_minutes": 1 },
+    { "step": 4, "text": "Add drained pasta to the skillet along with ½ cup of the reserved pasta water, Parmesan, and butter. Toss vigorously over medium heat, adding more pasta water a splash at a time until a glossy, emulsified sauce coats every strand.", "timer_minutes": null },
+    { "step": 5, "text": "Remove from heat, stir in lemon juice and parsley. Season with salt and pepper. Serve with more Parmesan at the table.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Lidey Heuck",
+        "publication": "NYT Cooking",
+        "note": "Inspired by her viral caramelized shallot pasta and the broader NYT tradition of simple, ingredient-forward pasta recipes"
+      }
+    ]
+  }
+}

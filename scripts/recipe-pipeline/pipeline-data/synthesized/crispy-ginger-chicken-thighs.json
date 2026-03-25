@@ -1,0 +1,51 @@
+{
+  "title": "Crispy Ginger Chicken Thighs",
+  "slug": "crispy-ginger-chicken-thighs",
+  "description": "Boneless chicken thighs seared until the edges go crunchy, then lacquered in a sticky ginger-soy glaze that caramelizes in the pan. Twenty-five minutes, one skillet, and dinner that tastes like you tried harder than you did.",
+  "cuisine": "Asian",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "chicken", "asian", "glaze", "skillet", "dinner", "quick"],
+  "ingredients": [
+    { "name": "boneless, skinless chicken thighs", "amount": "8", "unit": "pieces", "notes": "about 2 lbs" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "honey", "amount": "2", "unit": "tbsp" },
+    { "name": "rice vinegar", "amount": "1", "unit": "tbsp" },
+    { "name": "toasted sesame oil", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh ginger", "amount": "2", "unit": "tbsp", "notes": "from a 3-inch piece, peeled and finely grated" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp" },
+    { "name": "cornstarch", "amount": "1", "unit": "tbsp" },
+    { "name": "scallions", "amount": "2", "unit": "", "notes": "thinly sliced" },
+    { "name": "sesame seeds", "amount": "1", "unit": "tbsp" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "steamed rice", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Whisk soy sauce, honey, rice vinegar, sesame oil, grated ginger, garlic, and cornstarch together in a small bowl until smooth. Set this sauce aside.", "timer_minutes": null },
+    { "step": 2, "text": "Pat chicken thighs very dry and season both sides with salt and pepper. Heat vegetable oil in a large skillet over medium-high heat until just smoking.", "timer_minutes": null },
+    { "step": 3, "text": "Add chicken thighs in a single layer — work in batches to avoid crowding. Cook without moving until the underside is deeply golden and crisp, 5 to 6 minutes. Flip and cook until cooked through, another 4 to 5 minutes. Transfer to a plate.", "timer_minutes": 10 },
+    { "step": 4, "text": "Reduce heat to medium. Pour the sauce mixture into the skillet and stir, scraping up any browned bits from the bottom. Let it simmer and thicken until glossy and syrupy, 1 to 2 minutes.", "timer_minutes": 2 },
+    { "step": 5, "text": "Return chicken to the pan and turn to coat in the glaze. Serve over steamed rice, spooning extra sauce over the top. Finish with scallions and sesame seeds.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["bon-appetit", "nyt-cooking"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "BA Test Kitchen",
+        "publication": "Bon Appétit",
+        "note": "Inspired by BA's approach to pan-crisped chicken with Asian glazes, a weeknight staple of the test kitchen"
+      }
+    ]
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "batches": [
+    {
+      "date": "2026-03-25",
+      "genre": "Quick Weeknight Meals",
+      "recipeCount": 10,
+      "notes": "Cross-cuisine weeknight dinners, 15-45 minutes. All recipes written in RecDex voice, sourced from well-established preparations published by NYT Cooking and Bon Appétit. Ingredients and steps verified against canonical versions.",
+      "recipes": [
+        {
+          "slug": "sheet-pan-chicken-thighs-with-potatoes",
+          "title": "Sheet Pan Chicken Thighs with Potatoes",
+          "cuisine": "American",
+          "inspiredBy": "Melissa Clark",
+          "publication": "NYT Cooking",
+          "sourceNote": "Based on Clark's sheet pan chicken philosophy — bone-in thighs, one pan, high heat. The arugula-and-lemon finish is a common NYT weeknight move.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "miso-glazed-salmon",
+          "title": "Miso-Glazed Salmon",
+          "cuisine": "Japanese",
+          "inspiredBy": "Nobu Matsuhisa",
+          "publication": "Various / NYT Cooking adaptations",
+          "sourceNote": "Rooted in Nobu's iconic miso-marinated black cod technique, widely adapted for home salmon by both NYT and BA. The white miso, mirin, sake ratio is the established standard.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "caramelized-shallot-pasta",
+          "title": "Caramelized Shallot Pasta",
+          "cuisine": "Italian",
+          "inspiredBy": "Lidey Heuck",
+          "publication": "NYT Cooking",
+          "sourceNote": "Inspired by Heuck's viral caramelized shallot pasta and the broader NYT tradition of simple, ingredient-forward pasta recipes. The slow-cooked shallot technique is the foundation.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "orecchiette-with-sausage-and-broccoli-rabe",
+          "title": "Orecchiette with Sausage and Broccoli Rabe",
+          "cuisine": "Italian",
+          "inspiredBy": "Mark Bittman / Italian-American tradition",
+          "publication": "NYT Cooking / Bon Appétit",
+          "sourceNote": "A canonical Italian-American pasta found across both NYT and BA. The blanch-in-pasta-water technique is universal. Ratios follow the standard 1:1:1 (lb pasta, lb sausage, lb broccoli rabe).",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "black-pepper-tofu",
+          "title": "Black Pepper Tofu",
+          "cuisine": "Asian",
+          "inspiredBy": "Yotam Ottolenghi",
+          "publication": "Plenty / NYT Cooking adaptations",
+          "sourceNote": "Based on Ottolenghi's iconic recipe from Plenty. The aggressive black pepper, butter-shallot base, and kecap manis are signature elements. Widely adapted by NYT and food publications.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "crispy-ginger-chicken-thighs",
+          "title": "Crispy Ginger Chicken Thighs",
+          "cuisine": "Asian",
+          "inspiredBy": "BA Test Kitchen",
+          "publication": "Bon Appétit",
+          "sourceNote": "Inspired by BA's approach to pan-crisped boneless thighs with Asian-style glazes. The sear-then-glaze technique is a weeknight standard from the test kitchen.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "white-beans-with-spinach-and-lemon",
+          "title": "White Beans with Spinach and Lemon",
+          "cuisine": "Mediterranean",
+          "inspiredBy": "Ali Slagle",
+          "publication": "NYT Cooking",
+          "sourceNote": "Inspired by NYT's pantry-forward weeknight cooking, particularly Slagle's bean-centric quick meals. The smash-a-few-beans technique for thickening is a widely published tip.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "soy-glazed-pork-chops",
+          "title": "Soy-Glazed Pork Chops",
+          "cuisine": "American",
+          "inspiredBy": "Chris Morocco",
+          "publication": "Bon Appétit",
+          "sourceNote": "Inspired by BA's quick-glaze pork chop technique and the test kitchen's cast-iron basting approach. The soy-brown sugar-sambal combination is a BA weeknight staple.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "harissa-lamb-chops",
+          "title": "Harissa Lamb Chops",
+          "cuisine": "North African",
+          "inspiredBy": "Andy Baraghani",
+          "publication": "Bon Appétit / NYT Cooking",
+          "sourceNote": "Inspired by Baraghani's harissa-forward cooking style and the broader BA/NYT trend of North African flavors in quick weeknight dinners. The yogurt-mint condiment is standard.",
+          "originalRecipeUrl": null
+        },
+        {
+          "slug": "coconut-turmeric-chicken",
+          "title": "Coconut-Turmeric Chicken",
+          "cuisine": "Southeast Asian",
+          "inspiredBy": "Kay Chun",
+          "publication": "NYT Cooking / Bon Appétit",
+          "sourceNote": "Inspired by the broader NYT and BA tradition of quick coconut-milk curries. The sear-then-simmer approach and fish sauce + lime finish are standard Southeast Asian technique.",
+          "originalRecipeUrl": null
+        }
+      ]
+    }
+  ]
+}

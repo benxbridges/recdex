@@ -1,0 +1,46 @@
+{
+  "title": "Orecchiette with Sausage and Broccoli Rabe",
+  "slug": "orecchiette-with-sausage-and-broccoli-rabe",
+  "description": "The Italian-American weeknight classic done right: ear-shaped pasta that catches crumbles of browned sausage and bitter broccoli rabe, bound together by starchy pasta water and sharp Pecorino. Blanching the greens in the pasta water saves a pot and tames the bitterness.",
+  "cuisine": "Italian",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4-6 people",
+  "tags": ["weeknight", "pasta", "italian", "sausage", "dinner", "one-pot-adjacent"],
+  "ingredients": [
+    { "name": "orecchiette", "amount": "1", "unit": "lb" },
+    { "name": "sweet or hot Italian sausage", "amount": "1", "unit": "lb", "notes": "casings removed" },
+    { "name": "broccoli rabe", "amount": "1", "unit": "bunch", "notes": "about 1 lb, trimmed and cut into 2-inch pieces" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "red pepper flakes", "amount": "½", "unit": "tsp", "notes": "more if using sweet sausage" },
+    { "name": "olive oil", "amount": "¼", "unit": "cup", "notes": "plus more for finishing" },
+    { "name": "reserved pasta cooking water", "amount": "½", "unit": "cup" },
+    { "name": "Pecorino Romano", "amount": "½", "unit": "cup", "notes": "finely grated" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Bring a large pot of generously salted water to a boil. Blanch the broccoli rabe for 2 minutes, then scoop it out with a spider or slotted spoon — keep the water boiling. Run the broccoli rabe under cold water to stop cooking, then roughly chop.", "timer_minutes": 2 },
+    { "step": 2, "text": "Cook orecchiette in the same blanching water until just al dente. Reserve ½ cup pasta water before draining.", "timer_minutes": null },
+    { "step": 3, "text": "While the pasta cooks, heat olive oil in a large skillet over medium-high heat. Add sausage in small crumbles and cook, breaking it up with a wooden spoon, until browned and cooked through with some crispy edges, 5 to 7 minutes.", "timer_minutes": 6 },
+    { "step": 4, "text": "Reduce heat to medium. Add garlic and red pepper flakes and cook until fragrant, about 30 seconds. Add the blanched broccoli rabe and toss to combine, cooking for another 2 minutes until heated through.", "timer_minutes": 2 },
+    { "step": 5, "text": "Add drained orecchiette and ¼ cup pasta water to the skillet. Toss everything together over medium heat, adding more pasta water as needed to loosen. Remove from heat, stir in Pecorino, and finish with a drizzle of olive oil.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Mark Bittman",
+        "publication": "NYT Cooking / Bon Appétit",
+        "note": "A staple of Italian-American home cooking, widely published across both NYT and BA with minor variations"
+      }
+    ]
+  }
+}

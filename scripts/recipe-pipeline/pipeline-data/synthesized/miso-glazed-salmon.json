@@ -1,0 +1,46 @@
+{
+  "title": "Miso-Glazed Salmon",
+  "slug": "miso-glazed-salmon",
+  "description": "Salmon broiled under a sweet-savory miso glaze until the edges caramelize and the center stays silky. The marinade does all the heavy lifting — you just need to watch the broiler.",
+  "cuisine": "Japanese",
+  "difficulty": "easy",
+  "time_total": 45,
+  "time_active": 10,
+  "time_passive": 30,
+  "time_passive_label": "marinating",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "seafood", "salmon", "japanese", "broiled", "gluten-free", "dinner"],
+  "ingredients": [
+    { "name": "skin-on salmon fillets", "amount": "4", "unit": "pieces", "notes": "6 oz each" },
+    { "name": "white miso paste", "amount": "¼", "unit": "cup" },
+    { "name": "mirin", "amount": "2", "unit": "tbsp" },
+    { "name": "sake", "amount": "2", "unit": "tbsp", "notes": "or dry white wine" },
+    { "name": "rice vinegar", "amount": "1", "unit": "tbsp" },
+    { "name": "brown sugar", "amount": "1", "unit": "tbsp" },
+    { "name": "toasted sesame oil", "amount": "1", "unit": "tsp" },
+    { "name": "scallions", "amount": "2", "unit": "", "notes": "thinly sliced" },
+    { "name": "sesame seeds", "amount": "1", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Whisk miso, mirin, sake, rice vinegar, brown sugar, and sesame oil together until smooth. Coat salmon fillets in the marinade, cover, and refrigerate for at least 30 minutes or up to overnight. The longer it sits, the deeper the flavor penetrates.", "timer_minutes": 30 },
+    { "step": 2, "text": "Heat the broiler to high and position a rack about 6 inches from the element. Line a sheet pan with foil and lightly oil it.", "timer_minutes": null },
+    { "step": 3, "text": "Remove salmon from the marinade, letting the excess drip off. Discard remaining marinade. Place fillets skin-side down on the prepared pan.", "timer_minutes": null },
+    { "step": 4, "text": "Broil until the glaze is caramelized and bubbling and the fish flakes easily with a fork, 6 to 8 minutes. Watch carefully — the sugars in the miso can go from perfectly charred to burnt in seconds.", "timer_minutes": 7 },
+    { "step": 5, "text": "Transfer to plates and scatter with scallions and sesame seeds.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Nobu Matsuhisa",
+        "publication": "Various / NYT Cooking adaptations",
+        "note": "Rooted in Nobu's iconic miso-marinated black cod technique, widely adapted for home salmon preparations"
+      }
+    ]
+  }
+}

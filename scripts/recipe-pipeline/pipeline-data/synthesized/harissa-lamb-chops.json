@@ -1,0 +1,47 @@
+{
+  "title": "Harissa Lamb Chops",
+  "slug": "harissa-lamb-chops",
+  "description": "Lamb rib chops rubbed with harissa paste and seared until charred outside and rosy within. A cool lemon yogurt and fresh mint bring everything into balance. This is a 15-minute dinner that feels like a special occasion.",
+  "cuisine": "North African",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 15,
+  "time_passive": 15,
+  "time_passive_label": "marinating and resting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "lamb", "north-african", "harissa", "quick", "dinner", "gluten-free"],
+  "ingredients": [
+    { "name": "lamb rib chops", "amount": "8", "unit": "pieces", "notes": "about 1½ lbs total" },
+    { "name": "harissa paste", "amount": "3", "unit": "tbsp" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp", "notes": "plus more for finishing" },
+    { "name": "fresh lemon juice", "amount": "2", "unit": "tbsp", "notes": "divided" },
+    { "name": "garlic", "amount": "2", "unit": "cloves", "notes": "grated on a microplane" },
+    { "name": "ground cumin", "amount": "1", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "½", "unit": "tsp" },
+    { "name": "plain whole-milk yogurt", "amount": "¼", "unit": "cup" },
+    { "name": "fresh mint leaves", "amount": "2", "unit": "tbsp", "notes": "torn" },
+    { "name": "warm pita or couscous", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Stir harissa, 1 tablespoon olive oil, 1 tablespoon lemon juice, garlic, cumin, and salt together in a bowl. Rub the paste all over the lamb chops, coating both sides evenly. Let sit at room temperature for 15 minutes, or refrigerate up to 4 hours.", "timer_minutes": 15 },
+    { "step": 2, "text": "Stir together yogurt, remaining 1 tablespoon lemon juice, and a pinch of salt in a small bowl. Set aside.", "timer_minutes": null },
+    { "step": 3, "text": "Heat remaining 1 tablespoon olive oil in a large cast-iron skillet over high heat until smoking. Sear lamb chops without moving until charred on the underside, about 3 minutes. Flip and cook another 2 to 3 minutes for medium-rare (130°F internal) or 4 minutes for medium (140°F).", "timer_minutes": 6 },
+    { "step": 4, "text": "Transfer chops to a plate and let rest for 5 minutes. The temperature will climb another 5 degrees as they rest.", "timer_minutes": 5 },
+    { "step": 5, "text": "Serve chops drizzled with the lemon yogurt, scattered with torn mint, and a final drizzle of olive oil. Warm pita or couscous alongside.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": ["nyt-cooking", "bon-appetit"],
+    "model": "manual-import",
+    "genre": "quick-weeknight-meals",
+    "inspirations": [
+      {
+        "author": "Andy Baraghani",
+        "publication": "Bon Appétit / NYT Cooking",
+        "note": "Inspired by BA and NYT's harissa-forward lamb preparations and the broader trend of North African flavors in quick weeknight cooking"
+      }
+    ]
+  }
+}
