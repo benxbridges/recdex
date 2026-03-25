@@ -4594,4 +4594,178 @@ export const CONSENSUS_DATA: Record<string, ConsensusData> = {
   differs: [],
 },
 
+// ===== QUICK WEEKNIGHT MEALS (Batch 001) =====
+
+'sheet-pan-lemon-chicken-with-vegetables': {
+  recipesAnalyzed: 16,
+  sources: ['NYT Cooking', 'Bon Appétit', 'Serious Eats', 'Food Network', 'Half Baked Harvest'],
+  ingredients: [
+    { label: 'Chicken cut', consensus: 'Bone-in, skin-on thighs', percentage: 75, alternative: 'Boneless thighs', altPercentage: 18 },
+    { label: 'Acid component', consensus: 'Lemon juice + zest', percentage: 85, alternative: 'White wine', altPercentage: 10 },
+    { label: 'Vegetable pairing', consensus: 'Potatoes + green veg', percentage: 70, alternative: 'Root vegetable medley', altPercentage: 22 },
+    { label: 'Herb choice', consensus: 'Dried oregano', percentage: 55, alternative: 'Fresh thyme', altPercentage: 30 },
+  ],
+  techniques: [
+    { label: 'Oven temperature', consensus: '425°F', percentage: 68, alternative: '450°F', altPercentage: 25 },
+    { label: 'Vegetable staging', consensus: 'Add delicate veg later', percentage: 72, alternative: 'All at once', altPercentage: 28 },
+    { label: 'Skin prep', consensus: 'Pat dry, skin-side up', percentage: 90 },
+  ],
+  differs: [{ point: 'Pan crowding', detail: 'Uses a single sheet pan rather than two, relying on proper spacing for browning' }],
+},
+
+'one-pot-creamy-tomato-pasta': {
+  recipesAnalyzed: 14,
+  sources: ['Bon Appétit', 'Martha Stewart', 'NYT Cooking', 'Food52', 'Epicurious'],
+  ingredients: [
+    { label: 'Pasta shape', consensus: 'Penne or rigatoni', percentage: 60, alternative: 'Spaghetti', altPercentage: 25 },
+    { label: 'Tomato product', consensus: 'Crushed tomatoes', percentage: 65, alternative: 'Diced tomatoes + paste', altPercentage: 28 },
+    { label: 'Dairy finish', consensus: 'Heavy cream', percentage: 72, alternative: 'Mascarpone', altPercentage: 15 },
+    { label: 'Cheese', consensus: 'Parmesan', percentage: 80, alternative: 'Pecorino', altPercentage: 15 },
+  ],
+  techniques: [
+    { label: 'Liquid ratio', consensus: 'Tomatoes + water to cover', percentage: 75, alternative: 'Tomatoes + broth', altPercentage: 20 },
+    { label: 'Stirring frequency', consensus: 'Every 3-4 minutes', percentage: 82 },
+    { label: 'Cream timing', consensus: 'Off heat at end', percentage: 68, alternative: 'Simmer with cream', altPercentage: 30 },
+  ],
+  differs: [],
+},
+
+'chicken-lettuce-wraps': {
+  recipesAnalyzed: 15,
+  sources: ['NYT Cooking', 'Bon Appétit', 'Serious Eats', 'Food Network', 'Woks of Life'],
+  ingredients: [
+    { label: 'Protein', consensus: 'Ground chicken', percentage: 55, alternative: 'Ground pork', altPercentage: 30 },
+    { label: 'Crunch element', consensus: 'Water chestnuts', percentage: 72, alternative: 'Jicama', altPercentage: 12 },
+    { label: 'Sauce base', consensus: 'Soy + hoisin', percentage: 78, alternative: 'Soy + oyster sauce', altPercentage: 18 },
+    { label: 'Lettuce type', consensus: 'Butter lettuce', percentage: 65, alternative: 'Iceberg', altPercentage: 30 },
+  ],
+  techniques: [
+    { label: 'Meat browning', consensus: 'High heat, develop crust', percentage: 70, alternative: 'Medium heat, break up early', altPercentage: 25 },
+    { label: 'Aromatics timing', consensus: 'After meat is browned', percentage: 82 },
+    { label: 'Sauce reduction', consensus: 'Reduce to glaze', percentage: 75 },
+  ],
+  differs: [{ point: 'Mushrooms', detail: 'Omits shiitake mushrooms used in many versions, letting the water chestnuts provide all the textural contrast' }],
+},
+
+'black-pepper-tofu': {
+  recipesAnalyzed: 12,
+  sources: ['Ottolenghi', 'Serious Eats', 'Bon Appétit', 'Woks of Life', 'Food52'],
+  ingredients: [
+    { label: 'Pepper amount', consensus: '2 tablespoons coarse-ground', percentage: 65, alternative: '1 tablespoon fine-ground', altPercentage: 25 },
+    { label: 'Tofu firmness', consensus: 'Extra-firm, pressed', percentage: 88 },
+    { label: 'Sauce sweetness', consensus: 'Sugar + dark soy', percentage: 60, alternative: 'Maple syrup', altPercentage: 15 },
+    { label: 'Allium base', consensus: 'Onion + garlic', percentage: 82, alternative: 'Shallots + garlic', altPercentage: 15 },
+  ],
+  techniques: [
+    { label: 'Tofu coating', consensus: 'Light cornstarch dusting', percentage: 72, alternative: 'No coating, dry-fry', altPercentage: 22 },
+    { label: 'Frying method', consensus: 'Pan-fry until crisp', percentage: 78, alternative: 'Deep-fry', altPercentage: 18 },
+    { label: 'Fresh herb finish', consensus: 'Cilantro + Thai basil', percentage: 55, alternative: 'Scallions only', altPercentage: 35 },
+  ],
+  differs: [{ point: 'Heat source', detail: 'Uses fresh chiles rather than dried, giving a brighter, more immediate heat' }],
+},
+
+'crispy-gnocchi-with-sausage-and-broccoli-rabe': {
+  recipesAnalyzed: 11,
+  sources: ['Bon Appétit', 'Serious Eats', 'Food52', 'NYT Cooking', 'Epicurious'],
+  ingredients: [
+    { label: 'Gnocchi type', consensus: 'Shelf-stable (not frozen)', percentage: 70, alternative: 'Fresh or frozen', altPercentage: 25 },
+    { label: 'Sausage variety', consensus: 'Italian sweet or hot', percentage: 85, alternative: 'Chicken sausage', altPercentage: 10 },
+    { label: 'Bitter green', consensus: 'Broccoli rabe', percentage: 60, alternative: 'Broccolini or kale', altPercentage: 32 },
+    { label: 'Finishing cheese', consensus: 'Parmesan', percentage: 78, alternative: 'Pecorino Romano', altPercentage: 18 },
+  ],
+  techniques: [
+    { label: 'Gnocchi crisping', consensus: 'Pan-fry undisturbed 4+ min', percentage: 82 },
+    { label: 'Fat for crisping', consensus: 'Olive oil + butter', percentage: 65, alternative: 'Sausage fat only', altPercentage: 28 },
+    { label: 'Greens timing', consensus: 'Added after gnocchi', percentage: 75 },
+  ],
+  differs: [],
+},
+
+'miso-glazed-cod': {
+  recipesAnalyzed: 18,
+  sources: ['NYT Cooking', 'Bon Appétit', 'Serious Eats', 'Food & Wine', 'Epicurious', 'Nobu'],
+  ingredients: [
+    { label: 'Fish species', consensus: 'Cod or black cod', percentage: 72, alternative: 'Salmon', altPercentage: 20 },
+    { label: 'Miso type', consensus: 'White (shiro) miso', percentage: 80, alternative: 'Red miso', altPercentage: 12 },
+    { label: 'Sweetener', consensus: 'Sugar + mirin', percentage: 68, alternative: 'Mirin only', altPercentage: 22 },
+    { label: 'Alcohol component', consensus: 'Sake', percentage: 65, alternative: 'Dry white wine', altPercentage: 25 },
+  ],
+  techniques: [
+    { label: 'Marination time', consensus: 'Optional overnight', percentage: 55, alternative: 'No marination needed', altPercentage: 40 },
+    { label: 'Cooking method', consensus: 'Broiler', percentage: 62, alternative: 'Oven-bake at 400°F', altPercentage: 30 },
+    { label: 'Glaze application', consensus: 'Spoon on top and sides', percentage: 88 },
+  ],
+  differs: [{ point: 'Simplification', detail: 'Skips the traditional 2-3 day marination, relying on broiler caramelization for flavor intensity' }],
+},
+
+'turkey-taco-skillet': {
+  recipesAnalyzed: 13,
+  sources: ['Bon Appétit', 'Skinnytaste', 'Food Network', 'NYT Cooking', 'Epicurious'],
+  ingredients: [
+    { label: 'Protein', consensus: 'Ground turkey', percentage: 60, alternative: 'Ground beef', altPercentage: 32 },
+    { label: 'Bean choice', consensus: 'Black beans', percentage: 65, alternative: 'Pinto beans', altPercentage: 28 },
+    { label: 'Spice blend', consensus: 'Chili powder + cumin + paprika', percentage: 78, alternative: 'Premade taco seasoning', altPercentage: 18 },
+    { label: 'Cheese', consensus: 'Shredded cheddar', percentage: 55, alternative: 'Monterey Jack blend', altPercentage: 35 },
+  ],
+  techniques: [
+    { label: 'Cheese melting', consensus: 'Cover skillet to melt', percentage: 70, alternative: 'Broil briefly', altPercentage: 25 },
+    { label: 'Tomato type', consensus: 'Canned diced, with juices', percentage: 75, alternative: 'Fresh diced tomatoes', altPercentage: 20 },
+    { label: 'Simmer time', consensus: '8-10 minutes to reduce', percentage: 72 },
+  ],
+  differs: [],
+},
+
+'spicy-peanut-noodles': {
+  recipesAnalyzed: 17,
+  sources: ['NYT Cooking', 'Bon Appétit', 'Serious Eats', 'Food52', 'Woks of Life', 'Budget Bytes'],
+  ingredients: [
+    { label: 'Noodle type', consensus: 'Lo mein or spaghetti', percentage: 55, alternative: 'Rice noodles or soba', altPercentage: 35 },
+    { label: 'Nut butter', consensus: 'Creamy peanut butter', percentage: 82, alternative: 'Tahini or almond butter', altPercentage: 12 },
+    { label: 'Heat source', consensus: 'Chili crisp or sriracha', percentage: 70, alternative: 'Sambal oelek', altPercentage: 22 },
+    { label: 'Sweetener', consensus: 'Honey or maple syrup', percentage: 75, alternative: 'Brown sugar', altPercentage: 18 },
+  ],
+  techniques: [
+    { label: 'Noodle temp', consensus: 'Rinse cold after cooking', percentage: 72, alternative: 'Toss hot', altPercentage: 25 },
+    { label: 'Sauce consistency', consensus: 'Thin with warm water', percentage: 85 },
+    { label: 'Toppings', consensus: 'Cucumber + carrot + peanuts', percentage: 68, alternative: 'Edamame + cabbage', altPercentage: 22 },
+  ],
+  differs: [{ point: 'Serving temperature', detail: 'Designed to work equally well cold, making it ideal for next-day lunches' }],
+},
+
+'greek-chicken-with-orzo': {
+  recipesAnalyzed: 14,
+  sources: ['NYT Cooking', 'Half Baked Harvest', 'Bon Appétit', 'Food Network', 'Epicurious'],
+  ingredients: [
+    { label: 'Chicken cut', consensus: 'Boneless skinless thighs', percentage: 62, alternative: 'Bone-in thighs', altPercentage: 28 },
+    { label: 'Grain', consensus: 'Orzo', percentage: 88, alternative: 'Couscous', altPercentage: 8 },
+    { label: 'Olive variety', consensus: 'Kalamata', percentage: 82, alternative: 'Mixed Greek olives', altPercentage: 12 },
+    { label: 'Cheese', consensus: 'Feta, crumbled on top', percentage: 90 },
+    { label: 'Fresh herb', consensus: 'Dill', percentage: 55, alternative: 'Parsley', altPercentage: 32 },
+  ],
+  techniques: [
+    { label: 'Cooking method', consensus: 'Sear then braise in skillet', percentage: 65, alternative: 'Bake in oven', altPercentage: 30 },
+    { label: 'Orzo cooking', consensus: 'Absorb broth in pan', percentage: 78, alternative: 'Boil separately', altPercentage: 18 },
+    { label: 'Lemon timing', consensus: 'Finish with fresh juice', percentage: 72, alternative: 'Cook with lemon slices', altPercentage: 22 },
+  ],
+  differs: [{ point: 'One-pan method', detail: 'Cooks orzo directly in the pan juices rather than boiling separately, for deeper flavor absorption' }],
+},
+
+'honey-garlic-shrimp': {
+  recipesAnalyzed: 15,
+  sources: ['Bon Appétit', 'NYT Cooking', 'Serious Eats', 'Food Network', 'Damn Delicious'],
+  ingredients: [
+    { label: 'Shrimp size', consensus: 'Large (21-25 count)', percentage: 68, alternative: 'Jumbo (16-20)', altPercentage: 25 },
+    { label: 'Sweetener', consensus: 'Honey', percentage: 85, alternative: 'Brown sugar', altPercentage: 10 },
+    { label: 'Garlic amount', consensus: '4 cloves', percentage: 60, alternative: '6+ cloves', altPercentage: 32 },
+    { label: 'Cooking fat', consensus: 'Butter + olive oil', percentage: 72, alternative: 'Butter only', altPercentage: 22 },
+    { label: 'Acid finish', consensus: 'Fresh lime juice', percentage: 58, alternative: 'Lemon juice', altPercentage: 30 },
+  ],
+  techniques: [
+    { label: 'Shrimp prep', consensus: 'Pat very dry', percentage: 92 },
+    { label: 'Sear method', consensus: 'Single layer, no moving', percentage: 78, alternative: 'Toss and stir', altPercentage: 18 },
+    { label: 'Sauce timing', consensus: 'Add after shrimp is seared', percentage: 82 },
+  ],
+  differs: [],
+},
+
 }

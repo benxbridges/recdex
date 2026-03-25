@@ -1,0 +1,98 @@
+{
+  "description": "Tracks curated recipe import batches for genre rotation and quality auditing",
+  "genreRotation": [
+    "Quick Weeknight Meals",
+    "Cakes & Baking",
+    "French",
+    "Italian",
+    "Black / African American",
+    "BBQ & Grilling",
+    "East Asian",
+    "Mexican & Latin American",
+    "Indian & South Asian",
+    "Mediterranean & Middle Eastern",
+    "Comfort Food",
+    "Seafood",
+    "Vegetarian & Vegan",
+    "Scandinavian & Northern European",
+    "Southeast Asian",
+    "Southern & Soul Food",
+    "Breakfast & Brunch",
+    "Soups & Stews"
+  ],
+  "totalRecipesImported": 10,
+  "nextGenreIndex": 1,
+  "lastQualityAuditAt": 0,
+  "nextQualityAuditAt": 500,
+  "batches": [
+    {
+      "batch": 1,
+      "genre": "Quick Weeknight Meals",
+      "date": "2026-03-25",
+      "file": "batch-001-quick-weeknight-meals.json",
+      "recipeCount": 10,
+      "recipes": [
+        {
+          "slug": "sheet-pan-lemon-chicken-with-vegetables",
+          "title": "Sheet-Pan Lemon Chicken with Vegetables",
+          "sourceAttribution": "nytimes.com",
+          "creatorName": "Melissa Clark"
+        },
+        {
+          "slug": "one-pot-creamy-tomato-pasta",
+          "title": "One-Pot Creamy Tomato Pasta",
+          "sourceAttribution": "bonappetit.com",
+          "creatorName": "Sarah Jampel"
+        },
+        {
+          "slug": "chicken-lettuce-wraps",
+          "title": "Chicken Lettuce Wraps",
+          "sourceAttribution": "nytimes.com",
+          "creatorName": "Kay Chun"
+        },
+        {
+          "slug": "black-pepper-tofu",
+          "title": "Black Pepper Tofu",
+          "sourceAttribution": "bonappetit.com",
+          "creatorName": "Yotam Ottolenghi"
+        },
+        {
+          "slug": "crispy-gnocchi-with-sausage-and-broccoli-rabe",
+          "title": "Crispy Gnocchi with Sausage and Broccoli Rabe",
+          "sourceAttribution": "bonappetit.com",
+          "creatorName": "Chris Morocco"
+        },
+        {
+          "slug": "miso-glazed-cod",
+          "title": "Miso-Glazed Cod",
+          "sourceAttribution": "nytimes.com",
+          "creatorName": "Mark Bittman"
+        },
+        {
+          "slug": "turkey-taco-skillet",
+          "title": "Turkey Taco Skillet",
+          "sourceAttribution": "bonappetit.com",
+          "creatorName": "Bon Appétit Test Kitchen"
+        },
+        {
+          "slug": "spicy-peanut-noodles",
+          "title": "Spicy Peanut Noodles",
+          "sourceAttribution": "nytimes.com",
+          "creatorName": "Ali Slagle"
+        },
+        {
+          "slug": "greek-chicken-with-orzo",
+          "title": "Greek Chicken with Orzo",
+          "sourceAttribution": "nytimes.com",
+          "creatorName": "Lidey Heuck"
+        },
+        {
+          "slug": "honey-garlic-shrimp",
+          "title": "Honey-Garlic Shrimp",
+          "sourceAttribution": "bonappetit.com",
+          "creatorName": "Bon Appétit Test Kitchen"
+        }
+      ]
+    }
+  ]
+}

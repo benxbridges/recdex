@@ -552,4 +552,18 @@ export const RECIPE_URLS: RecipeUrl[] = [
   { url: 'https://www.bonappetit.com/recipe/vegetable-samosas', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/tandoori-chicken', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/grilled-lamb-kebabs', source: 'ba', category: 'Indian' },
+
+  // ============================================================
+  // CURATED IMPORTS — Quick Weeknight Meals (Batch 001)
+  // ============================================================
+  { url: 'https://cooking.nytimes.com/recipes/1019772-sheet-pan-chicken', source: 'nyt', category: 'Quick Weeknight' },
+  { url: 'https://www.bonappetit.com/recipe/one-pot-creamy-tomato-pasta', source: 'ba', category: 'Quick Weeknight' },
+  { url: 'https://cooking.nytimes.com/recipes/1020194-chicken-lettuce-wraps', source: 'nyt', category: 'Quick Weeknight' },
+  { url: 'https://www.bonappetit.com/recipe/black-pepper-tofu', source: 'ba', category: 'Quick Weeknight' },
+  { url: 'https://www.bonappetit.com/recipe/crispy-gnocchi-sausage-broccoli-rabe', source: 'ba', category: 'Quick Weeknight' },
+  { url: 'https://cooking.nytimes.com/recipes/1018296-miso-glazed-fish', source: 'nyt', category: 'Quick Weeknight' },
+  { url: 'https://www.bonappetit.com/recipe/turkey-taco-skillet', source: 'ba', category: 'Quick Weeknight' },
+  { url: 'https://cooking.nytimes.com/recipes/1014523-spicy-peanut-noodles', source: 'nyt', category: 'Quick Weeknight' },
+  { url: 'https://cooking.nytimes.com/recipes/1023012-greek-chicken-with-orzo', source: 'nyt', category: 'Quick Weeknight' },
+  { url: 'https://www.bonappetit.com/recipe/honey-garlic-shrimp', source: 'ba', category: 'Quick Weeknight' },
 ]
