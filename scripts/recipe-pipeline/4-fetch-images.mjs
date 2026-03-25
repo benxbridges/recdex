@@ -245,7 +245,7 @@ async function main() {
           if (!dryRun) {
             const { error: updateErr } = await supabase
               .from('recipes')
-              .update({ image_url: result.url })
+              .update({ image_url: result.url, photo_credit: result.photographer })
               .eq('id', recipe.id)
             if (updateErr) {
               console.log(`  ✗ DB update failed: ${updateErr.message}`)
