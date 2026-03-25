@@ -1,0 +1,44 @@
+{
+  "title": "Seared Steak with Chimichurri",
+  "slug": "seared-steak-with-chimichurri",
+  "description": "A screaming-hot seared steak topped with a bright, herby chimichurri that you'll make on repeat. The sauce takes five minutes and turns a simple steak into something you'd pay good money for at a restaurant.",
+  "cuisine": "Argentine",
+  "difficulty": "medium",
+  "time_total": 30,
+  "time_active": 20,
+  "time_passive": 10,
+  "time_passive_label": "resting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "steak", "beef", "Argentine", "chimichurri", "gluten-free", "grilling"],
+  "ingredients": [
+    { "name": "ribeye or New York strip steaks", "amount": "2", "unit": "", "notes": "1 inch thick, about 12 oz each" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp", "notes": "high smoke point" },
+    { "name": "kosher salt", "amount": "1 1/2", "unit": "tsp", "notes": "divided" },
+    { "name": "black pepper", "amount": "1", "unit": "tsp", "notes": "coarsely ground" },
+    { "name": "fresh flat-leaf parsley", "amount": "1", "unit": "cup", "notes": "packed, finely chopped" },
+    { "name": "fresh oregano", "amount": "1/4", "unit": "cup", "notes": "finely chopped" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "extra-virgin olive oil", "amount": "1/2", "unit": "cup" },
+    { "name": "red wine vinegar", "amount": "2", "unit": "tbsp" },
+    { "name": "red pepper flakes", "amount": "1/2", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Make the chimichurri first: combine parsley, oregano, garlic, olive oil, red wine vinegar, red pepper flakes, and 1/2 teaspoon salt in a bowl. Stir well and let it sit while you cook the steak — the flavors deepen as it rests.", "timer_minutes": null },
+    { "step": 2, "text": "Pull steaks from the fridge 20 minutes before cooking if possible. Pat very dry with paper towels. Season aggressively on both sides with remaining salt and the pepper. Press the seasoning into the meat.", "timer_minutes": null },
+    { "step": 3, "text": "Heat vegetable oil in a large cast-iron skillet over high heat until wisps of smoke appear. Lay steaks in carefully, away from you. Do not touch them.", "timer_minutes": null },
+    { "step": 4, "text": "Sear without moving until a deep brown crust forms, about 4 minutes. Flip once. Cook another 3 to 4 minutes for medium-rare (130°F internal), or 5 minutes for medium (140°F).", "timer_minutes": 8 },
+    { "step": 5, "text": "Transfer steaks to a cutting board and rest for 8 to 10 minutes. The temperature will rise another 5 degrees as they rest. Resist the urge to cut early.", "timer_minutes": 10 },
+    { "step": 6, "text": "Slice steaks against the grain into 1/2-inch strips. Arrange on a platter and spoon chimichurri generously over the top.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 94,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["bonappetit.com", "seriouseats.com", "cooking.nytimes.com", "foodandwine.com", "epicurious.com"],
+    "model": "manual-import"
+  }
+}

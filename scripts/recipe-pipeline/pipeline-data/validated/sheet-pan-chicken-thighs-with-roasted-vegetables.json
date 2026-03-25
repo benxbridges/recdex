@@ -1,0 +1,46 @@
+{
+  "title": "Sheet-Pan Chicken Thighs with Roasted Vegetables",
+  "slug": "sheet-pan-chicken-thighs-with-roasted-vegetables",
+  "description": "Bone-in chicken thighs roasted on a single sheet pan with potatoes, zucchini, and cherry tomatoes until the skin crackles and the vegetables caramelize. The kind of dinner that makes a Tuesday feel handled.",
+  "cuisine": "American",
+  "difficulty": "easy",
+  "time_total": 50,
+  "time_active": 15,
+  "time_passive": 35,
+  "time_passive_label": "roasting",
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "sheet-pan", "chicken", "one-pan", "gluten-free", "roasted"],
+  "ingredients": [
+    { "name": "bone-in, skin-on chicken thighs", "amount": "8", "unit": "", "notes": "about 3 lbs total" },
+    { "name": "baby potatoes", "amount": "1", "unit": "lb", "notes": "halved" },
+    { "name": "zucchini", "amount": "2", "unit": "medium", "notes": "cut into 1-inch half-moons" },
+    { "name": "red onion", "amount": "1", "unit": "large", "notes": "cut into thin wedges" },
+    { "name": "cherry tomatoes", "amount": "1", "unit": "pint" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp", "notes": "divided" },
+    { "name": "smoked paprika", "amount": "1", "unit": "tsp" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "1", "unit": "tsp", "notes": "plus more to taste" },
+    { "name": "black pepper", "amount": "1/2", "unit": "tsp" },
+    { "name": "lemon", "amount": "1", "unit": "", "notes": "cut into wedges for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oven to 425°F. Line a rimmed sheet pan with parchment paper or foil.", "timer_minutes": null },
+    { "step": 2, "text": "Toss potatoes, zucchini, red onion, cherry tomatoes, and garlic with 2 tablespoons olive oil, half the salt, and a few grinds of pepper. Spread in an even layer on the sheet pan, leaving some room for the chicken.", "timer_minutes": null },
+    { "step": 3, "text": "Pat chicken thighs dry with paper towels — this is non-negotiable for crispy skin. Season on both sides with smoked paprika, oregano, remaining salt, and pepper. Nestle thighs skin-side up among the vegetables.", "timer_minutes": null },
+    { "step": 4, "text": "Drizzle the remaining tablespoon of olive oil over the chicken skin.", "timer_minutes": null },
+    { "step": 5, "text": "Roast until the chicken skin is deeply golden and crisp, the juices run clear, and an instant-read thermometer inserted into the thickest part reads 165°F, 35 to 40 minutes. The potatoes should be fork-tender and the tomatoes will have burst.", "timer_minutes": 38 },
+    { "step": 6, "text": "Squeeze lemon wedges over everything at the table.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 92,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["bonappetit.com", "cooking.nytimes.com", "seriouseats.com", "foodnetwork.com"],
+    "model": "manual-import"
+  }
+}

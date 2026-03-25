@@ -1,0 +1,44 @@
+{
+  "title": "Miso-Butter Mushroom Pasta",
+  "slug": "miso-butter-mushroom-pasta",
+  "description": "A deeply savory pasta where white miso and butter melt into a silky sauce with seared mushrooms and garlic. Umami on umami, ready in the time it takes to boil water.",
+  "cuisine": "Fusion",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "pasta", "vegetarian", "mushroom", "umami", "miso", "30-minute"],
+  "ingredients": [
+    { "name": "spaghetti or linguine", "amount": "1", "unit": "lb" },
+    { "name": "mixed mushrooms", "amount": "1", "unit": "lb", "notes": "cremini and shiitake, sliced 1/4 inch thick" },
+    { "name": "unsalted butter", "amount": "3", "unit": "tbsp" },
+    { "name": "white (shiro) miso paste", "amount": "2", "unit": "tbsp" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "soy sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "reserved pasta water", "amount": "1", "unit": "cup", "notes": "starchy" },
+    { "name": "scallions", "amount": "3", "unit": "", "notes": "thinly sliced, greens and whites separated" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly cracked, generous" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Bring a large pot of well-salted water to a boil. Cook pasta according to package directions until just shy of al dente. Reserve 1 cup pasta water before draining.", "timer_minutes": 10 },
+    { "step": 2, "text": "While pasta cooks, heat olive oil in a large skillet over high heat until nearly smoking. Add mushrooms in a single layer — don't crowd, don't stir. Let them sear undisturbed until deeply golden on the bottom, about 4 minutes. Flip and cook another 2 minutes.", "timer_minutes": 6 },
+    { "step": 3, "text": "Reduce heat to medium. Add butter, garlic, and scallion whites. Cook, stirring, until garlic is fragrant and softened, about 1 minute.", "timer_minutes": 1 },
+    { "step": 4, "text": "In a small bowl, whisk miso paste with 1/4 cup of the reserved pasta water until smooth. Pour into the skillet along with soy sauce. Stir to combine.", "timer_minutes": null },
+    { "step": 5, "text": "Add drained pasta directly to the skillet. Toss vigorously, adding more pasta water a splash at a time until the sauce coats every strand — glossy, not soupy. This takes about 2 minutes of active tossing.", "timer_minutes": 2 },
+    { "step": 6, "text": "Finish with a generous amount of cracked black pepper and the scallion greens.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 91,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "seriouseats.com", "food52.com"],
+    "model": "manual-import"
+  }
+}

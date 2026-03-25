@@ -1,0 +1,47 @@
+{
+  "title": "One-Pot Creamy Tuscan Chicken",
+  "slug": "one-pot-creamy-tuscan-chicken",
+  "description": "Seared chicken breasts simmered in a garlicky cream sauce loaded with sun-dried tomatoes, spinach, and Parmesan. One pot, minimal cleanup, maximum weeknight satisfaction.",
+  "cuisine": "Italian",
+  "difficulty": "easy",
+  "time_total": 35,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "one-pot", "chicken", "creamy", "Italian-inspired", "gluten-free"],
+  "ingredients": [
+    { "name": "boneless, skinless chicken breasts", "amount": "4", "unit": "", "notes": "about 6 oz each" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "sun-dried tomatoes", "amount": "1", "unit": "cup", "notes": "oil-packed, drained, sliced into strips" },
+    { "name": "chicken broth", "amount": "1 1/2", "unit": "cups" },
+    { "name": "heavy cream", "amount": "1", "unit": "cup" },
+    { "name": "fresh baby spinach", "amount": "3", "unit": "cups", "notes": "packed" },
+    { "name": "Parmesan cheese", "amount": "1/2", "unit": "cup", "notes": "finely grated" },
+    { "name": "Italian seasoning", "amount": "1", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "1/4", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "1", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/2", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Season chicken breasts on both sides with salt, pepper, and Italian seasoning.", "timer_minutes": null },
+    { "step": 2, "text": "Heat olive oil in a large skillet or Dutch oven over medium-high heat until shimmering. Sear chicken until golden on each side but not cooked through — about 3 minutes per side. Transfer to a plate.", "timer_minutes": 6 },
+    { "step": 3, "text": "Reduce heat to medium. Add garlic and cook, stirring constantly, until fragrant but not browned, about 30 seconds.", "timer_minutes": 1 },
+    { "step": 4, "text": "Add sun-dried tomatoes and chicken broth. Scrape up any browned bits from the bottom of the pan — that's flavor. Bring to a simmer.", "timer_minutes": null },
+    { "step": 5, "text": "Stir in heavy cream and red pepper flakes. Return chicken to the pan, nestling it into the sauce. Reduce heat to medium-low, cover, and simmer until chicken registers 165°F internally, 10 to 12 minutes.", "timer_minutes": 11 },
+    { "step": 6, "text": "Remove chicken to serving plates. Stir spinach into the sauce in handfuls — it wilts down fast. Once wilted, stir in Parmesan until the sauce is smooth and glossy, about 1 minute.", "timer_minutes": 2 },
+    { "step": 7, "text": "Spoon sauce generously over the chicken. Serve with crusty bread or over rice to catch every drop.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 90,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "halfbakedharvest.com", "cafedelites.com"],
+    "model": "manual-import"
+  }
+}

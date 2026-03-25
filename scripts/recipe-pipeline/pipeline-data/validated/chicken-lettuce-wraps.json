@@ -1,0 +1,46 @@
+{
+  "title": "Chicken Lettuce Wraps",
+  "slug": "chicken-lettuce-wraps",
+  "description": "Savory ground chicken stir-fried with water chestnuts, soy, and hoisin, scooped into crisp butter lettuce cups. Lighter than takeout, faster too, and everyone gets to build their own at the table.",
+  "cuisine": "Chinese-American",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "chicken", "lettuce-wraps", "Asian-inspired", "light", "20-minute", "gluten-free-adaptable"],
+  "ingredients": [
+    { "name": "ground chicken", "amount": "1", "unit": "lb" },
+    { "name": "butter lettuce", "amount": "1", "unit": "head", "notes": "leaves separated, washed, dried" },
+    { "name": "water chestnuts", "amount": "1", "unit": "can", "notes": "8 oz, drained, finely diced" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "hoisin sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "rice vinegar", "amount": "1", "unit": "tbsp" },
+    { "name": "toasted sesame oil", "amount": "1", "unit": "tbsp" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "finely grated" },
+    { "name": "scallions", "amount": "3", "unit": "", "notes": "thinly sliced" },
+    { "name": "vegetable oil", "amount": "1", "unit": "tbsp" },
+    { "name": "sriracha", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Stir together soy sauce, hoisin sauce, rice vinegar, and sesame oil in a small bowl. Set this sauce aside.", "timer_minutes": null },
+    { "step": 2, "text": "Heat vegetable oil in a large skillet or wok over high heat until shimmering. Add ground chicken and cook, breaking it into small crumbles with a wooden spoon, until cooked through (165°F) and starting to brown, about 5 minutes.", "timer_minutes": 5 },
+    { "step": 3, "text": "Push the chicken to one side and add garlic and ginger to the cleared space. Stir them in the hot oil for 30 seconds until fragrant, then mix everything together.", "timer_minutes": 1 },
+    { "step": 4, "text": "Add water chestnuts and the sauce. Toss everything together and cook until the sauce thickens and coats the meat, about 2 minutes.", "timer_minutes": 2 },
+    { "step": 5, "text": "Remove from heat. Stir in most of the scallions, saving some for garnish.", "timer_minutes": null },
+    { "step": 6, "text": "Spoon the filling into butter lettuce cups. Top with remaining scallions and a drizzle of sriracha.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 93,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "seriouseats.com", "allrecipes.com", "delish.com"],
+    "model": "manual-import"
+  }
+}

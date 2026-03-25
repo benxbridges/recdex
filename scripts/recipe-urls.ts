@@ -1,6 +1,6 @@
 export type RecipeUrl = {
   url: string
-  source: 'nyt' | 'ba'
+  source: 'nyt' | 'ba' | 'recdex'
   category: string
 }
 
@@ -552,4 +552,19 @@ export const RECIPE_URLS: RecipeUrl[] = [
   { url: 'https://www.bonappetit.com/recipe/vegetable-samosas', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/tandoori-chicken', source: 'ba', category: 'Indian' },
   { url: 'https://www.bonappetit.com/recipe/grilled-lamb-kebabs', source: 'ba', category: 'Indian' },
+
+  // ============================================================
+  // RECDEX ORIGINALS — Quick Weeknight Dinners (Batch 1, 2026-03-25)
+  // Synthesized from multiple curated sources, rewritten in RecDex voice
+  // ============================================================
+  { url: 'recdex://sheet-pan-chicken-thighs-with-roasted-vegetables', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://one-pot-creamy-tuscan-chicken', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://miso-butter-mushroom-pasta', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://skillet-chicken-with-lemon-and-olives', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://honey-soy-glazed-pork-chops', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://coconut-red-curry-lentils', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://seared-steak-with-chimichurri', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://one-pan-orzo-with-shrimp-and-feta', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://chicken-lettuce-wraps', source: 'recdex', category: 'Weeknight' },
+  { url: 'recdex://sausage-and-white-bean-skillet', source: 'recdex', category: 'Weeknight' },
 ]

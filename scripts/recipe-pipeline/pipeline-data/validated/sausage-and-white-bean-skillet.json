@@ -1,0 +1,48 @@
+{
+  "title": "Sausage and White Bean Skillet",
+  "slug": "sausage-and-white-bean-skillet",
+  "description": "Italian sausage browned and braised with cannellini beans, tomatoes, and kale in a single skillet. Rustic, hearty, and the kind of dinner that begs for a hunk of bread on the side.",
+  "cuisine": "Italian-American",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "sausage", "beans", "one-pan", "Italian-inspired", "skillet", "hearty"],
+  "ingredients": [
+    { "name": "Italian sausage links", "amount": "4", "unit": "", "notes": "sweet or hot, about 1 lb total" },
+    { "name": "cannellini beans", "amount": "2", "unit": "cans", "notes": "15 oz each, drained and rinsed" },
+    { "name": "diced tomatoes", "amount": "1", "unit": "can", "notes": "14.5 oz, with juices" },
+    { "name": "lacinato kale", "amount": "1", "unit": "small bunch", "notes": "about 4 cups, stems removed, leaves torn" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "smoked paprika", "amount": "1", "unit": "tsp" },
+    { "name": "chicken broth", "amount": "1/2", "unit": "cup" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "red pepper flakes", "amount": "1/4", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "1/2", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/4", "unit": "tsp" },
+    { "name": "Parmesan cheese", "amount": "", "unit": "", "notes": "grated, for serving" },
+    { "name": "crusty bread", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat olive oil in a 12-inch skillet over medium-high heat. Add sausage links and brown on all sides, turning occasionally, until the casings are deeply golden, about 6 minutes. They don't need to be cooked through — they'll finish in the sauce. Transfer to a cutting board.", "timer_minutes": 6 },
+    { "step": 2, "text": "Reduce heat to medium. Add garlic, smoked paprika, and red pepper flakes to the rendered fat in the skillet. Stir for 30 seconds until fragrant.", "timer_minutes": 1 },
+    { "step": 3, "text": "Add diced tomatoes, chicken broth, and beans. Stir to combine, scraping up any browned bits from the bottom.", "timer_minutes": null },
+    { "step": 4, "text": "Slice the sausages into 1-inch rounds and return them to the skillet, nestling them into the beans. Bring to a simmer.", "timer_minutes": null },
+    { "step": 5, "text": "Pile the kale on top. Cover the skillet and cook until the kale wilts and the sausage registers 160°F internally, about 5 minutes. Uncover and stir the kale into the beans.", "timer_minutes": 5 },
+    { "step": 6, "text": "Simmer uncovered for another 3 to 4 minutes until the liquid reduces to a saucy consistency — not soupy, not dry. Season with salt and pepper.", "timer_minutes": 4 },
+    { "step": 7, "text": "Serve in shallow bowls with grated Parmesan and crusty bread.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 91,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["bonappetit.com", "cooking.nytimes.com", "seriouseats.com", "food52.com"],
+    "model": "manual-import"
+  }
+}

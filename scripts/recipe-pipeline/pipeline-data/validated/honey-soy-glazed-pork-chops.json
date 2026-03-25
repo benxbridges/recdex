@@ -1,0 +1,46 @@
+{
+  "title": "Honey-Soy Glazed Pork Chops",
+  "slug": "honey-soy-glazed-pork-chops",
+  "description": "Thick-cut pork chops seared hard in a hot skillet, then finished with a sticky honey-soy glaze that caramelizes into something addictive. Five minutes of prep, fifteen minutes of cooking.",
+  "cuisine": "Asian-American",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "pork", "glazed", "Asian-inspired", "quick", "30-minute"],
+  "ingredients": [
+    { "name": "bone-in pork chops", "amount": "4", "unit": "", "notes": "1 inch thick, about 2 lbs total" },
+    { "name": "soy sauce", "amount": "1/4", "unit": "cup" },
+    { "name": "honey", "amount": "2", "unit": "tbsp" },
+    { "name": "rice vinegar", "amount": "1", "unit": "tbsp" },
+    { "name": "toasted sesame oil", "amount": "1", "unit": "tbsp" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "finely grated" },
+    { "name": "vegetable oil", "amount": "1", "unit": "tbsp" },
+    { "name": "sesame seeds", "amount": "1", "unit": "tbsp", "notes": "for garnish" },
+    { "name": "scallions", "amount": "2", "unit": "", "notes": "thinly sliced, for garnish" },
+    { "name": "kosher salt", "amount": "1/2", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/4", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Whisk together soy sauce, honey, rice vinegar, sesame oil, garlic, and ginger in a small bowl. Set aside.", "timer_minutes": null },
+    { "step": 2, "text": "Pat pork chops dry. Season with salt and pepper on both sides.", "timer_minutes": null },
+    { "step": 3, "text": "Heat vegetable oil in a large cast-iron or heavy skillet over medium-high heat until just smoking. Lay in the pork chops and sear without moving until a dark golden crust forms, about 4 minutes. Flip and sear the other side, another 4 minutes.", "timer_minutes": 8 },
+    { "step": 4, "text": "Reduce heat to medium. Pour the honey-soy glaze into the skillet around the chops. Let it bubble and thicken, spooning the glaze over the chops repeatedly as it reduces, 2 to 3 minutes. The glaze should turn syrupy and coat the back of the spoon.", "timer_minutes": 3 },
+    { "step": 5, "text": "Check the chops — they should register 145°F at the thickest point. If not, cover the pan and cook another minute or two.", "timer_minutes": null },
+    { "step": 6, "text": "Transfer chops to plates, spoon remaining glaze from the pan over top. Finish with sesame seeds and scallions. Serve with steamed rice.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 91,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["bonappetit.com", "cooking.nytimes.com", "seriouseats.com", "foodandwine.com"],
+    "model": "manual-import"
+  }
+}

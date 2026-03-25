@@ -1,0 +1,47 @@
+{
+  "title": "Coconut Red Curry Lentils",
+  "slug": "coconut-red-curry-lentils",
+  "description": "Red lentils simmered in coconut milk with red curry paste until they break down into a thick, spoonable stew. Vegan, deeply warming, and on the table in 30 minutes flat.",
+  "cuisine": "Indian-Thai Fusion",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 15,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "vegan", "lentils", "curry", "coconut", "one-pot", "30-minute", "vegetarian", "gluten-free"],
+  "ingredients": [
+    { "name": "red lentils", "amount": "1 1/2", "unit": "cups", "notes": "rinsed until water runs clear" },
+    { "name": "full-fat coconut milk", "amount": "1", "unit": "can", "notes": "13.5 oz, well shaken" },
+    { "name": "vegetable broth", "amount": "2", "unit": "cups" },
+    { "name": "red curry paste", "amount": "2", "unit": "tbsp", "notes": "Thai-style, such as Mae Ploy" },
+    { "name": "diced tomatoes", "amount": "1", "unit": "can", "notes": "14.5 oz, with juices" },
+    { "name": "yellow onion", "amount": "1", "unit": "medium", "notes": "finely diced" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "finely grated" },
+    { "name": "fresh spinach or kale", "amount": "2", "unit": "cups", "notes": "roughly chopped" },
+    { "name": "coconut oil or vegetable oil", "amount": "1", "unit": "tbsp" },
+    { "name": "lime", "amount": "1", "unit": "", "notes": "juiced" },
+    { "name": "fresh cilantro", "amount": "1/4", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "kosher salt", "amount": "1", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oil in a large pot or Dutch oven over medium heat. Add onion and cook, stirring occasionally, until softened and translucent, about 4 minutes.", "timer_minutes": 4 },
+    { "step": 2, "text": "Add garlic, ginger, and curry paste. Stir constantly until the paste darkens slightly and becomes very fragrant, about 1 minute.", "timer_minutes": 1 },
+    { "step": 3, "text": "Add lentils, coconut milk, vegetable broth, diced tomatoes, and salt. Stir well. Bring to a boil, then reduce heat to medium-low.", "timer_minutes": null },
+    { "step": 4, "text": "Simmer uncovered, stirring occasionally, until lentils are completely broken down and the stew has thickened to a porridge-like consistency, 18 to 20 minutes. If it gets too thick before the lentils are tender, add a splash of water.", "timer_minutes": 19 },
+    { "step": 5, "text": "Fold in spinach and let it wilt into the curry, about 1 minute. Squeeze in the lime juice and taste — adjust salt as needed.", "timer_minutes": 1 },
+    { "step": 6, "text": "Serve in deep bowls over steamed rice or with warm naan, topped with cilantro.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 92,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 5,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "minimalistbaker.com", "cookieandkate.com", "seriouseats.com"],
+    "model": "manual-import"
+  }
+}

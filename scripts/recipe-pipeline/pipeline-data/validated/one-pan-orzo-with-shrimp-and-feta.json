@@ -1,0 +1,48 @@
+{
+  "title": "One-Pan Orzo with Shrimp and Feta",
+  "slug": "one-pan-orzo-with-shrimp-and-feta",
+  "description": "Orzo cooked risotto-style in one pan with burst cherry tomatoes, then topped with quick-seared shrimp and crumbled feta. The kind of weeknight dinner that looks like you tried way harder than you did.",
+  "cuisine": "Greek",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "shrimp", "pasta", "Greek-inspired", "one-pan", "30-minute", "orzo"],
+  "ingredients": [
+    { "name": "large shrimp", "amount": "1", "unit": "lb", "notes": "peeled and deveined, tails removed" },
+    { "name": "orzo pasta", "amount": "1 1/2", "unit": "cups" },
+    { "name": "cherry tomatoes", "amount": "1", "unit": "pint", "notes": "halved" },
+    { "name": "chicken broth", "amount": "3", "unit": "cups" },
+    { "name": "feta cheese", "amount": "4", "unit": "oz", "notes": "crumbled" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp", "notes": "divided" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "1/4", "unit": "tsp" },
+    { "name": "lemon", "amount": "1", "unit": "", "notes": "juiced, about 2 tbsp" },
+    { "name": "fresh dill", "amount": "2", "unit": "tbsp", "notes": "chopped" },
+    { "name": "kosher salt", "amount": "3/4", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/4", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Season shrimp with a pinch of salt, pepper, and half the oregano. Set aside.", "timer_minutes": null },
+    { "step": 2, "text": "Heat 1 tablespoon olive oil in a large, deep skillet over medium-high heat. Sear shrimp in a single layer until pink and curled, about 2 minutes per side. Transfer to a plate immediately — they'll finish cooking later.", "timer_minutes": 4 },
+    { "step": 3, "text": "Add another tablespoon of oil to the same skillet. Add garlic and red pepper flakes, stirring for 30 seconds. Add cherry tomatoes and cook until they start to soften and blister, about 3 minutes.", "timer_minutes": 3 },
+    { "step": 4, "text": "Add orzo and the remaining tablespoon of olive oil. Stir to coat the orzo in the tomato mixture, toasting lightly for 1 minute.", "timer_minutes": 1 },
+    { "step": 5, "text": "Pour in chicken broth, remaining oregano, and salt. Bring to a boil, then reduce to a steady simmer. Cook uncovered, stirring frequently to prevent sticking, until the orzo is tender and has absorbed most of the liquid, 10 to 12 minutes. It should be creamy, not dry.", "timer_minutes": 11 },
+    { "step": 6, "text": "Return shrimp to the pan and toss to warm through, about 1 minute. Remove from heat. Squeeze lemon juice over the top.", "timer_minutes": 1 },
+    { "step": 7, "text": "Scatter feta and dill over the pan. Serve straight from the skillet.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 92,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "halfbakedharvest.com", "delish.com"],
+    "model": "manual-import"
+  }
+}

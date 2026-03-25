@@ -1,0 +1,46 @@
+{
+  "title": "Skillet Chicken with Lemon and Olives",
+  "slug": "skillet-chicken-with-lemon-and-olives",
+  "description": "Crispy-skinned chicken thighs braised with briny Castelvetrano olives, thin lemon slices, and capers in a pan sauce you'll want to drink. Mediterranean weeknight cooking at its most effortless.",
+  "cuisine": "Mediterranean",
+  "difficulty": "easy",
+  "time_total": 40,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["weeknight", "chicken", "Mediterranean", "skillet", "one-pan", "gluten-free", "olives"],
+  "ingredients": [
+    { "name": "bone-in, skin-on chicken thighs", "amount": "4", "unit": "", "notes": "about 2 lbs total" },
+    { "name": "Castelvetrano olives", "amount": "1/2", "unit": "cup", "notes": "pitted, halved" },
+    { "name": "lemon", "amount": "1", "unit": "", "notes": "thinly sliced into rounds, seeds removed" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "capers", "amount": "2", "unit": "tbsp", "notes": "drained" },
+    { "name": "chicken broth", "amount": "3/4", "unit": "cup" },
+    { "name": "dry white wine", "amount": "1/4", "unit": "cup", "notes": "or more broth" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "fresh flat-leaf parsley", "amount": "2", "unit": "tbsp", "notes": "roughly chopped" },
+    { "name": "kosher salt", "amount": "3/4", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/2", "unit": "tsp" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Pat chicken thighs very dry. Season generously on both sides with salt, pepper, and oregano.", "timer_minutes": null },
+    { "step": 2, "text": "Heat olive oil in a 12-inch skillet over medium-high heat. Place chicken skin-side down and cook without moving until the skin is deeply golden and releases easily from the pan, 7 to 8 minutes. Flip and cook 3 minutes more. Transfer to a plate.", "timer_minutes": 10 },
+    { "step": 3, "text": "Pour off all but 1 tablespoon of fat. Add garlic and cook until golden, about 1 minute. Add wine (or broth) and scrape up the fond.", "timer_minutes": 1 },
+    { "step": 4, "text": "Add chicken broth, lemon slices, olives, and capers. Bring to a simmer.", "timer_minutes": null },
+    { "step": 5, "text": "Return chicken skin-side up — keep the skin above the liquid so it stays crisp. Reduce heat to medium-low, partially cover, and simmer until chicken registers 165°F internally and the sauce has reduced slightly, 15 to 18 minutes.", "timer_minutes": 16 },
+    { "step": 6, "text": "Scatter parsley over the top. Serve straight from the skillet with crusty bread to mop up the sauce.", "timer_minutes": null }
+  ],
+  "_validation": {
+    "confidence": 93,
+    "flags": []
+  },
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 4,
+    "sources": ["cooking.nytimes.com", "bonappetit.com", "seriouseats.com", "saveur.com"],
+    "model": "manual-import"
+  }
+}
