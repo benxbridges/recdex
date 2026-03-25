@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_KEY || ''
 )
 
-async function fetchUnsplashImage(query: string): Promise<string | null> {
+async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string } | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
   if (!accessKey) return null
 
@@ -25,7 +25,8 @@ async function fetchUnsplashImage(query: string): Promise<string | null> {
 
     const data = await res.json()
     const photo = data?.results?.[0]
-    return photo?.urls?.regular || null
+    if (!photo?.urls?.regular) return null
+    return { url: photo.urls.regular, credit: photo.user?.name || '' }
   } catch {
     return null
   }
@@ -58,8 +59,13 @@ export async function POST(req: NextRequest) {
 
   // If no image_url provided, try fetching one from Unsplash
   let imageUrl = recipe.image_url || null
+  let photoCredit = recipe.photo_credit || null
   if (!imageUrl) {
-    imageUrl = await fetchUnsplashImage(recipe.title)
+    const unsplash = await fetchUnsplashImage(recipe.title)
+    if (unsplash) {
+      imageUrl = unsplash.url
+      photoCredit = unsplash.credit
+    }
   }
 
   const { error: insertError } = await supabaseAdmin.from('recipes').insert({
@@ -83,6 +89,7 @@ export async function POST(req: NextRequest) {
     creator_name: recipe.creator_name || null,
     creator_url: recipe.creator_url || null,
     image_url: imageUrl,
+    photo_credit: photoCredit,
   })
 
   if (insertError) {

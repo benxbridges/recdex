@@ -626,220 +626,6 @@ function SwapBanner({ swaps, onRemove }: {
   )
 }
 
-// ─── Voice control + TTS ─────────────────────────────────────────────────
-
-function useVoiceControl(
-  recipe: Recipe | null,
-  activeStep: number,
-  totalSteps: number,
-  goToStep: (step: number) => void,
-  startTimer: (key: string, seconds: number, label: string) => void,
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>,
-) {
-  const [isListening, setIsListening] = useState(false)
-  const [lastHeard, setLastHeard] = useState('')
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const isSpeakingRef = useRef(false)
-  const isListeningRef = useRef(false)
-
-  // Check if browser supports speech recognition
-  const isSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
-
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const ttsCache = useRef<Map<string, string>>(new Map()) // text → blob URL
-
-  const speak = useCallback(async (text: string) => {
-    // Stop any current playback
-    if (audioRef.current) {
-      audioRef.current.pause()
-      audioRef.current.currentTime = 0
-    }
-    window.speechSynthesis?.cancel()
-    isSpeakingRef.current = true
-
-    // Check cache first
-    const cached = ttsCache.current.get(text)
-    if (cached) {
-      const audio = new Audio(cached)
-      audioRef.current = audio
-      audio.onended = () => { isSpeakingRef.current = false }
-      audio.onerror = () => { isSpeakingRef.current = false }
-      audio.play().catch(() => { isSpeakingRef.current = false })
-      return
-    }
-
-    // Try OpenAI TTS first
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-      })
-
-      if (res.ok) {
-        const blob = await res.blob()
-        const url = URL.createObjectURL(blob)
-        ttsCache.current.set(text, url)
-        const audio = new Audio(url)
-        audioRef.current = audio
-        audio.onended = () => { isSpeakingRef.current = false }
-        audio.onerror = () => { isSpeakingRef.current = false }
-        audio.play().catch(() => { isSpeakingRef.current = false })
-        return
-      }
-    } catch {
-      // Fall through to browser TTS
-    }
-
-    // Fallback: browser SpeechSynthesis
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = 0.95
-      utterance.pitch = 1
-      utterance.volume = 0.8
-      const voices = window.speechSynthesis.getVoices()
-      const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google') || v.lang.startsWith('en'))
-      if (preferred) utterance.voice = preferred
-      utterance.onend = () => { isSpeakingRef.current = false }
-      window.speechSynthesis.speak(utterance)
-    } else {
-      isSpeakingRef.current = false
-    }
-  }, [])
-
-  const readCurrentStep = useCallback(() => {
-    if (!recipe || activeStep >= totalSteps) return
-    const step = recipe.steps[activeStep]
-    speak(`Step ${activeStep + 1}. ${step.text}`)
-  }, [recipe, activeStep, totalSteps, speak])
-
-  const handleCommand = useCallback((transcript: string) => {
-    const cmd = transcript.toLowerCase().trim()
-    setLastHeard(cmd)
-
-    // Clear the display after 3 seconds
-    setTimeout(() => setLastHeard(''), 3000)
-
-    if (/\b(next|forward|continue)\b/.test(cmd)) {
-      if (activeStep < totalSteps) goToStep(activeStep + 1)
-      return
-    }
-    if (/\b(back|previous|go back)\b/.test(cmd)) {
-      if (activeStep > 0) goToStep(activeStep - 1)
-      return
-    }
-    if (/\b(read|repeat|what('s| is| does)? (the |this )?step)\b/.test(cmd)) {
-      readCurrentStep()
-      return
-    }
-    if (/\b(start|begin)\b.*\btimer\b|\btimer\b.*\b(start|begin|go)\b/.test(cmd)) {
-      if (recipe) {
-        const step = recipe.steps[activeStep]
-        if (step?.timer_minutes) {
-          const timerKey = `${recipe.id}-${activeStep}`
-          if (!timers[timerKey]?.active) {
-            startTimer(timerKey, step.timer_minutes * 60, `Step ${activeStep + 1}`)
-          }
-        }
-      }
-      return
-    }
-    // Go to specific step: "go to step 3"
-    const stepMatch = cmd.match(/\b(?:go to |step )\s*(\d+)\b/)
-    if (stepMatch) {
-      const target = parseInt(stepMatch[1]) - 1
-      if (target >= 0 && target < totalSteps) goToStep(target)
-      return
-    }
-    if (/\b(ingredients|what do i need)\b/.test(cmd)) {
-      if (recipe) {
-        const items = getIngredientItems(recipe.ingredients)
-        const list = items.slice(0, 5).map(i => `${i.amount || ''} ${i.unit || ''} ${i.name}`.trim()).join(', ')
-        speak(`You need: ${list}${items.length > 5 ? ` and ${items.length - 5} more ingredients` : ''}`)
-      }
-      return
-    }
-    // Substitution voice commands: "what can I use instead of butter", "substitute for eggs"
-    const subMatch = cmd.match(/(?:substitute|replace|swap|instead of|use instead of)\s+(.+?)(?:\s*\?|$)/i)
-      || cmd.match(/what can I use (?:instead of |for )?(.+?)(?:\s*\?|$)/i)
-    if (subMatch) {
-      const ingredientQuery = subMatch[1].trim()
-      const localMatch = findSubstitutions(ingredientQuery)
-      if (localMatch && localMatch.subs.length > 0) {
-        const best = localMatch.subs[0]
-        speak(`You can use ${best.name} instead of ${ingredientQuery}. Ratio: ${best.ratio}. ${best.notes || ''}`)
-      } else {
-        speak(`Let me check... I'll look up a substitute for ${ingredientQuery}.`)
-      }
-      return
-    }
-    if (/\b(stop listening|mute|quiet)\b/.test(cmd)) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      isListeningRef.current = false
-      return
-    }
-  }, [activeStep, totalSteps, goToStep, readCurrentStep, recipe, startTimer, timers, speak])
-
-  const toggleListening = useCallback(() => {
-    if (!isSupported) return
-
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      isListeningRef.current = false
-      return
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const last = event.results[event.results.length - 1]
-      if (last.isFinal) {
-        handleCommand(last[0].transcript)
-      }
-    }
-
-    recognition.onerror = () => {
-      setIsListening(false)
-      isListeningRef.current = false
-    }
-
-    recognition.onend = () => {
-      // Auto-restart if we're still supposed to be listening (use ref to avoid stale closure)
-      if (isListeningRef.current) {
-        try { recognition.start() } catch { setIsListening(false); isListeningRef.current = false }
-      }
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-    isListeningRef.current = true
-  }, [isSupported, isListening, handleCommand])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop()
-      window.speechSynthesis?.cancel()
-      if (audioRef.current) {
-        audioRef.current.pause()
-        audioRef.current = null
-      }
-      // Revoke cached blob URLs
-      ttsCache.current.forEach(url => URL.revokeObjectURL(url))
-      ttsCache.current.clear()
-    }
-  }, [])
-
-  return { isListening, isSupported, toggleListening, speak, readCurrentStep, lastHeard, isSpeaking: isSpeakingRef }
-}
-
 // ─── Photo capture component ────────────────────────────────────────────
 
 function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeTitle: string }) {
@@ -1330,10 +1116,7 @@ export default function CookModePage() {
     return () => { wakeLock?.release(); document.removeEventListener('visibilitychange', handleVisibility) }
   }, [])
 
-  // Voice control hook
-  const voice = useVoiceControl(recipe, activeStep, recipe?.steps?.length || 0, goToStep, startTimer, timers)
-
-  // Keyboard shortcuts: ←/→ for steps, Space for timer, R for read
+  // Keyboard shortcuts: ←/→ for steps, Space for timer
   useEffect(() => {
     if (!recipe) return
     const total = recipe.steps.length
@@ -1352,13 +1135,11 @@ export default function CookModePage() {
             startTimer(timerKey, currentStep.timer_minutes * 60, `Step ${activeStep + 1}`)
           }
         }
-      } else if (e.key === 'r' || e.key === 'R') {
-        voice.readCurrentStep()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeStep, recipe, timers, goToStep, startTimer, voice])
+  }, [activeStep, recipe, timers, goToStep, startTimer])
 
   // ─── Build ingredient amount lookup for inline annotations ──────────
   // (Must be before early returns to maintain hooks order)
@@ -1656,7 +1437,7 @@ export default function CookModePage() {
         @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
         @keyframes eggFall{0%{transform:translateY(-20vh) rotate(0deg);opacity:1}70%{opacity:1}100%{transform:translateY(105vh) rotate(var(--egg-spin,720deg));opacity:0}}
         @keyframes eggWobble{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-        @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,101,42,0.4)}50%{box-shadow:0 0 0 8px rgba(196,101,42,0)}}
+
       `}</style>
 
       {/* First-time tutorial overlay */}
@@ -1694,46 +1475,6 @@ export default function CookModePage() {
 
           {/* Right: action buttons */}
           <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
-            {/* Voice control button */}
-            {voice.isSupported && (
-              <button
-                onClick={voice.toggleListening}
-                title={voice.isListening ? 'Stop voice control' : 'Start voice control'}
-                aria-label={voice.isListening ? 'Stop voice control' : 'Start voice control'}
-                style={{
-                  width: 36, height: 36, borderRadius: '50%', border: 'none',
-                  background: voice.isListening ? C.accent : 'transparent',
-                  color: voice.isListening ? '#fff' : C.text3,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  animation: voice.isListening ? 'micPulse 1.5s ease infinite' : 'none',
-                  transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <rect x="9" y="2" width="6" height="11" rx="3" />
-                  <path d="M5 10a7 7 0 0 0 14 0" />
-                  <path d="M12 19v3" />
-                </svg>
-              </button>
-            )}
-            {/* Read step aloud button */}
-            <button
-              onClick={voice.readCurrentStep}
-              title="Read current step aloud (R)"
-              aria-label="Read step aloud"
-              style={{
-                width: 36, height: 36, borderRadius: '50%', border: `1px solid ${C.ruleLight}`,
-                background: 'transparent', color: C.text3,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-              </svg>
-            </button>
             {/* Inline amounts toggle */}
             <button
               onClick={() => setShowAmounts(!showAmounts)}
@@ -1786,16 +1527,6 @@ export default function CookModePage() {
           ))}
         </div>
 
-        {/* Voice command heard indicator */}
-        {voice.lastHeard && (
-          <div style={{
-            maxWidth: 1060, margin: '6px auto 0', padding: '3px 10px', borderRadius: 4,
-            background: C.accentBg, fontSize: 10, color: C.accent, fontFamily: MONO,
-            animation: 'fadeIn 0.15s ease', textAlign: 'center',
-          }}>
-            Heard: &ldquo;{voice.lastHeard}&rdquo;
-          </div>
-        )}
       </div>
 
       {/* Active timer strip (compact, top) */}

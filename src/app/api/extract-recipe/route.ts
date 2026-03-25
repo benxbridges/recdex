@@ -165,7 +165,7 @@ CRITICAL COPYRIGHT RULES:
 
 Return a single JSON object with exactly these fields:
 {
-  "title": string (simple dish name — no clickbait, no creator's branding),
+  "title": string (simple dish name — NEVER include publication names like "BA's", "Bon Appétit", "NYT", "Serious Eats", "Food52", "Epicurious", or creator names like "Claire Saffitz's", "J. Kenji's" etc. Just the dish itself, e.g. "Classic Minestrone" not "BA's Classic Minestrone"),
   "description": string (1-2 sentence FACTUAL description — what the dish is, key flavors, cuisine origin),
   "cuisine": string (e.g. "Italian", "Mexican", "American" — one word or short phrase),
   "difficulty": "easy" | "medium" | "advanced",

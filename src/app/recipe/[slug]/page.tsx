@@ -23,6 +23,7 @@ type Recipe = {
   ingredients: RawIngredients; steps: Step[]
   submitted_by?: string | null; source?: string | null; source_attribution?: string | null
   video_url?: string | null; creator_name?: string | null; creator_url?: string | null
+  photo_credit?: string | null
 }
 
 type Comment = {
@@ -908,6 +909,16 @@ export default function RecipePage() {
                   {recipe.title}
                 </h1>
               </div>
+              {recipe.photo_credit && (
+                <div style={{
+                  position: 'absolute', top: 8, right: 10,
+                  fontSize: 9, fontFamily: SANS, color: 'rgba(255,255,255,0.6)',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  letterSpacing: '0.02em',
+                }}>
+                  Photo: {recipe.photo_credit}
+                </div>
+              )}
             </>
           ) : (
             <NoPhotoPlaceholder />

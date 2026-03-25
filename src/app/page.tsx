@@ -134,7 +134,8 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [tonightsPick, setTonightsPick] = useState<Recipe | null>(null)
-  const [recentRecipes, setRecentRecipes] = useState<Recipe[]>([])
+  const [shuffledRecipes, setShuffledRecipes] = useState<Recipe[]>([])
+  const allRecipesRef = useRef<Recipe[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Extraction state
@@ -167,18 +168,25 @@ export default function Home() {
   useEffect(() => { supabase.from('categories').select('*').order('sort_order').then(({ data }) => { if (data) setCategories(data) }) }, [])
   useEffect(() => { supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('status', 'published').then(({ count }) => { if (count) setTotalCount(count) }) }, [])
 
+  const shuffleRecipes = useCallback((all: Recipe[], excludeId?: string) => {
+    const pool = excludeId ? all.filter(r => r.id !== excludeId) : all
+    const shuffled = [...pool].sort(() => Math.random() - 0.5)
+    setShuffledRecipes(shuffled.slice(0, 8))
+  }, [])
+
   useEffect(() => {
     async function fetchHomepage() {
       const { data: allRecipes } = await supabase
         .from('recipes').select('*').eq('status', 'published')
         .order('created_at', { ascending: false })
       if (!allRecipes || allRecipes.length === 0) return
+      allRecipesRef.current = allRecipes
       const rotdIdx = getRotdIndex(allRecipes.length)
       setTonightsPick(allRecipes[rotdIdx])
-      setRecentRecipes(allRecipes.filter(r => r.id !== allRecipes[rotdIdx]?.id).slice(0, 6))
+      shuffleRecipes(allRecipes, allRecipes[rotdIdx]?.id)
     }
     fetchHomepage()
-  }, [])
+  }, [shuffleRecipes])
 
   // Extract recipe from URL
   const extractRecipe = useCallback(async (url: string) => {
@@ -595,31 +603,43 @@ export default function Home() {
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
 
-      {/* ===== RECENTLY ADDED ===== */}
-      {recentRecipes.length > 0 && (
+      {/* ===== DISCOVER RECIPES (shuffled) ===== */}
+      {shuffledRecipes.length > 0 && (
         <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 32px' : '28px clamp(16px,4vw,24px) 40px' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: '0 0 12px' }}>Recently added</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Discover</p>
+            <button
+              onClick={() => shuffleRecipes(allRecipesRef.current, tonightsPick?.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'none', border: `1px solid ${C.rule}`, borderRadius: 16,
+                padding: '4px 12px', cursor: 'pointer', color: C.text2,
+                fontSize: 10, fontFamily: MONO, letterSpacing: '0.03em',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent; e.currentTarget.style.color = C.accent }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = C.rule; e.currentTarget.style.color = C.text2 }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="16 3 21 3 21 8" /><line x1="4" y1="20" x2="21" y2="3" />
+                <polyline points="21 16 21 21 16 21" /><line x1="15" y1="15" x2="21" y2="21" />
+                <line x1="4" y1="4" x2="9" y2="9" />
+              </svg>
+              Shuffle
+            </button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {recentRecipes.map((recipe, i) => (
+            {shuffledRecipes.map((recipe, i) => (
               <Link key={recipe.id} href={`/recipe/${recipe.slug}`} style={{
-                display: 'flex', gap: 14, padding: '12px 0',
-                borderBottom: i < recentRecipes.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                textDecoration: 'none', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                display: 'flex', alignItems: 'baseline', gap: 8,
+                padding: '8px 0',
+                borderBottom: i < shuffledRecipes.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
+                textDecoration: 'none', animation: `fadeIn 0.2s ease ${i * 0.03}s both`,
               }}>
-                <div style={{ width: 72, height: 52, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {recipe.image_url ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                  <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 4px', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <DifficultyBadge difficulty={recipe.difficulty} />
-                    {recipe.time_total && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_total)}</span>}
-                    {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.accent }}>Cook →</span>
-                </div>
+                <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: C.text, margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</h3>
+                <DifficultyBadge difficulty={recipe.difficulty} />
+                {recipe.time_total && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>}
+                {recipe.cuisine && <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3, flexShrink: 0 }}>{recipe.cuisine}</span>}
               </Link>
             ))}
           </div>

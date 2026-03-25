@@ -231,6 +231,45 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
   )
 }
 
+// ===== INDEX ROW (cookbook index style — compact, no images) =====
+function IndexRow({ recipe, matchedIngredient, onClick }: {
+  recipe: Recipe
+  matchedIngredient: string | null
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const d = DIFFICULTY_MAP[recipe.difficulty?.toLowerCase()] || DIFFICULTY_MAP.medium
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex', alignItems: 'baseline', gap: 8,
+        padding: '7px 4px',
+        cursor: 'pointer',
+        borderBottom: `1px solid ${C.ruleLight}`,
+        background: hovered ? C.warm : 'transparent',
+        transition: 'background 0.1s ease',
+      }}
+    >
+      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, transition: 'color 0.1s' }}>
+        {recipe.title}
+      </span>
+      {matchedIngredient && (
+        <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '1px 6px', borderRadius: 3, letterSpacing: '0.04em', flexShrink: 0 }}>
+          {matchedIngredient}
+        </span>
+      )}
+      <span style={{ fontSize: 9, fontFamily: MONO, color: d.color, flexShrink: 0, letterSpacing: '0.03em' }}>{d.label}</span>
+      {recipe.time_total && (
+        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0, minWidth: 48, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
+      )}
+    </div>
+  )
+}
+
 // ===== VIEW TOGGLE ICONS =====
 function GridIcon({ active }: { active: boolean }) {
   return (
@@ -278,7 +317,7 @@ function BrowseContent() {
   const [activeCuisine, setActiveCuisine] = useState<string>('all')
   const [activeTime, setActiveTime] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Initialize from URL params
@@ -441,10 +480,10 @@ function BrowseContent() {
             {loading ? '—' : `${recipes.length} recipes`}
           </p>
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.1, letterSpacing: -1 }}>
-            All Recipes<EggDot size={11} />
+            Index<EggDot size={11} />
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, margin: '8px 0 0', lineHeight: 1.5 }}>
-            Browse the full collection — or search by dish, ingredient, or cuisine.
+            Search by dish, ingredient, or cuisine.
           </p>
         </div>
 
@@ -565,9 +604,9 @@ function BrowseContent() {
                 ))}
               </div>
             ) : (
-              <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
+              <div>
                 {filtered.map(recipe => (
-                  <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
+                  <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={matchMap.get(recipe.id) || null} onClick={() => handleCardClick(recipe)} />
                 ))}
               </div>
             )}
@@ -596,9 +635,9 @@ function BrowseContent() {
                     ))}
                   </div>
                 ) : (
-                  <div style={{ borderTop: `1px solid ${C.ruleLight}` }}>
+                  <div>
                     {items.map(recipe => (
-                      <RecipeRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                      <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
                     ))}
                   </div>
                 )}
