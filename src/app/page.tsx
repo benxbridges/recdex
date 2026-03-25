@@ -432,7 +432,6 @@ export default function Home() {
                   {extractedRecipe.title}
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {extractedRecipe.difficulty && <DifficultyBadge difficulty={extractedRecipe.difficulty} />}
                   {extractedRecipe.time_total && <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(extractedRecipe.time_total)}</span>}
                   {extractedRecipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{extractedRecipe.cuisine}</span></>}
                   <span style={{ color: C.rule, fontSize: 8 }}>·</span>
@@ -559,7 +558,6 @@ export default function Home() {
             {tonightsPick.image_url ? <img src={tonightsPick.image_url} alt={tonightsPick.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <DifficultyBadge difficulty={tonightsPick.difficulty} />
             <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(tonightsPick.time_total)}</span>
             {tonightsPick.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{tonightsPick.cuisine}</span></>}
           </div>
@@ -631,15 +629,20 @@ export default function Home() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {shuffledRecipes.map((recipe, i) => (
               <Link key={recipe.id} href={`/recipe/${recipe.slug}`} style={{
-                display: 'flex', alignItems: 'baseline', gap: 8,
-                padding: '8px 0',
+                display: 'flex', gap: 14, padding: '12px 0',
                 borderBottom: i < shuffledRecipes.length - 1 ? `1px solid ${C.ruleLight}` : 'none',
-                textDecoration: 'none', animation: `fadeIn 0.2s ease ${i * 0.03}s both`,
+                textDecoration: 'none', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
               }}>
-                <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: C.text, margin: 0, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</h3>
-                <DifficultyBadge difficulty={recipe.difficulty} />
-                {recipe.time_total && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>}
-                {recipe.cuisine && <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3, flexShrink: 0 }}>{recipe.cuisine}</span>}
+                <div style={{ width: 72, height: 52, borderRadius: 8, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {recipe.image_url ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" /> : <BrokenEggSmall />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <h3 style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, margin: '0 0 4px', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{recipe.title}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {recipe.time_total && <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_total)}</span>}
+                    {recipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
+                  </div>
+                </div>
               </Link>
             ))}
           </div>

@@ -408,7 +408,7 @@ function ContributeInner() {
     }
 
     // Go straight to cook mode
-    window.location.href = `/recipe/${slug}/cook`
+    router.push(`/recipe/${slug}/cook`)
   }
 
   const resetFlow = () => {

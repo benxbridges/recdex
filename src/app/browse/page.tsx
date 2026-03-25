@@ -124,9 +124,11 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
           ? <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <BrokenEggCard />
         }
-        <div style={{ position: 'absolute', top: 8, left: 8 }}>
-          <DifficultyBadge difficulty={recipe.difficulty} />
-        </div>
+        {recipe.time_total && (
+          <div style={{ position: 'absolute', top: 8, left: 8 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: C.text, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', padding: '2px 7px', borderRadius: 3, fontFamily: MONO }}>{formatTime(recipe.time_total)}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -220,25 +222,21 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
         )}
       </div>
 
-      {/* Meta: difficulty + time */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-        <DifficultyBadge difficulty={recipe.difficulty} />
-        {recipe.time_total && (
-          <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, minWidth: 52, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
-        )}
-      </div>
+      {/* Meta: time */}
+      {recipe.time_total && (
+        <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3, minWidth: 52, textAlign: 'right', flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>
+      )}
     </div>
   )
 }
 
-// ===== INDEX ROW (cookbook index style — compact, no images) =====
+// ===== INDEX ROW (cookbook index style — small thumbnail + cuisine pill) =====
 function IndexRow({ recipe, matchedIngredient, onClick }: {
   recipe: Recipe
   matchedIngredient: string | null
   onClick: () => void
 }) {
   const [hovered, setHovered] = useState(false)
-  const d = DIFFICULTY_MAP[recipe.difficulty?.toLowerCase()] || DIFFICULTY_MAP.medium
 
   return (
     <div
@@ -246,15 +244,26 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'flex', alignItems: 'baseline', gap: 8,
-        padding: '7px 4px',
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '6px 4px',
         cursor: 'pointer',
         borderBottom: `1px solid ${C.ruleLight}`,
         background: hovered ? C.warm : 'transparent',
         transition: 'background 0.1s ease',
       }}
     >
-      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, transition: 'color 0.1s' }}>
+      {/* Tiny thumbnail */}
+      <div style={{ width: 36, height: 36, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}` }}>
+        {recipe.image_url
+          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="14" height="10" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.25 }}>
+                <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="4"/></g>
+              </svg>
+            </div>
+        }
+      </div>
+      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
         {recipe.title}
       </span>
       {matchedIngredient && (
@@ -262,7 +271,11 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
           {matchedIngredient}
         </span>
       )}
-      <span style={{ fontSize: 9, fontFamily: MONO, color: d.color, flexShrink: 0, letterSpacing: '0.03em' }}>{d.label}</span>
+      {recipe.cuisine && (
+        <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
+          {normalizeCuisine(recipe.cuisine)}
+        </span>
+      )}
       {recipe.time_total && (
         <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0, minWidth: 48, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
       )}
@@ -380,6 +393,7 @@ function BrowseContent() {
     // Time filter
     if (activeTime === 'under30') result = result.filter(r => r.time_total && r.time_total <= 30)
     else if (activeTime === 'under60') result = result.filter(r => r.time_total && r.time_total <= 60)
+    else if (activeTime === 'over60') result = result.filter(r => r.time_total && r.time_total > 60)
 
     // Text search across title, cuisine, description, tags, AND ingredients
     if (q.length >= 2) {
@@ -521,8 +535,9 @@ function BrowseContent() {
           {/* Time filters */}
           {[
             { key: 'all', label: 'Any time' },
-            { key: 'under30', label: 'Under 30 min' },
-            { key: 'under60', label: 'Under 1 hr' },
+            { key: 'under30', label: 'Quick (< 30 min)' },
+            { key: 'under60', label: 'Weeknight (< 1 hr)' },
+            { key: 'over60', label: 'Weekend project' },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setActiveTime(key)} style={{
               background: activeTime === key ? C.accentBg : C.warm,
@@ -612,10 +627,12 @@ function BrowseContent() {
             )}
           </>
         ) : (
-          /* GROUPED BY CUISINE — default cookbook view */
+          /* FLAT ALPHABETICAL INDEX — default cookbook view */
           <>
-            {/* View toggle for default state */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontFamily: SERIF, fontSize: 20, color: C.text, margin: 0, flex: 1 }}>
+                {filtered.length} recipes
+              </p>
               <div style={{ display: 'flex', gap: 2, background: C.warm, border: `1px solid ${C.rule}`, borderRadius: 6, padding: 3 }}>
                 <button onClick={() => setViewMode('grid')} title="Grid view" aria-label="Grid view" aria-pressed={viewMode === 'grid'} style={{ background: viewMode === 'grid' ? C.rule : 'transparent', border: 'none', borderRadius: 4, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <GridIcon active={viewMode === 'grid'} />
@@ -625,24 +642,19 @@ function BrowseContent() {
                 </button>
               </div>
             </div>
-            {grouped?.map(([cuisine, items]) => (
-              <div key={cuisine}>
-                <SectionHeader cuisine={cuisine} count={items.length} />
-                {viewMode === 'grid' ? (
-                  <div style={gridStyle}>
-                    {items.map(recipe => (
-                      <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
-                    ))}
-                  </div>
-                ) : (
-                  <div>
-                    {items.map(recipe => (
-                      <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
-                    ))}
-                  </div>
-                )}
+            {viewMode === 'grid' ? (
+              <div style={gridStyle}>
+                {[...filtered].sort((a, b) => a.title.localeCompare(b.title)).map(recipe => (
+                  <RecipeCard key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                ))}
               </div>
-            ))}
+            ) : (
+              <div>
+                {[...filtered].sort((a, b) => a.title.localeCompare(b.title)).map(recipe => (
+                  <IndexRow key={recipe.id} recipe={recipe} matchedIngredient={null} onClick={() => handleCardClick(recipe)} />
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
