@@ -1,0 +1,78 @@
+{
+  "title": "Turkish Eggs (Çılbır)",
+  "slug": "turkish-eggs",
+  "description": "Poached eggs nestled into garlicky whipped yogurt, drizzled with sizzling Aleppo-pepper butter. An ancient Turkish breakfast that went viral for very good reason.",
+  "cuisine": "Turkish",
+  "difficulty": "medium",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 2,
+  "servings_label": "2 people",
+  "tags": ["turkish", "eggs", "breakfast", "brunch", "weeknight", "vegetarian", "yogurt", "20-minute"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "plain whole-milk Greek yogurt", "amount": "1", "unit": "cup", "notes": "at room temperature" },
+    { "name": "garlic", "amount": "1", "unit": "clove", "notes": "finely grated" },
+    { "name": "extra-virgin olive oil", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh lemon juice", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh dill", "amount": "1", "unit": "tbsp", "notes": "chopped, plus sprigs for garnish" },
+    { "name": "kosher salt", "amount": "1/2", "unit": "tsp" },
+    { "name": "unsalted butter", "amount": "2", "unit": "tbsp" },
+    { "name": "Aleppo pepper (pul biber)", "amount": "1", "unit": "tsp", "notes": "or 1/2 tsp paprika + pinch of cayenne" },
+    { "name": "sweet paprika", "amount": "1/2", "unit": "tsp" },
+    { "name": "large eggs", "amount": "4", "unit": "whole", "notes": "the fresher, the better" },
+    { "name": "white vinegar", "amount": "1", "unit": "tbsp", "notes": "for poaching water" },
+    { "name": "flaky sea salt", "amount": "", "unit": "", "notes": "for finishing" },
+    { "name": "crusty bread or pita", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Stir together the yogurt, grated garlic, olive oil, lemon juice, chopped dill, and 1/2 teaspoon salt until smooth. Divide between two shallow bowls and spread into an even bed with the back of a spoon. Set aside at room temperature.",
+      "timer_minutes": null,
+      "tip": "Room-temperature yogurt is non-negotiable. Cold yogurt cools the eggs on contact and turns the butter waxy."
+    },
+    {
+      "step": 2,
+      "text": "Melt the butter in a small skillet over medium heat until it foams. Add the Aleppo pepper and paprika, swirl for 20 to 30 seconds until fragrant and the butter turns a deep orange-red. Pull it off the heat immediately.",
+      "timer_minutes": 1,
+      "tip": "The spices burn fast in hot butter. Have the pan off the burner the second you smell them."
+    },
+    {
+      "step": 3,
+      "text": "Fill a medium saucepan with about 3 inches of water and bring to a gentle simmer — small bubbles on the bottom, not a rolling boil. Add the vinegar. Crack each egg into a fine-mesh sieve to drain the watery whites, then transfer to a small cup. Create a gentle swirl in the water with a spoon and slide the egg into the center. Cook until the whites are set but the yolk is still runny, about 3 minutes. Lift out with a slotted spoon and rest on a towel to drain. Repeat with remaining eggs.",
+      "timer_minutes": 3,
+      "tip": "Draining the thin whites through a sieve is the single best trick for clean, compact poached eggs."
+    },
+    {
+      "step": 4,
+      "text": "Place 2 poached eggs on top of the yogurt in each bowl. Spoon the warm spiced butter over the eggs and yogurt, letting it pool into the white. Finish with dill sprigs, flaky salt, and black pepper. Serve immediately with warm bread for scooping.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": [
+      {
+        "name": "America's Test Kitchen",
+        "url": "https://www.americastestkitchen.com/recipes/14698-cilbir-turkish-poached-eggs-with-yogurt-and-spiced-butter",
+        "author": "America's Test Kitchen"
+      },
+      {
+        "name": "Food52",
+        "url": "https://food52.com/recipes/69670-cilbir",
+        "author": "Food52"
+      },
+      {
+        "name": "The Mediterranean Dish",
+        "url": "https://www.themediterraneandish.com/cilbir-turkish-poached-eggs/",
+        "author": "The Mediterranean Dish"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

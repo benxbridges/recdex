@@ -1,0 +1,84 @@
+{
+  "title": "Garlic Noodles",
+  "slug": "garlic-noodles",
+  "description": "San Francisco's iconic Vietnamese-Italian fusion — buttery egg noodles tossed with an ungodly amount of garlic and a umami-bomb sauce of soy, fish sauce, and oyster sauce, finished with parmesan. Fifteen minutes, one pan, zero leftovers.",
+  "cuisine": "Vietnamese-American",
+  "difficulty": "easy",
+  "time_total": 15,
+  "time_active": 15,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["noodles", "fusion", "vietnamese", "weeknight", "quick", "15-minute", "umami", "garlic"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "fresh egg noodles", "amount": "14", "unit": "oz", "notes": "or dried spaghettini" },
+    { "name": "garlic", "amount": "10", "unit": "cloves", "notes": "minced or crushed" },
+    { "name": "unsalted butter", "amount": "4", "unit": "tbsp" },
+    { "name": "neutral oil", "amount": "1", "unit": "tbsp", "notes": "vegetable or grapeseed" },
+    { "name": "soy sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "fish sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "oyster sauce", "amount": "1", "unit": "tbsp" },
+    { "name": "white sugar", "amount": "1", "unit": "tsp" },
+    { "name": "parmesan cheese", "amount": "1/3", "unit": "cup", "notes": "finely grated" },
+    { "name": "scallions", "amount": "3", "unit": "whole", "notes": "thinly sliced, for garnish" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground, for garnish" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Cook the noodles in salted boiling water according to package directions. Reserve 1/2 cup pasta water before draining. Rinse the noodles briefly under cold water to stop the cooking and keep them chewy.",
+      "timer_minutes": null,
+      "tip": "Fresh egg noodles cook fast — start checking early. You want them just cooked through, not mushy."
+    },
+    {
+      "step": 2,
+      "text": "Heat the butter and oil in a large pan or wok over medium heat. Once the butter melts, add all the garlic and cook, stirring constantly, until fragrant and just starting to turn golden, 2 to 3 minutes. Pull it before it browns — bitter garlic will ruin everything.",
+      "timer_minutes": 3,
+      "tip": "The oil keeps the butter from burning while the garlic softens. Low and slow here."
+    },
+    {
+      "step": 3,
+      "text": "Add the soy sauce, fish sauce, oyster sauce, and sugar to the pan. Stir to combine.",
+      "timer_minutes": null,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Add the drained noodles and toss to coat evenly in the sauce. Pour in the reserved pasta water and toss again — the starch adds body and creaminess.",
+      "timer_minutes": 1,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Kill the heat, add the parmesan, and toss until melted and incorporated throughout.",
+      "timer_minutes": null,
+      "tip": "Adding the parmesan off-heat prevents it from clumping. It should melt into the sauce, not sit on top."
+    },
+    {
+      "step": 6,
+      "text": "Pile onto plates and finish with scallions and a generous crack of black pepper.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": [
+      {
+        "name": "Smelly Lunchbox",
+        "url": "https://smellylunchbox.com/garlic-noodles/",
+        "author": "Smelly Lunchbox"
+      },
+      {
+        "name": "Flo Lum",
+        "url": "https://flolum.com/garlic-noodles/",
+        "author": "Flo Lum"
+      }
+    ],
+    "consensusNotes": "Originally created by Helene An at Thanh Long restaurant in San Francisco's Outer Sunset, traditionally served with Dungeness crab. The parmesan is the 'secret' ingredient. Core sauce ratio (1 Tbsp each soy/fish/oyster sauce) is consistent across all published versions.",
+    "model": "claude-opus-4-6"
+  }
+}

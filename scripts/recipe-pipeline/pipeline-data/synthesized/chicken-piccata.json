@@ -1,0 +1,77 @@
+{
+  "title": "Chicken Piccata",
+  "slug": "chicken-piccata",
+  "description": "Flour-dusted chicken cutlets pan-fried in butter and finished in a bracing lemon-caper sauce. The kind of 30-minute dinner that punches well above its weight.",
+  "cuisine": "Italian-American",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 30,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["italian-american", "chicken", "weeknight", "quick", "pan-sauce", "30-minute", "gluten-free-adaptable"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "boneless, skinless chicken breasts", "amount": "2", "unit": "large", "notes": "butterflied and halved into 4 cutlets, pounded to 1/4-inch thick" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground, to taste" },
+    { "name": "all-purpose flour", "amount": "1/2", "unit": "cup", "notes": "for dredging" },
+    { "name": "unsalted butter", "amount": "6", "unit": "tbsp", "notes": "divided" },
+    { "name": "extra-virgin olive oil", "amount": "5", "unit": "tbsp", "notes": "divided" },
+    { "name": "fresh lemon juice", "amount": "1/3", "unit": "cup", "notes": "about 2 lemons" },
+    { "name": "chicken stock", "amount": "1/2", "unit": "cup" },
+    { "name": "capers", "amount": "1/4", "unit": "cup", "notes": "brined, rinsed" },
+    { "name": "fresh flat-leaf parsley", "amount": "1/3", "unit": "cup", "notes": "roughly chopped" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Season the chicken cutlets generously with salt and pepper on both sides. Spread the flour on a plate and dredge each cutlet, shaking off the excess.",
+      "timer_minutes": null,
+      "tip": null
+    },
+    {
+      "step": 2,
+      "text": "Heat 3 tablespoons olive oil and 2 tablespoons butter in a large skillet over medium-high heat. When the butter foams, add 2 cutlets and cook until golden, about 3 minutes per side. Transfer to a plate.",
+      "timer_minutes": 6,
+      "tip": "Don't crowd the pan — the cutlets need space to brown, not steam."
+    },
+    {
+      "step": 3,
+      "text": "Add 2 tablespoons olive oil and 2 tablespoons butter to the skillet. Sear the remaining 2 cutlets the same way, about 3 minutes per side. Transfer to the plate with the first batch.",
+      "timer_minutes": 6,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Remove the pan from heat. Add the lemon juice, chicken stock, and capers. Return to the stove, bring to a boil, and scrape up the fond from the bottom of the pan. Season to taste.",
+      "timer_minutes": 2,
+      "tip": "The fond — those brown bits stuck to the pan — is where most of the flavor lives."
+    },
+    {
+      "step": 5,
+      "text": "Return all the chicken to the pan and simmer gently until warmed through and the sauce thickens slightly, about 5 minutes.",
+      "timer_minutes": 5,
+      "tip": null
+    },
+    {
+      "step": 6,
+      "text": "Transfer the chicken to a serving platter. Whisk the remaining 2 tablespoons butter into the sauce until glossy and emulsified. Pour the sauce over the chicken and scatter the parsley on top.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 1,
+    "sources": [
+      {
+        "name": "Food Network / Giada De Laurentiis",
+        "url": "https://www.foodnetwork.com/recipes/giada-de-laurentiis/chicken-piccata-recipe2-1913809",
+        "author": "Giada De Laurentiis"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

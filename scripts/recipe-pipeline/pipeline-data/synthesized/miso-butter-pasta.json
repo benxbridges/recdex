@@ -1,0 +1,67 @@
+{
+  "title": "Miso Butter Pasta",
+  "slug": "miso-butter-pasta",
+  "description": "A five-ingredient pasta that tastes like it has no business being this good. White miso, butter, and parmesan melt into a savory, umami-rich sauce using nothing but pasta water and elbow grease.",
+  "cuisine": "Fusion",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["pasta", "vegetarian", "weeknight", "quick", "20-minute", "fusion", "umami", "one-pot"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "for pasta water" },
+    { "name": "spaghetti or bucatini", "amount": "1", "unit": "lb" },
+    { "name": "unsalted butter", "amount": "6", "unit": "tbsp" },
+    { "name": "white miso paste", "amount": "3", "unit": "tbsp" },
+    { "name": "parmesan cheese", "amount": "4", "unit": "oz", "notes": "finely grated, about 1 packed cup" },
+    { "name": "furikake or nori", "amount": "", "unit": "", "notes": "optional, for garnish" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Bring a large pot of well-salted water to a boil. Cook the pasta, stirring occasionally, until al dente according to package directions.",
+      "timer_minutes": null,
+      "tip": null
+    },
+    {
+      "step": 2,
+      "text": "Reserve 1 1/4 cups pasta water, then drain the pasta.",
+      "timer_minutes": null,
+      "tip": "This starchy water is the backbone of the sauce — don't skip it."
+    },
+    {
+      "step": 3,
+      "text": "Return the pot to medium heat. Add the butter, miso, and reserved pasta water. Whisk until the miso dissolves and the liquid looks uniform, 1 to 2 minutes.",
+      "timer_minutes": 2,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Add the drained pasta and parmesan. Toss vigorously with tongs, working the pasta through the sauce until the cheese melts and the sauce emulsifies into a glossy, clingy coating, about 2 minutes.",
+      "timer_minutes": 2,
+      "tip": "Treat this like cacio e pepe — aggressive tossing is what builds the emulsion. If the sauce breaks or gets too thick, splash in a bit more pasta water."
+    },
+    {
+      "step": 5,
+      "text": "Divide among shallow bowls and top with furikake or crumbled nori, if using.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 1,
+    "sources": [
+      {
+        "name": "NYT Cooking",
+        "url": "https://cooking.nytimes.com/recipes/five-ingredient-creamy-miso-pasta",
+        "author": "Alexa Weibel"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

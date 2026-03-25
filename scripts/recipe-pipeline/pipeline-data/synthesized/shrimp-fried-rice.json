@@ -1,0 +1,97 @@
+{
+  "title": "Shrimp Fried Rice",
+  "slug": "shrimp-fried-rice",
+  "description": "The weeknight fried rice that clears out the fridge. Cold rice, hot wok, sweet shrimp, and a soy-sesame sauce that comes together in the time it takes to set the table.",
+  "cuisine": "Chinese-American",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["chinese", "fried-rice", "shrimp", "weeknight", "quick", "20-minute", "wok", "meal-prep"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "cooked jasmine rice", "amount": "4", "unit": "cups", "notes": "day-old and chilled, clumps broken up" },
+    { "name": "raw shrimp", "amount": "1", "unit": "lb", "notes": "peeled, deveined, medium or large" },
+    { "name": "cornstarch", "amount": "1", "unit": "tbsp" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "large eggs", "amount": "3", "unit": "whole", "notes": "beaten" },
+    { "name": "vegetable oil", "amount": "3", "unit": "tbsp", "notes": "divided" },
+    { "name": "scallions", "amount": "3", "unit": "whole", "notes": "whites and greens separated, sliced" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tsp", "notes": "grated" },
+    { "name": "frozen peas and carrots", "amount": "1", "unit": "cup", "notes": "thawed" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp", "notes": "low-sodium" },
+    { "name": "toasted sesame oil", "amount": "2", "unit": "tsp" },
+    { "name": "white pepper", "amount": "1/4", "unit": "tsp" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Toss the shrimp with the cornstarch, a pinch of salt, and pepper. Let sit while you prep everything else.",
+      "timer_minutes": null,
+      "tip": "The cornstarch gives the shrimp a silky, almost velvety sear — a trick borrowed from Chinese restaurant kitchens."
+    },
+    {
+      "step": 2,
+      "text": "Heat 1 tablespoon oil in a wok or large skillet over high heat until it shimmers. Add the shrimp in a single layer and sear without moving for 2 minutes, then flip and cook another minute until pink and opaque. Transfer to a plate.",
+      "timer_minutes": 3,
+      "tip": null
+    },
+    {
+      "step": 3,
+      "text": "Pour the beaten eggs into the hot pan. Scramble loosely until just set but still slightly soft, about 30 seconds. Transfer to the plate with the shrimp.",
+      "timer_minutes": 1,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Add another tablespoon of oil. Toss in the scallion whites, garlic, and ginger. Stir-fry until fragrant, about 30 seconds. Add the peas and carrots and stir-fry for 1 minute.",
+      "timer_minutes": 2,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Add the remaining tablespoon of oil and the cold rice. Spread it into an even layer and let it sizzle undisturbed for 1 to 2 minutes to develop some crust. Toss, press flat again, and repeat.",
+      "timer_minutes": 3,
+      "tip": "Resist the urge to stir constantly. The rice needs contact time with the hot pan to get those toasty, slightly crispy bits. That's the whole point."
+    },
+    {
+      "step": 6,
+      "text": "Drizzle the soy sauce around the edges of the pan — it will sizzle and caramelize on contact. Add the sesame oil. Toss to combine.",
+      "timer_minutes": null,
+      "tip": "Adding soy sauce to the edge of the pan instead of directly on the rice concentrates its flavor."
+    },
+    {
+      "step": 7,
+      "text": "Return the shrimp and eggs to the pan. Break the eggs into chunks and toss everything together. Season with white pepper and more soy sauce to taste. Scatter scallion greens on top.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": [
+      {
+        "name": "The Woks of Life",
+        "url": "https://thewoksoflife.com/shrimp-fried-rice/",
+        "author": "The Woks of Life"
+      },
+      {
+        "name": "Natasha's Kitchen",
+        "url": "https://natashaskitchen.com/shrimp-fried-rice-recipe/",
+        "author": "Natasha's Kitchen"
+      },
+      {
+        "name": "Downshiftology",
+        "url": "https://downshiftology.com/recipes/shrimp-fried-rice/",
+        "author": "Downshiftology"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

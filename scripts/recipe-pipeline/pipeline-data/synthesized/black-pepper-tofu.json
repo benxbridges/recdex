@@ -1,0 +1,75 @@
+{
+  "title": "Black Pepper Tofu",
+  "slug": "black-pepper-tofu",
+  "description": "Ottolenghi's legendary tofu dish — crispy cubes bathed in a buttery, fiery sauce loaded with shallots, chillies, and a frankly reckless amount of black pepper. Vegetarian but nobody will miss the meat.",
+  "cuisine": "Asian-Inspired",
+  "difficulty": "medium",
+  "time_total": 35,
+  "time_active": 35,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["vegetarian", "tofu", "spicy", "weeknight", "ottolenghi", "asian-inspired", "black-pepper"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "firm tofu", "amount": "28", "unit": "oz", "notes": "about 800g, drained" },
+    { "name": "cornstarch", "amount": "1/3", "unit": "cup", "notes": "for dusting" },
+    { "name": "vegetable oil", "amount": "", "unit": "", "notes": "for frying, enough to coat the pan generously" },
+    { "name": "unsalted butter", "amount": "10", "unit": "tbsp", "notes": "about 150g" },
+    { "name": "shallots", "amount": "12", "unit": "small", "notes": "about 350g total, peeled and thinly sliced" },
+    { "name": "red chillies", "amount": "8", "unit": "whole", "notes": "thinly sliced" },
+    { "name": "garlic", "amount": "12", "unit": "cloves", "notes": "crushed" },
+    { "name": "fresh ginger", "amount": "3", "unit": "tbsp", "notes": "finely chopped" },
+    { "name": "black peppercorns", "amount": "5", "unit": "tbsp", "notes": "coarsely crushed in a mortar or under a pan" },
+    { "name": "sweet soy sauce (kecap manis)", "amount": "3", "unit": "tbsp" },
+    { "name": "light soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "dark soy sauce", "amount": "4", "unit": "tsp" },
+    { "name": "sugar", "amount": "2", "unit": "tbsp" },
+    { "name": "scallions", "amount": "16", "unit": "small", "notes": "cut into 1-inch segments" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Cut the tofu into roughly 3x2cm cubes. Toss in cornstarch, shake off the excess. Heat a generous layer of oil in a large frying pan or wok over medium-high heat. Fry the tofu in batches until golden and crusty on all sides. Transfer to paper towels to drain.",
+      "timer_minutes": 10,
+      "tip": "Press the tofu dry with paper towels before cubing — less moisture means crispier edges."
+    },
+    {
+      "step": 2,
+      "text": "Wipe out the pan and discard the frying oil. Melt the butter over low-medium heat. Add the shallots, chillies, garlic, and ginger. Cook slowly, stirring occasionally, until completely soft and glossy, about 15 minutes.",
+      "timer_minutes": 15,
+      "tip": "Patience here. You're melting the shallots down, not browning them. Keep the heat gentle."
+    },
+    {
+      "step": 3,
+      "text": "Add the sweet soy sauce, light soy sauce, dark soy sauce, and sugar. Stir to combine. Add the crushed black peppercorns.",
+      "timer_minutes": 1,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Return the fried tofu to the pan and toss gently to warm through and coat in the sauce, about 1 minute. Fold in the scallion segments.",
+      "timer_minutes": 1,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Serve hot over steamed rice.",
+      "timer_minutes": null,
+      "tip": "This dish is meant to be fiery. If you want to dial back the heat, reduce the chillies and peppercorns — but the whole point is the burn."
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 1,
+    "sources": [
+      {
+        "name": "Ottolenghi / Plenty (Chronicle Books, 2011)",
+        "url": "https://ottolenghi.co.uk/pages/recipes/black-pepper-tofu",
+        "author": "Yotam Ottolenghi"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

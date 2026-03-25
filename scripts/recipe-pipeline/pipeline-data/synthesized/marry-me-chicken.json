@@ -1,0 +1,88 @@
+{
+  "title": "Marry Me Chicken",
+  "slug": "marry-me-chicken",
+  "description": "Pan-seared chicken cutlets simmered in a creamy sun-dried tomato and parmesan sauce that's famously persuasive. Rich, garlicky, and unrepentantly indulgent.",
+  "cuisine": "Italian-American",
+  "difficulty": "easy",
+  "time_total": 40,
+  "time_active": 40,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 people",
+  "tags": ["chicken", "weeknight", "creamy", "italian-american", "date-night", "sun-dried-tomato", "one-pan", "comfort-food"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "boneless, skinless chicken breasts", "amount": "3", "unit": "large", "notes": "about 2 1/4 lbs, halved horizontally into 6 cutlets" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground, to taste" },
+    { "name": "all-purpose flour", "amount": "1/4", "unit": "cup", "notes": "for dredging" },
+    { "name": "extra-virgin olive oil", "amount": "3", "unit": "tbsp" },
+    { "name": "unsalted butter", "amount": "3", "unit": "tbsp" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "chopped" },
+    { "name": "tomato paste", "amount": "1", "unit": "tbsp" },
+    { "name": "dried oregano", "amount": "1/2", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "1/4", "unit": "tsp", "notes": "or to taste" },
+    { "name": "low-sodium chicken stock", "amount": "1", "unit": "cup" },
+    { "name": "heavy cream", "amount": "1/2", "unit": "cup", "notes": "up to 3/4 cup for a saucier finish" },
+    { "name": "parmesan cheese", "amount": "1/2", "unit": "cup", "notes": "finely grated" },
+    { "name": "oil-packed sun-dried tomatoes", "amount": "1/3", "unit": "cup", "notes": "drained and coarsely chopped" },
+    { "name": "fresh basil leaves", "amount": "", "unit": "", "notes": "for garnish" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Season the chicken cutlets generously with salt and pepper on both sides. Dredge in flour, shaking off the excess.",
+      "timer_minutes": null,
+      "tip": "For even cutlets, freeze the whole breasts for 20 minutes before slicing — the firmer flesh is much easier to halve horizontally."
+    },
+    {
+      "step": 2,
+      "text": "Heat the olive oil in a large skillet over medium-high heat. Once hot, reduce to medium and add the butter. When it melts and foams, add the cutlets in batches. Cook until golden on the first side, about 5 minutes, then flip and cook another 4 to 5 minutes. Transfer to a plate.",
+      "timer_minutes": 10,
+      "tip": "Don't move the chicken once it hits the pan. A solid golden crust needs uninterrupted contact with hot fat."
+    },
+    {
+      "step": 3,
+      "text": "In the same skillet, add the garlic and cook until fragrant, about 1 minute. Stir in the tomato paste, oregano, and red pepper flakes. Cook briefly until the paste darkens slightly.",
+      "timer_minutes": 2,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Pour in the chicken stock and scrape up the browned bits from the bottom of the pan. Bring to a simmer.",
+      "timer_minutes": 1,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Stir in the cream, reduce the heat to maintain a gentle simmer, and cook until the sauce thickens slightly, about 3 minutes. Stir in the parmesan and sun-dried tomatoes. Taste and adjust seasoning.",
+      "timer_minutes": 3,
+      "tip": "Watch the cream — a gentle simmer thickens the sauce evenly, a hard boil can break it."
+    },
+    {
+      "step": 6,
+      "text": "Nestle the chicken cutlets back into the sauce and simmer gently until cooked through (165°F internal), 5 to 10 minutes.",
+      "timer_minutes": 8,
+      "tip": null
+    },
+    {
+      "step": 7,
+      "text": "Scatter fresh basil over the top. Serve with crusty bread, pasta, or polenta to catch the sauce.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 1,
+    "sources": [
+      {
+        "name": "NYT Cooking",
+        "url": "https://cooking.nytimes.com/recipes/1024503-marry-me-chicken",
+        "author": "Naz Deravian"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

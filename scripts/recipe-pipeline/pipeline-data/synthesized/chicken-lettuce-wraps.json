@@ -1,0 +1,73 @@
+{
+  "title": "Chicken Lettuce Wraps",
+  "slug": "chicken-lettuce-wraps",
+  "description": "Spicy, saucy ground chicken spooned into crisp butter lettuce cups with fresh herbs and a squeeze of lime. Faster than delivery and twice as satisfying.",
+  "cuisine": "Asian-Inspired",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 2,
+  "servings_label": "2 people",
+  "tags": ["chicken", "lettuce-wraps", "weeknight", "quick", "20-minute", "asian-inspired", "low-carb", "gluten-free-adaptable"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "soy sauce", "amount": "2", "unit": "tbsp" },
+    { "name": "dark brown sugar", "amount": "1", "unit": "tbsp" },
+    { "name": "fish sauce", "amount": "1", "unit": "tsp" },
+    { "name": "sambal oelek or sriracha", "amount": "1", "unit": "tbsp", "notes": "plus more for serving" },
+    { "name": "vegetable oil", "amount": "1", "unit": "tbsp" },
+    { "name": "scallions", "amount": "3", "unit": "whole", "notes": "thinly sliced" },
+    { "name": "garlic", "amount": "2", "unit": "cloves", "notes": "minced" },
+    { "name": "ground chicken", "amount": "1", "unit": "lb" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "Bibb or butter lettuce", "amount": "1", "unit": "head", "notes": "leaves separated and washed" },
+    { "name": "fresh herbs", "amount": "", "unit": "", "notes": "cilantro, mint, or Thai basil" },
+    { "name": "lime wedges", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Whisk together the soy sauce, brown sugar, fish sauce, and sambal oelek in a small bowl. Set aside.",
+      "timer_minutes": null,
+      "tip": null
+    },
+    {
+      "step": 2,
+      "text": "Heat the oil in a large skillet over medium heat. Add the scallions and garlic and cook, stirring, until softened, about 3 minutes.",
+      "timer_minutes": 3,
+      "tip": null
+    },
+    {
+      "step": 3,
+      "text": "Add the ground chicken, season lightly with salt, and cook, breaking it into small pieces with a wooden spoon, until cooked through with some browned bits, 5 to 7 minutes.",
+      "timer_minutes": 7,
+      "tip": "Let the chicken sit undisturbed for a minute here and there — that's how you get those crispy, caramelized bits that make this worth eating."
+    },
+    {
+      "step": 4,
+      "text": "Pour in the sauce and cook, tossing occasionally, until the liquid reduces to a sticky glaze, about 2 minutes.",
+      "timer_minutes": 2,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Spoon the chicken into lettuce cups and top with fresh herbs, extra sambal, and a squeeze of lime.",
+      "timer_minutes": null,
+      "tip": null
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 1,
+    "sources": [
+      {
+        "name": "Bon Appétit",
+        "url": "https://www.bonappetit.com/recipe/spicy-chicken-lettuce-wraps",
+        "author": "Christina Chaey"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}

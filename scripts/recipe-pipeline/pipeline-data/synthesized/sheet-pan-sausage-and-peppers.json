@@ -1,0 +1,76 @@
+{
+  "title": "Sheet Pan Sausage and Peppers",
+  "slug": "sheet-pan-sausage-and-peppers",
+  "description": "Italian sausages roasted on a sheet pan with sweet peppers and onions until everything caramelizes and the kitchen smells incredible. Weeknight dinner with almost zero cleanup.",
+  "cuisine": "Italian-American",
+  "difficulty": "easy",
+  "time_total": 40,
+  "time_active": 10,
+  "time_passive": 30,
+  "time_passive_label": "roasting",
+  "servings": 4,
+  "servings_label": "4-6 people",
+  "tags": ["italian-american", "sheet-pan", "sausage", "weeknight", "one-pan", "hands-off", "meal-prep"],
+  "image_url": null,
+  "ingredients": [
+    { "name": "sweet Italian sausage links", "amount": "1.5", "unit": "lb", "notes": "about 6 links" },
+    { "name": "bell peppers", "amount": "3", "unit": "large", "notes": "mixed colors, cut into 1-inch strips" },
+    { "name": "yellow onion", "amount": "1", "unit": "large", "notes": "halved and sliced into 1/2-inch wedges" },
+    { "name": "extra-virgin olive oil", "amount": "3", "unit": "tbsp" },
+    { "name": "garlic cloves", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "3/4", "unit": "tsp" },
+    { "name": "black pepper", "amount": "1/2", "unit": "tsp" },
+    { "name": "red wine vinegar", "amount": "1", "unit": "tbsp", "notes": "for finishing" },
+    { "name": "crusty Italian bread", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "text": "Heat oven to 425°F. Line a rimmed sheet pan with parchment paper.",
+      "timer_minutes": null,
+      "tip": null
+    },
+    {
+      "step": 2,
+      "text": "Toss the peppers, onion, and garlic with the olive oil, oregano, salt, and pepper on the sheet pan. Spread into an even layer and nestle the sausage links into the vegetables.",
+      "timer_minutes": null,
+      "tip": "Don't overcrowd — if things are piled up, they'll steam instead of roast. Use two pans if needed."
+    },
+    {
+      "step": 3,
+      "text": "Roast for 20 minutes, then flip the sausages and toss the vegetables with tongs.",
+      "timer_minutes": 20,
+      "tip": null
+    },
+    {
+      "step": 4,
+      "text": "Continue roasting until the sausages are golden-brown and cooked through (internal temp of 160°F) and the peppers are soft with charred edges, another 15 to 20 minutes.",
+      "timer_minutes": 18,
+      "tip": null
+    },
+    {
+      "step": 5,
+      "text": "Drizzle the red wine vinegar over the vegetables and toss once more. Serve straight from the pan with crusty bread for sopping up the juices.",
+      "timer_minutes": null,
+      "tip": "The vinegar brightens everything up after all that roasting. Don't skip it."
+    }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 2,
+    "sources": [
+      {
+        "name": "Bon Appétit",
+        "url": "https://www.bonappetit.com/recipe/sausage-peppers-and-onions-subs",
+        "author": "Alex Delany"
+      },
+      {
+        "name": "Food Network",
+        "url": "https://www.foodnetwork.com/recipes/food-network-kitchen/sausage-and-peppers-sheet-pan-dinner-3543903",
+        "author": "Food Network Kitchen"
+      }
+    ],
+    "model": "claude-opus-4-6"
+  }
+}
