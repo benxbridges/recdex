@@ -31,6 +31,86 @@ function extractInstagramShortcode(url: string): string | null {
   } catch { return null }
 }
 
+// ===== WEB PAGE SCRAPER =====
+
+async function fetchWebPageContent(url: string): Promise<{ text: string; author: string | null } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; RecDex/1.0; +https://recipeindex.org)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    // Extract author from meta tags before stripping HTML
+    let author: string | null = null
+    const authorMeta = html.match(/<meta[^>]+name=["']author["'][^>]+content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']author["']/i)
+    if (authorMeta) author = authorMeta[1]
+    // Try JSON-LD author
+    if (!author) {
+      const jsonLdMatch = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i)
+      if (jsonLdMatch) {
+        try {
+          const ld = JSON.parse(jsonLdMatch[1])
+          const recipe = Array.isArray(ld) ? ld.find((x: { '@type'?: string }) => x['@type'] === 'Recipe') : (ld['@type'] === 'Recipe' ? ld : null)
+          if (recipe?.author) {
+            author = typeof recipe.author === 'string' ? recipe.author
+              : Array.isArray(recipe.author) ? recipe.author[0]?.name || null
+              : recipe.author?.name || null
+          }
+        } catch { /* ignore parse errors */ }
+      }
+    }
+    // Try og:site_name as fallback
+    if (!author) {
+      const siteNameMatch = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
+      if (siteNameMatch) author = siteNameMatch[1]
+    }
+
+    // Strip scripts, styles, nav, footer, and HTML tags to get text content
+    let text = html
+      // Remove script and style blocks
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/<header[\s\S]*?<\/header>/gi, '')
+      // Convert common elements to readable markers
+      .replace(/<li[^>]*>/gi, '\n• ')
+      .replace(/<\/li>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<\/h[1-6]>/gi, '\n\n')
+      .replace(/<\/div>/gi, '\n')
+      // Strip remaining tags
+      .replace(/<[^>]+>/g, ' ')
+      // Decode common HTML entities
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;|&apos;/g, "'")
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&#\d+;/g, '')
+      .replace(/&\w+;/g, '')
+      // Clean up whitespace
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+
+    // Truncate to reasonable length
+    if (text.length > 12000) text = text.slice(0, 12000)
+    return text.length > 50 ? { text, author } : null
+  } catch (err) {
+    console.log('[extract] Web page fetch failed:', err)
+    return null
+  }
+}
+
 // ===== CONTENT FETCHERS =====
 
 async function fetchYouTubeContent(url: string): Promise<{ videoId: string | null; description: string | null }> {
@@ -68,7 +148,7 @@ async function fetchTikTokCaption(url: string): Promise<string | null> {
 // ===== EXTRACTION PROMPT =====
 
 const EXTRACTION_PROMPT = (platform: string, content: string) => `
-You are extracting FACTUAL recipe information from social media content and rewriting it in clear, original instructional language. Here is text from a ${platform} ${platform === 'youtube' ? 'video (description and/or spoken transcript)' : 'caption'}:
+You are extracting FACTUAL recipe information from ${platform === 'web' ? 'a recipe web page' : 'social media content'} and rewriting it in clear, original instructional language. Here is text from ${platform === 'web' ? 'a cooking website' : `a ${platform} ${platform === 'youtube' ? 'video (description and/or spoken transcript)' : 'caption'}`}:
 
 ---
 ${content.slice(0, 8000)}
@@ -89,26 +169,26 @@ Return a single JSON object with exactly these fields:
   "description": string (1-2 sentence FACTUAL description — what the dish is, key flavors, cuisine origin),
   "cuisine": string (e.g. "Italian", "Mexican", "American" — one word or short phrase),
   "difficulty": "easy" | "medium" | "advanced",
-  "time_total": number (total minutes including passive time) | null,
-  "time_active": number (active hands-on cooking time in minutes) | null,
+  "time_total": number (total ACTIVE cooking minutes — do NOT include passive time like chilling, marinating, resting overnight. A recipe that takes 20 min of hands-on work + 24 hours of chilling = time_total of 20, NOT 1460) | null,
+  "time_active": number (active hands-on cooking time in minutes — mixing, chopping, stirring, watching the stove) | null,
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
-  "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook" | "finish", "tip": string | null }],
+  "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook", "tip": string | null }],
   "confidence": "high" | "medium" | "low"
 }
 
 Rules:
 - "amount" must be a number string like "2" or "1/2" — never include the unit in amount
-- "unit" is the measurement unit like "cups", "tbsp", "oz", "g" — or "" if none
-- "notes" is optional info like "room temperature", "divided", "or to taste"
+- "unit" is the measurement unit — standard units like "cups", "tbsp", "tsp", "oz", "g", "lb", "ml", "L" AND descriptive units like "sprigs", "bunch", "leaves", "cloves", "stalks", "slices", "pieces", "heads", "whole", "large", "medium", "small", "pinch". ALWAYS preserve the unit of measurement from the source — do NOT drop it.
+- "notes" is optional info like "room temperature", "divided", "or to taste", "fresh", "dried", "finely chopped"
 - Steps must be clear imperative sentences in neutral instructional tone, numbered from 1
 - Write steps as you would for a general cooking reference — direct, concise, no personality or flair
-- Classify each step's "phase" as:
-  - "prep": ingredient preparation, preheating, mixing/combining before cooking, wrapping dough, refrigerating/chilling, sifting, creaming butter, proofing dough, shaping, lining/greasing pans
-  - "cook": active cooking with heat — sautéing, baking, boiling, frying, roasting, blind baking, simmering, grilling
-  - "finish": plating, garnishing, cooling on wire rack, resting, serving, frosting, glazing, dusting with powdered sugar, unmolding
+- Classify each step's "phase" as ONLY "prep" or "cook":
+  - "prep" = anything before heat is applied: measuring, chopping, mixing dry ingredients, assembling, preheating oven, chilling/resting, plating, garnishing, serving
+  - "cook" = any step involving active heat: sautéing, baking, boiling, frying, searing, roasting, simmering, broiling
 - If a step involves a technique where a brief educational note would help a home cook, add a "tip" — a 1-2 sentence technique explanation in a warm, slightly conversational tone. Only add tips for steps where technique genuinely matters (e.g., searing, deglazing, resting meat). Most steps should have tip: null.
 - confidence "high" = complete recipe with exact measurements, "medium" = most measurements present, "low" = reconstructed from transcript or minimal info
+- IMPORTANT: time_total should be the PRACTICAL cooking time a home cook cares about — exclude overnight chilling, multi-hour marinating, dough rising, etc. If the recipe says "chill 24 hours", that is NOT 1440 minutes of cooking time. Note passive waits in the step text (e.g., "Refrigerate for 24-36 hours") but do NOT add them to time_total.
 
 IMPORTANT — handling spoken transcripts:
 - Transcripts often mention ingredients without exact amounts. DO YOUR BEST to extract a usable recipe anyway.
@@ -124,7 +204,7 @@ IMPORTANT — handling spoken transcripts:
 // ===== ROUTE =====
 
 export async function POST(req: NextRequest) {
-  const { url, platform, authorName, authorUrl, oembedTitle, transcript } = await req.json()
+  let { url, platform, authorName, authorUrl, oembedTitle, transcript } = await req.json()
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
 
   // Gather content by platform
@@ -190,6 +270,18 @@ export async function POST(req: NextRequest) {
   } else if (platform === 'instagram') {
     instagramShortcode = extractInstagramShortcode(url)
     // Instagram oEmbed is restricted — use what oembedTitle gives us
+  } else if (platform === 'web') {
+    // Scrape the web page for recipe content
+    const pageData = await fetchWebPageContent(url)
+    if (pageData) {
+      console.log('[extract] Got web page content, length:', pageData.text.length, 'author:', pageData.author)
+      content = pageData.text
+      // Use extracted author as authorName if none provided
+      if (!authorName && pageData.author) {
+        // Will be passed back in the response
+        authorName = pageData.author
+      }
+    }
   }
 
   if (!content.trim()) {

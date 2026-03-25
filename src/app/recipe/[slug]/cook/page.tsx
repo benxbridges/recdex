@@ -845,6 +845,7 @@ function useVoiceControl(
 function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeTitle: string }) {
   const [photo, setPhoto] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [shared, setShared] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load existing photo
@@ -874,6 +875,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const resized = canvas.toDataURL('image/jpeg', 0.8)
         setPhoto(resized)
+        setShared(false)
         try {
           const photos = JSON.parse(localStorage.getItem('recdex-cook-photos') || '{}')
           photos[recipeSlug] = resized
@@ -886,13 +888,45 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
     reader.readAsDataURL(file)
   }
 
+  const handleShare = async () => {
+    const recipeUrl = `https://www.recipeindex.org/recipe/${recipeSlug}`
+    const shareText = `I just made ${recipeTitle}! Try it yourself:`
+
+    try {
+      // Build share data with photo if possible
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shareData: any = {
+        title: `I made ${recipeTitle}!`,
+        text: shareText,
+        url: recipeUrl,
+      }
+
+      // Try to share with photo file
+      if (photo) {
+        const blob = await fetch(photo).then(r => r.blob())
+        const file = new File([blob], 'my-dish.jpg', { type: 'image/jpeg' })
+        if (navigator.canShare?.({ files: [file] })) {
+          shareData.files = [file]
+        }
+      }
+
+      await navigator.share(shareData)
+      setShared(true)
+    } catch (err) {
+      // User cancelled or share not supported — try SMS fallback
+      if ((err as Error)?.name === 'AbortError') return
+      const smsBody = encodeURIComponent(`${shareText} ${recipeUrl}`)
+      window.open(`sms:?&body=${smsBody}`, '_self')
+    }
+  }
+
   if (photo) {
     return (
       <div style={{ marginTop: 16, animation: 'slideUp 0.2s ease' }}>
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.rule}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt={recipeTitle} style={{ width: '100%', display: 'block', borderRadius: 10 }} />
-          {saved && (
+          {saved && !shared && (
             <div style={{
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               padding: '6px 14px', borderRadius: 16, background: 'rgba(0,0,0,0.7)',
@@ -902,6 +936,38 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
             </div>
           )}
         </div>
+
+        {/* Share CTA — prominent after photo */}
+        {!shared ? (
+          <button
+            onClick={handleShare}
+            style={{
+              width: '100%', marginTop: 12, padding: '14px 20px', borderRadius: 8,
+              border: 'none', background: '#34C759', color: '#fff',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'transform 0.15s',
+            }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+            Text this to a friend
+          </button>
+        ) : (
+          <div style={{
+            width: '100%', marginTop: 12, padding: '12px 20px', borderRadius: 8,
+            border: `1px solid #34C759`, background: 'rgba(52,199,89,0.1)',
+            textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#34C759', fontFamily: SANS,
+          }}>
+            Shared!
+          </div>
+        )}
+
         <button
           onClick={() => fileInputRef.current?.click()}
           style={{
@@ -937,7 +1003,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
           <path d="M8 2h8l2 4H6l2-4z" />
         </svg>
         <span style={{ fontSize: 13, fontWeight: 600 }}>Snap a photo of your dish</span>
-        <span style={{ fontSize: 11, color: C.text3 }}>Share what you made with the community</span>
+        <span style={{ fontSize: 11, color: C.text3 }}>Share what you made with a friend</span>
       </button>
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleCapture} style={{ display: 'none' }} />
     </div>
@@ -2093,6 +2159,31 @@ export default function CookModePage() {
                             })()
                           : `${recipe.title} is now in your cook history.`}
                       </p>
+                      {/* Share with a friend */}
+                      <button
+                        onClick={async () => {
+                          const recipeUrl = `https://www.recipeindex.org/recipe/${slug}`
+                          const shareText = `I just made ${recipe.title}! Try it yourself:`
+                          try {
+                            await navigator.share({ title: `I made ${recipe.title}!`, text: shareText, url: recipeUrl })
+                          } catch (err) {
+                            if ((err as Error)?.name === 'AbortError') return
+                            const smsBody = encodeURIComponent(`${shareText} ${recipeUrl}`)
+                            window.open(`sms:?&body=${smsBody}`, '_self')
+                          }
+                        }}
+                        style={{
+                          width: '100%', maxWidth: 280, margin: '0 auto 16px', padding: '13px 24px', borderRadius: 8,
+                          border: 'none', background: '#34C759', color: '#fff',
+                          fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        Share recipe with a friend
+                      </button>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => router.push(`/recipe/${slug}`)} style={{ padding: '11px 24px', borderRadius: 6, border: 'none', background: C.green, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Back to recipe</button>
                         <button onClick={() => router.push('/')} style={{ padding: '11px 24px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Home</button>
