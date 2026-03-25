@@ -1,0 +1,49 @@
+{
+  "title": "Spicy Peanut Noodles",
+  "slug": "spicy-peanut-noodles",
+  "description": "Cold noodles slicked in a creamy, spicy peanut sauce with crunchy vegetables and fresh herbs. The kind of no-cook dinner that makes you wonder why you ever turn on the stove.",
+  "cuisine": "Chinese-American",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 servings",
+  "tags": ["weeknight", "noodles", "peanut", "cold", "no-cook-sauce", "quick", "under-30-minutes"],
+  "ingredients": [
+    { "name": "lo mein noodles or spaghetti", "amount": "12", "unit": "oz" },
+    { "name": "creamy peanut butter", "amount": "1/3", "unit": "cup" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "rice vinegar", "amount": "2", "unit": "tbsp" },
+    { "name": "toasted sesame oil", "amount": "1", "unit": "tbsp" },
+    { "name": "chili crisp or sriracha", "amount": "1", "unit": "tbsp", "notes": "more to taste" },
+    { "name": "honey", "amount": "1", "unit": "tbsp" },
+    { "name": "garlic", "amount": "1", "unit": "clove", "notes": "finely grated" },
+    { "name": "fresh ginger", "amount": "1", "unit": "inch piece", "notes": "finely grated" },
+    { "name": "warm water", "amount": "2-4", "unit": "tbsp", "notes": "to thin the sauce" },
+    { "name": "English cucumber", "amount": "1/2", "unit": "", "notes": "julienned or thinly sliced" },
+    { "name": "shredded carrot", "amount": "1/2", "unit": "cup" },
+    { "name": "scallions", "amount": "3", "unit": "", "notes": "thinly sliced" },
+    { "name": "roasted peanuts", "amount": "1/4", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "fresh cilantro", "amount": "", "unit": "", "notes": "a handful, for garnish" },
+    { "name": "lime wedges", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Cook noodles according to package directions. Drain and rinse under cold running water until completely cool. Shake off excess water.", "timer_minutes": 8 },
+    { "step": 2, "text": "While the noodles cook, whisk peanut butter, soy sauce, rice vinegar, sesame oil, chili crisp, honey, garlic, and ginger in a large bowl. Thin with warm water, a tablespoon at a time, until the sauce is pourable but still thick enough to cling.", "timer_minutes": null },
+    { "step": 3, "text": "Add the cooled noodles to the bowl and toss until every strand is coated in sauce.", "timer_minutes": null },
+    { "step": 4, "text": "Divide among bowls. Top with cucumber, carrot, scallions, peanuts, and cilantro. Serve with lime wedges — a good squeeze ties it all together.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["bon-appetit", "nyt-cooking", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Bon Appetit's Spicy Peanut Noodles with Chicken",
+    "originalAuthor": "Chris Morocco",
+    "originalPublication": "Bon Appetit",
+    "consensusIngredientCount": 16,
+    "model": "claude-opus-4-6"
+  }
+}

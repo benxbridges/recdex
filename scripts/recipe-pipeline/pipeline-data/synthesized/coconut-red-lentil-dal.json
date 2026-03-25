@@ -1,0 +1,51 @@
+{
+  "title": "Coconut Red Lentil Dal",
+  "slug": "coconut-red-lentil-dal",
+  "description": "Red lentils simmered with coconut milk, tomatoes, and warm spices until they collapse into a thick, creamy stew. A one-pot dinner that costs almost nothing and feeds a crowd.",
+  "cuisine": "Indian",
+  "difficulty": "easy",
+  "time_total": 30,
+  "time_active": 10,
+  "time_passive": 20,
+  "time_passive_label": "simmering",
+  "servings": 5,
+  "servings_label": "4-6 servings",
+  "tags": ["weeknight", "lentils", "dal", "Indian", "coconut", "vegan", "one-pot", "under-30-minutes", "pantry"],
+  "ingredients": [
+    { "name": "red lentils", "amount": "1 1/2", "unit": "cups", "notes": "rinsed until the water runs clear" },
+    { "name": "full-fat coconut milk", "amount": "1", "unit": "13.5-oz can" },
+    { "name": "water", "amount": "2 1/2", "unit": "cups" },
+    { "name": "diced tomatoes", "amount": "1", "unit": "14-oz can" },
+    { "name": "coconut oil or vegetable oil", "amount": "1", "unit": "tbsp" },
+    { "name": "yellow onion", "amount": "1", "unit": "large", "notes": "diced" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "grated" },
+    { "name": "ground turmeric", "amount": "1", "unit": "tsp" },
+    { "name": "ground cumin", "amount": "1", "unit": "tsp" },
+    { "name": "garam masala", "amount": "1", "unit": "tsp" },
+    { "name": "cayenne pepper", "amount": "1/2", "unit": "tsp", "notes": "or to taste" },
+    { "name": "kosher salt", "amount": "1", "unit": "tsp", "notes": "plus more to taste" },
+    { "name": "lime juice", "amount": "2", "unit": "tbsp", "notes": "about 1 lime" },
+    { "name": "fresh cilantro", "amount": "", "unit": "", "notes": "for garnish" },
+    { "name": "steamed rice or naan", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oil in a large pot or Dutch oven over medium heat. Add onion and cook, stirring occasionally, until softened and golden at the edges, about 5 minutes.", "timer_minutes": 5 },
+    { "step": 2, "text": "Add garlic, ginger, turmeric, cumin, garam masala, and cayenne. Stir until fragrant and the spices coat the onion, about 1 minute.", "timer_minutes": 1 },
+    { "step": 3, "text": "Add lentils, coconut milk, water, and tomatoes. Stir to combine and bring to a boil.", "timer_minutes": null },
+    { "step": 4, "text": "Reduce heat to medium-low and simmer, stirring occasionally to keep the lentils from sticking, until they break down completely and the dal is thick and creamy, about 20 minutes. It will thicken more as it cools.", "timer_minutes": 20 },
+    { "step": 5, "text": "Stir in salt and lime juice. Taste — it should be creamy, gently warming, and a little tangy from the lime. Adjust salt and cayenne as needed.", "timer_minutes": null },
+    { "step": 6, "text": "Ladle over steamed rice or serve alongside warm naan. Top with cilantro.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "bon-appetit", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "NYT Cooking's Creamy Coconut Lentil Curry",
+    "originalAuthor": "Hetty McKinnon",
+    "originalPublication": "NYT Cooking",
+    "consensusIngredientCount": 16,
+    "model": "claude-opus-4-6"
+  }
+}

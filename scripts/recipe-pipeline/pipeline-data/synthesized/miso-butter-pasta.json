@@ -1,0 +1,44 @@
+{
+  "title": "Miso Butter Pasta",
+  "slug": "miso-butter-pasta",
+  "description": "A salty-sweet umami bomb of white miso and butter tossed with pasta and brightened with lemon. Fifteen minutes, one pot, zero leftovers.",
+  "cuisine": "Japanese-Inspired",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 servings",
+  "tags": ["weeknight", "pasta", "quick", "vegetarian", "umami", "one-pot", "under-30-minutes"],
+  "ingredients": [
+    { "name": "spaghetti or bucatini", "amount": "1", "unit": "lb" },
+    { "name": "unsalted butter", "amount": "3", "unit": "tbsp" },
+    { "name": "white (shiro) miso paste", "amount": "3", "unit": "tbsp" },
+    { "name": "garlic", "amount": "2", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "lemon juice", "amount": "2", "unit": "tbsp", "notes": "about 1 lemon" },
+    { "name": "Parmesan cheese", "amount": "1/2", "unit": "cup", "notes": "finely grated" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground, generous" },
+    { "name": "scallions", "amount": "2", "unit": "", "notes": "thinly sliced" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Cook pasta in well-salted boiling water until al dente according to package directions. Reserve 1 cup pasta water before draining.", "timer_minutes": 10 },
+    { "step": 2, "text": "In the same pot over medium heat, melt butter. Add garlic and cook, stirring, until fragrant and just starting to turn golden, about 1 minute.", "timer_minutes": 1 },
+    { "step": 3, "text": "Whisk miso paste into 1/2 cup of the reserved pasta water until completely smooth — no lumps.", "timer_minutes": null },
+    { "step": 4, "text": "Pour the miso mixture into the pot and bring to a gentle simmer.", "timer_minutes": 1 },
+    { "step": 5, "text": "Add the drained pasta and toss vigorously, adding more pasta water a splash at a time until the sauce is glossy and coats each strand.", "timer_minutes": 2 },
+    { "step": 6, "text": "Remove from heat. Add lemon juice and Parmesan, tossing until the cheese melts into the sauce.", "timer_minutes": null },
+    { "step": 7, "text": "Finish with a generous crack of black pepper and scatter scallions over the top.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["bon-appetit", "nyt-cooking", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Bon Appetit's Miso Butter Pasta by Andy Baraghani",
+    "originalAuthor": "Andy Baraghani",
+    "originalPublication": "Bon Appetit",
+    "consensusIngredientCount": 8,
+    "model": "claude-opus-4-6"
+  }
+}

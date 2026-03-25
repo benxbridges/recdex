@@ -1,0 +1,45 @@
+{
+  "title": "Sheet-Pan Sausage and Peppers",
+  "slug": "sheet-pan-sausage-and-peppers",
+  "description": "Italian sausages roasted on a sheet pan with peppers and onions until everything is blistered and caramelized. Ten minutes of prep, then the oven does the rest.",
+  "cuisine": "Italian-American",
+  "difficulty": "easy",
+  "time_total": 35,
+  "time_active": 10,
+  "time_passive": 25,
+  "time_passive_label": "roasting",
+  "servings": 4,
+  "servings_label": "4 servings",
+  "tags": ["weeknight", "sheet-pan", "sausage", "peppers", "Italian-American", "one-pan", "under-30-minutes-active"],
+  "ingredients": [
+    { "name": "Italian sausage links", "amount": "1 1/2", "unit": "lbs", "notes": "sweet, hot, or a mix" },
+    { "name": "bell peppers", "amount": "3", "unit": "", "notes": "mixed colors, seeded and cut into strips" },
+    { "name": "red onion", "amount": "1", "unit": "large", "notes": "cut into thin wedges" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "1/2", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "red wine vinegar", "amount": "1", "unit": "tbsp", "notes": "optional, for finishing" },
+    { "name": "crusty bread or hoagie rolls", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oven to 425\u00b0F with a rack in the center.", "timer_minutes": null },
+    { "step": 2, "text": "Toss peppers, onion, and garlic on a rimmed sheet pan with 2 tablespoons olive oil, oregano, red pepper flakes, salt, and pepper. Spread in a single layer — crowding steams instead of chars.", "timer_minutes": null },
+    { "step": 3, "text": "Nestle sausages into the vegetables. Drizzle sausages with the remaining tablespoon of olive oil.", "timer_minutes": null },
+    { "step": 4, "text": "Roast until sausages are cooked through (internal temp 160\u00b0F) and the vegetables are soft with charred edges, 25 to 30 minutes. Turn the sausages once halfway through.", "timer_minutes": 28 },
+    { "step": 5, "text": "Drizzle with red wine vinegar if using — the acid brightens everything. Serve straight from the pan on crusty bread or alongside.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "bon-appetit", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "NYT Cooking's Sheet-Pan Sausage and Peppers",
+    "originalAuthor": "Sarah DiGregorio",
+    "originalPublication": "NYT Cooking",
+    "consensusIngredientCount": 11,
+    "model": "claude-opus-4-6"
+  }
+}

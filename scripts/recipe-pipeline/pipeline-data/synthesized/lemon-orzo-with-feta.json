@@ -1,0 +1,45 @@
+{
+  "title": "Lemon Orzo with Feta and Herbs",
+  "slug": "lemon-orzo-with-feta",
+  "description": "Bright, lemony orzo tossed with crumbled feta, fresh dill and mint, olives, and toasted pine nuts. Works warm, room temp, or straight from the fridge the next day.",
+  "cuisine": "Greek-Inspired",
+  "difficulty": "easy",
+  "time_total": 20,
+  "time_active": 20,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 5,
+  "servings_label": "4-6 servings",
+  "tags": ["weeknight", "pasta", "orzo", "Greek", "lemon", "feta", "vegetarian", "quick", "under-30-minutes", "cold-or-warm"],
+  "ingredients": [
+    { "name": "orzo pasta", "amount": "1", "unit": "lb" },
+    { "name": "olive oil", "amount": "3", "unit": "tbsp" },
+    { "name": "lemons", "amount": "2", "unit": "", "notes": "zested and juiced (about 1/4 cup juice)" },
+    { "name": "feta cheese", "amount": "4", "unit": "oz", "notes": "crumbled" },
+    { "name": "fresh dill", "amount": "1/2", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "fresh mint", "amount": "1/4", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "English cucumber", "amount": "1/2", "unit": "", "notes": "diced" },
+    { "name": "Kalamata olives", "amount": "1/2", "unit": "cup", "notes": "pitted and halved" },
+    { "name": "pine nuts", "amount": "1/4", "unit": "cup", "notes": "toasted" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Cook orzo in well-salted boiling water until al dente, usually 8 to 9 minutes. Reserve 1/2 cup pasta water, then drain.", "timer_minutes": 9 },
+    { "step": 2, "text": "While still hot, toss the orzo with olive oil, lemon zest, and lemon juice. The heat helps the orzo absorb all that flavor.", "timer_minutes": null },
+    { "step": 3, "text": "Add cucumber, olives, dill, and mint. Toss to combine. If the orzo looks dry or clumpy, splash in a bit of the reserved pasta water.", "timer_minutes": null },
+    { "step": 4, "text": "Fold in most of the feta, saving a handful for the top.", "timer_minutes": null },
+    { "step": 5, "text": "Season with salt and pepper — go easy on the salt since feta and olives bring plenty. Top with the remaining feta and toasted pine nuts.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["bon-appetit", "nyt-cooking", "food52"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Bon Appetit's Lemony Orzo Pasta Salad",
+    "originalAuthor": "Basically / Bon Appetit staff",
+    "originalPublication": "Bon Appetit",
+    "consensusIngredientCount": 11,
+    "model": "claude-opus-4-6"
+  }
+}

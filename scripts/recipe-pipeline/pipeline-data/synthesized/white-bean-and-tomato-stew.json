@@ -1,0 +1,47 @@
+{
+  "title": "White Bean and Tomato Stew",
+  "slug": "white-bean-and-tomato-stew",
+  "description": "Creamy cannellini beans simmered with crushed tomatoes, garlic, and a fistful of fresh herbs. A pantry-friendly stew that feels both effortless and deeply satisfying.",
+  "cuisine": "Mediterranean",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "4 servings",
+  "tags": ["weeknight", "stew", "beans", "vegetarian", "pantry", "one-pot", "under-30-minutes", "Mediterranean"],
+  "ingredients": [
+    { "name": "cannellini beans", "amount": "2", "unit": "15-oz cans", "notes": "drained and rinsed" },
+    { "name": "crushed tomatoes", "amount": "1", "unit": "14-oz can" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "olive oil", "amount": "1/4", "unit": "cup", "notes": "plus more for drizzling" },
+    { "name": "red pepper flakes", "amount": "1/2", "unit": "tsp" },
+    { "name": "vegetable or chicken broth", "amount": "1/2", "unit": "cup" },
+    { "name": "baby spinach or lacinato kale", "amount": "2", "unit": "cups", "notes": "kale stripped from stems and roughly chopped" },
+    { "name": "fresh basil leaves", "amount": "1/2", "unit": "cup", "notes": "torn" },
+    { "name": "fresh parsley", "amount": "1/4", "unit": "cup", "notes": "roughly chopped" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "Parmesan cheese", "amount": "", "unit": "", "notes": "grated, for serving" },
+    { "name": "crusty bread", "amount": "", "unit": "", "notes": "for serving" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat olive oil in a large skillet or Dutch oven over medium heat. Add garlic and red pepper flakes, cooking until the garlic is golden and fragrant, about 2 minutes. Don't let it burn.", "timer_minutes": 2 },
+    { "step": 2, "text": "Pour in crushed tomatoes and broth. Season with salt and pepper. Bring to a steady simmer.", "timer_minutes": 2 },
+    { "step": 3, "text": "Add the beans and cook, stirring occasionally, until the liquid thickens into a stew-like consistency and the beans are warmed through, about 10 minutes. Smash a few beans against the side of the pot to thicken it further.", "timer_minutes": 10 },
+    { "step": 4, "text": "Fold in spinach (or kale) and cook until just wilted, about 1 minute for spinach or 2 to 3 for kale.", "timer_minutes": 1 },
+    { "step": 5, "text": "Remove from heat. Stir in torn basil and parsley. Drizzle generously with olive oil. Serve in shallow bowls with Parmesan and crusty bread for sopping.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "bon-appetit", "food52"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "NYT Cooking's White Beans with Spinach",
+    "originalAuthor": "Ali Slagle",
+    "originalPublication": "NYT Cooking",
+    "consensusIngredientCount": 13,
+    "model": "claude-opus-4-6"
+  }
+}

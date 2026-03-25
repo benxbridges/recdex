@@ -1,0 +1,47 @@
+{
+  "title": "Seared Steak with Chimichurri",
+  "slug": "seared-steak-with-chimichurri",
+  "description": "A hard-seared ribeye or strip steak topped with a punchy, herbaceous chimichurri. The kind of 25-minute dinner that feels like a treat but requires almost no skill.",
+  "cuisine": "Argentine-Inspired",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 15,
+  "time_passive": 5,
+  "time_passive_label": "resting",
+  "servings": 3,
+  "servings_label": "2-3 servings",
+  "tags": ["weeknight", "steak", "beef", "chimichurri", "Argentine", "quick", "under-30-minutes", "cast-iron"],
+  "ingredients": [
+    { "name": "boneless ribeye or NY strip steaks", "amount": "2", "unit": "", "notes": "about 8 oz each, 1 inch thick" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "generous" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp", "notes": "high smoke-point oil" },
+    { "name": "fresh flat-leaf parsley", "amount": "1", "unit": "cup", "notes": "finely chopped — stems and all" },
+    { "name": "fresh oregano", "amount": "1/4", "unit": "cup", "notes": "finely chopped, or 1 tbsp dried" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "minced" },
+    { "name": "extra-virgin olive oil", "amount": "1/2", "unit": "cup" },
+    { "name": "red wine vinegar", "amount": "2", "unit": "tbsp" },
+    { "name": "red pepper flakes", "amount": "1/2", "unit": "tsp" },
+    { "name": "fine sea salt", "amount": "1/2", "unit": "tsp", "notes": "for the chimichurri" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Make the chimichurri: Stir together parsley, oregano, garlic, olive oil, red wine vinegar, red pepper flakes, and fine salt. Set aside — it gets better as it sits.", "timer_minutes": null },
+    { "step": 2, "text": "Pat steaks completely dry with paper towels. Season generously with kosher salt and pepper on all sides.", "timer_minutes": null },
+    { "step": 3, "text": "Heat vegetable oil in a cast-iron skillet over high heat until the oil just begins to smoke.", "timer_minutes": 3 },
+    { "step": 4, "text": "Lay steaks in the pan away from you. Sear without moving until a deep, dark brown crust forms on the bottom, 3 to 4 minutes.", "timer_minutes": 4 },
+    { "step": 5, "text": "Flip and cook 3 to 4 minutes more for medium-rare (130\u00b0F on an instant-read thermometer). For medium, go another minute or two (135-140\u00b0F).", "timer_minutes": 4 },
+    { "step": 6, "text": "Transfer steaks to a cutting board and rest for 5 minutes — the carryover heat will bring them up another 5 degrees.", "timer_minutes": 5 },
+    { "step": 7, "text": "Slice against the grain and spoon chimichurri generously over the top. Serve the remaining chimichurri alongside.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["bon-appetit", "serious-eats", "nyt-cooking"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Bon Appetit's BA's Best Steak with Chimichurri",
+    "originalAuthor": "Chris Morocco",
+    "originalPublication": "Bon Appetit",
+    "consensusIngredientCount": 11,
+    "model": "claude-opus-4-6"
+  }
+}

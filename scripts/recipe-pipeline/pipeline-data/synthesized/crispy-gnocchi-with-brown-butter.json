@@ -1,0 +1,43 @@
+{
+  "title": "Crispy Gnocchi with Brown Butter and Sage",
+  "slug": "crispy-gnocchi-with-brown-butter",
+  "description": "Store-bought gnocchi pan-fried until golden and crunchy on the outside, then tossed in nutty brown butter with fried sage leaves and Parmesan. A 15-minute dinner that punches way above its weight.",
+  "cuisine": "Italian",
+  "difficulty": "easy",
+  "time_total": 15,
+  "time_active": 15,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 3,
+  "servings_label": "2-3 servings",
+  "tags": ["weeknight", "gnocchi", "Italian", "brown-butter", "sage", "quick", "under-20-minutes", "vegetarian"],
+  "ingredients": [
+    { "name": "shelf-stable or refrigerated gnocchi", "amount": "1", "unit": "lb", "notes": "not frozen — shelf-stable (vacuum-packed) works best" },
+    { "name": "unsalted butter", "amount": "4", "unit": "tbsp" },
+    { "name": "olive oil", "amount": "1", "unit": "tbsp" },
+    { "name": "fresh sage leaves", "amount": "12", "unit": "", "notes": "about a small bunch" },
+    { "name": "garlic", "amount": "2", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "Parmesan cheese", "amount": "1/3", "unit": "cup", "notes": "finely grated" },
+    { "name": "lemon juice", "amount": "1", "unit": "tbsp" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "freshly ground" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat olive oil in a large nonstick or cast-iron skillet over medium-high heat. Add gnocchi in a single layer — work in batches if needed. Cook without stirring until the bottoms are golden and crisp, about 3 minutes, then flip and crisp the other side, about 2 minutes more. Transfer to a plate.", "timer_minutes": 5 },
+    { "step": 2, "text": "Reduce heat to medium. Add butter to the same pan. Once it melts and foams, add sage leaves. Cook until the butter turns golden brown and smells nutty and the sage leaves are crisp, about 2 minutes. Watch carefully — brown butter goes from perfect to burnt fast.", "timer_minutes": 2 },
+    { "step": 3, "text": "Add garlic to the brown butter and stir for 30 seconds until fragrant.", "timer_minutes": null },
+    { "step": 4, "text": "Return the gnocchi to the pan. Toss gently to coat in the brown butter. Squeeze in lemon juice and toss once more.", "timer_minutes": 1 },
+    { "step": 5, "text": "Remove from heat. Add Parmesan and toss until it melts into the sauce. Season with salt and pepper. Serve immediately while the gnocchi are still crispy.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["bon-appetit", "nyt-cooking", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Bon Appetit's Crispy Sheet-Pan Gnocchi / Brown Butter Sage Gnocchi",
+    "originalAuthor": "Basically / Bon Appetit staff",
+    "originalPublication": "Bon Appetit",
+    "consensusIngredientCount": 9,
+    "model": "claude-opus-4-6"
+  }
+}

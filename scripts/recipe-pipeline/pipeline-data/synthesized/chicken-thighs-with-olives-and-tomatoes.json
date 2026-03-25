@@ -1,0 +1,49 @@
+{
+  "title": "One-Pan Chicken Thighs with Olives and Tomatoes",
+  "slug": "chicken-thighs-with-olives-and-tomatoes",
+  "description": "Crispy-skinned chicken thighs braised with burst cherry tomatoes, briny olives, and capers. Everything cooks in one pan — the chicken skin renders into the sauce, and the result is better than it has any right to be.",
+  "cuisine": "Mediterranean",
+  "difficulty": "easy",
+  "time_total": 40,
+  "time_active": 15,
+  "time_passive": 20,
+  "time_passive_label": "roasting",
+  "servings": 4,
+  "servings_label": "4 servings",
+  "tags": ["weeknight", "chicken", "one-pan", "Mediterranean", "olives", "tomatoes", "under-45-minutes"],
+  "ingredients": [
+    { "name": "bone-in, skin-on chicken thighs", "amount": "6", "unit": "", "notes": "about 2 1/2 lbs" },
+    { "name": "kosher salt", "amount": "", "unit": "", "notes": "generous" },
+    { "name": "black pepper", "amount": "", "unit": "", "notes": "to taste" },
+    { "name": "olive oil", "amount": "2", "unit": "tbsp" },
+    { "name": "cherry tomatoes", "amount": "1", "unit": "pint", "notes": "about 2 cups" },
+    { "name": "Castelvetrano olives", "amount": "1/2", "unit": "cup", "notes": "pitted" },
+    { "name": "garlic", "amount": "4", "unit": "cloves", "notes": "smashed" },
+    { "name": "dry white wine", "amount": "1/2", "unit": "cup" },
+    { "name": "dried oregano", "amount": "1", "unit": "tsp" },
+    { "name": "red pepper flakes", "amount": "1/4", "unit": "tsp" },
+    { "name": "capers", "amount": "2", "unit": "tbsp", "notes": "drained" },
+    { "name": "fresh basil", "amount": "", "unit": "", "notes": "a handful, torn" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Heat oven to 400\u00b0F. Season chicken thighs generously with salt and pepper on both sides.", "timer_minutes": null },
+    { "step": 2, "text": "Heat olive oil in a large oven-safe skillet over medium-high heat. Place chicken skin-side down. Cook without moving until the skin is deeply golden and releases easily from the pan, about 7 minutes.", "timer_minutes": 7 },
+    { "step": 3, "text": "Flip and sear the other side for 2 minutes, then transfer chicken to a plate.", "timer_minutes": 2 },
+    { "step": 4, "text": "Pour off all but about 1 tablespoon of fat from the pan. Add garlic and cook over medium heat until fragrant, about 30 seconds.", "timer_minutes": null },
+    { "step": 5, "text": "Pour in the white wine and scrape up any browned bits stuck to the bottom — that's flavor. Let it simmer until reduced by roughly half, about 2 minutes.", "timer_minutes": 2 },
+    { "step": 6, "text": "Add tomatoes, olives, capers, oregano, and red pepper flakes. Stir to combine. Nestle the chicken thighs back in, skin-side up, so the skin stays above the liquid.", "timer_minutes": null },
+    { "step": 7, "text": "Transfer the skillet to the oven. Roast until the chicken reaches 165\u00b0F and the tomatoes have burst into a saucy mess, about 20 minutes.", "timer_minutes": 20 },
+    { "step": 8, "text": "Scatter torn basil over the top. Serve straight from the pan with crusty bread to soak up the juices.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "bon-appetit", "serious-eats"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "NYT Cooking's Braised Chicken Thighs with Tomatoes and Olives",
+    "originalAuthor": "Melissa Clark",
+    "originalPublication": "NYT Cooking",
+    "consensusIngredientCount": 12,
+    "model": "claude-opus-4-6"
+  }
+}

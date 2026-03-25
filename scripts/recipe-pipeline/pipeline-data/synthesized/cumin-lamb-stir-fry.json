@@ -1,0 +1,48 @@
+{
+  "title": "Cumin Lamb Stir-Fry",
+  "slug": "cumin-lamb-stir-fry",
+  "description": "Thin-sliced lamb seared hard in a smoking-hot wok with whole cumin seeds, dried chiles, and onions. A Xinjiang-inspired classic that delivers big flavor in under 25 minutes.",
+  "cuisine": "Chinese",
+  "difficulty": "medium",
+  "time_total": 25,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 4,
+  "servings_label": "3-4 servings",
+  "tags": ["weeknight", "lamb", "stir-fry", "Chinese", "cumin", "wok", "quick", "under-30-minutes"],
+  "ingredients": [
+    { "name": "boneless lamb leg or shoulder", "amount": "1", "unit": "lb", "notes": "thinly sliced against the grain" },
+    { "name": "soy sauce", "amount": "2", "unit": "tbsp" },
+    { "name": "Shaoxing wine", "amount": "1", "unit": "tbsp", "notes": "or dry sherry" },
+    { "name": "cornstarch", "amount": "1", "unit": "tsp" },
+    { "name": "vegetable oil", "amount": "2", "unit": "tbsp" },
+    { "name": "whole cumin seeds", "amount": "1", "unit": "tbsp" },
+    { "name": "dried red chiles", "amount": "6", "unit": "", "notes": "snipped in half, seeds shaken out if you want less heat" },
+    { "name": "yellow onion", "amount": "1", "unit": "large", "notes": "cut into thin wedges" },
+    { "name": "red bell pepper", "amount": "1", "unit": "", "notes": "sliced" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "sliced" },
+    { "name": "ground cumin", "amount": "1", "unit": "tsp" },
+    { "name": "kosher salt", "amount": "1/2", "unit": "tsp" },
+    { "name": "fresh cilantro", "amount": "", "unit": "", "notes": "a handful, for garnish" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Toss sliced lamb with soy sauce, Shaoxing wine, and cornstarch. Set aside while you prep the vegetables — even 5 minutes of marinating helps.", "timer_minutes": null },
+    { "step": 2, "text": "Heat a wok or large skillet over high heat until it just starts to smoke. Add 1 tablespoon oil, then spread the lamb in a single layer. Let it sear undisturbed until deeply browned on one side, about 2 minutes. Flip and cook 1 minute more. Transfer to a plate — it will finish cooking later.", "timer_minutes": 3 },
+    { "step": 3, "text": "Add remaining tablespoon of oil to the wok. Toss in cumin seeds and dried chiles, stirring until the cumin is fragrant and a shade darker, about 30 seconds.", "timer_minutes": null },
+    { "step": 4, "text": "Add onion and bell pepper. Stir-fry over high heat until slightly charred at the edges but still crisp, about 3 minutes.", "timer_minutes": 3 },
+    { "step": 5, "text": "Return the lamb and any juices to the wok. Add garlic and ground cumin. Toss everything together over high heat for 1 minute until the spices coat the meat and the garlic is fragrant.", "timer_minutes": 1 },
+    { "step": 6, "text": "Season with salt, taste, and adjust. Scatter cilantro over the top. Serve immediately over steamed rice.", "timer_minutes": null }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "serious-eats", "woks-of-life"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Fuchsia Dunlop's Cumin Lamb / NYT Cooking",
+    "originalAuthor": "Fuchsia Dunlop",
+    "originalPublication": "NYT Cooking / Every Grain of Rice",
+    "consensusIngredientCount": 13,
+    "model": "claude-opus-4-6"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "importDate": "2026-03-25",
+  "genre": "Quick Weeknight Meals",
+  "description": "10 quick weeknight meals (all under 40 minutes, most under 30) from well-curated sources. Recipes rewritten in RecDex brand voice — facts and ratios based on consensus from multiple published sources.",
+  "recipeCount": 10,
+  "recipes": [
+    {
+      "slug": "miso-butter-pasta",
+      "title": "Miso Butter Pasta",
+      "originalInspiration": "Bon Appetit's Miso Butter Pasta",
+      "originalAuthor": "Andy Baraghani",
+      "originalPublication": "Bon Appetit",
+      "crossReferencedWith": ["NYT Cooking", "Serious Eats"],
+      "cuisine": "Japanese-Inspired",
+      "timeTotal": "20 min"
+    },
+    {
+      "slug": "sheet-pan-sausage-and-peppers",
+      "title": "Sheet-Pan Sausage and Peppers",
+      "originalInspiration": "NYT Cooking's Sheet-Pan Sausage and Peppers",
+      "originalAuthor": "Sarah DiGregorio",
+      "originalPublication": "NYT Cooking",
+      "crossReferencedWith": ["Bon Appetit", "Serious Eats"],
+      "cuisine": "Italian-American",
+      "timeTotal": "35 min"
+    },
+    {
+      "slug": "black-pepper-tofu",
+      "title": "Black Pepper Tofu",
+      "originalInspiration": "Yotam Ottolenghi's Black Pepper Tofu from Plenty",
+      "originalAuthor": "Yotam Ottolenghi",
+      "originalPublication": "Plenty (Ottolenghi) / NYT Cooking",
+      "crossReferencedWith": ["Bon Appetit", "Food52"],
+      "cuisine": "Asian-Inspired",
+      "timeTotal": "25 min"
+    },
+    {
+      "slug": "spicy-peanut-noodles",
+      "title": "Spicy Peanut Noodles",
+      "originalInspiration": "Bon Appetit's Spicy Peanut Noodles with Chicken",
+      "originalAuthor": "Chris Morocco",
+      "originalPublication": "Bon Appetit",
+      "crossReferencedWith": ["NYT Cooking", "Serious Eats"],
+      "cuisine": "Chinese-American",
+      "timeTotal": "20 min"
+    },
+    {
+      "slug": "white-bean-and-tomato-stew",
+      "title": "White Bean and Tomato Stew",
+      "originalInspiration": "NYT Cooking's White Beans with Spinach",
+      "originalAuthor": "Ali Slagle",
+      "originalPublication": "NYT Cooking",
+      "crossReferencedWith": ["Bon Appetit", "Food52"],
+      "cuisine": "Mediterranean",
+      "timeTotal": "25 min"
+    },
+    {
+      "slug": "cumin-lamb-stir-fry",
+      "title": "Cumin Lamb Stir-Fry",
+      "originalInspiration": "Fuchsia Dunlop's Cumin Lamb",
+      "originalAuthor": "Fuchsia Dunlop",
+      "originalPublication": "NYT Cooking / Every Grain of Rice",
+      "crossReferencedWith": ["Serious Eats", "Woks of Life"],
+      "cuisine": "Chinese (Xinjiang)",
+      "timeTotal": "25 min"
+    },
+    {
+      "slug": "lemon-orzo-with-feta",
+      "title": "Lemon Orzo with Feta and Herbs",
+      "originalInspiration": "Bon Appetit's Lemony Orzo Pasta Salad",
+      "originalAuthor": "Basically / Bon Appetit staff",
+      "originalPublication": "Bon Appetit",
+      "crossReferencedWith": ["NYT Cooking", "Food52"],
+      "cuisine": "Greek-Inspired",
+      "timeTotal": "20 min"
+    },
+    {
+      "slug": "seared-steak-with-chimichurri",
+      "title": "Seared Steak with Chimichurri",
+      "originalInspiration": "Bon Appetit's BA's Best Steak with Chimichurri",
+      "originalAuthor": "Chris Morocco",
+      "originalPublication": "Bon Appetit",
+      "crossReferencedWith": ["Serious Eats", "NYT Cooking"],
+      "cuisine": "Argentine-Inspired",
+      "timeTotal": "25 min"
+    },
+    {
+      "slug": "chicken-thighs-with-olives-and-tomatoes",
+      "title": "One-Pan Chicken Thighs with Olives and Tomatoes",
+      "originalInspiration": "NYT Cooking's Braised Chicken Thighs with Tomatoes and Olives",
+      "originalAuthor": "Melissa Clark",
+      "originalPublication": "NYT Cooking",
+      "crossReferencedWith": ["Bon Appetit", "Serious Eats"],
+      "cuisine": "Mediterranean",
+      "timeTotal": "40 min"
+    },
+    {
+      "slug": "coconut-red-lentil-dal",
+      "title": "Coconut Red Lentil Dal",
+      "originalInspiration": "NYT Cooking's Creamy Coconut Lentil Curry",
+      "originalAuthor": "Hetty McKinnon",
+      "originalPublication": "NYT Cooking",
+      "crossReferencedWith": ["Bon Appetit", "Serious Eats"],
+      "cuisine": "Indian",
+      "timeTotal": "30 min"
+    }
+  ],
+  "notes": "All recipes rewritten in RecDex brand voice. Ingredient amounts and techniques cross-referenced against multiple published sources for accuracy. No existing RecDex recipe duplicates — verified against recipes-to-source.txt (232 recipes) and recipe-urls.ts (~500 URLs)."
+}

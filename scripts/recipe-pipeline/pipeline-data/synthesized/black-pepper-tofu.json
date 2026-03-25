@@ -1,0 +1,47 @@
+{
+  "title": "Black Pepper Tofu",
+  "slug": "black-pepper-tofu",
+  "description": "Crispy-fried tofu cubes tossed in a glossy, butter-rich sauce loaded with coarsely cracked black pepper. Inspired by Yotam Ottolenghi's famous version — bold, aromatic, and fast enough for a Tuesday.",
+  "cuisine": "Asian-Inspired",
+  "difficulty": "easy",
+  "time_total": 25,
+  "time_active": 25,
+  "time_passive": null,
+  "time_passive_label": null,
+  "servings": 3,
+  "servings_label": "2-3 servings",
+  "tags": ["weeknight", "tofu", "vegetarian", "stir-fry", "quick", "under-30-minutes", "black-pepper"],
+  "ingredients": [
+    { "name": "firm tofu", "amount": "14", "unit": "oz", "notes": "1 block, cut into 3/4-inch cubes" },
+    { "name": "cornstarch", "amount": "3", "unit": "tbsp", "notes": "for coating" },
+    { "name": "vegetable oil", "amount": "3", "unit": "tbsp", "notes": "for frying" },
+    { "name": "unsalted butter", "amount": "3", "unit": "tbsp" },
+    { "name": "garlic", "amount": "3", "unit": "cloves", "notes": "thinly sliced" },
+    { "name": "fresh ginger", "amount": "1", "unit": "tbsp", "notes": "minced" },
+    { "name": "small dried red chiles", "amount": "8", "unit": "", "notes": "or 2 fresh red chiles, sliced" },
+    { "name": "coarsely ground black pepper", "amount": "2", "unit": "tbsp" },
+    { "name": "soy sauce", "amount": "3", "unit": "tbsp" },
+    { "name": "sweet soy sauce (kecap manis)", "amount": "2", "unit": "tbsp" },
+    { "name": "sugar", "amount": "1", "unit": "tbsp" },
+    { "name": "green onions", "amount": "5", "unit": "", "notes": "cut into 1-inch pieces" }
+  ],
+  "steps": [
+    { "step": 1, "text": "Pat tofu cubes dry with paper towels — this is the difference between crispy and sad. Toss with cornstarch until evenly coated.", "timer_minutes": null },
+    { "step": 2, "text": "Heat vegetable oil in a large skillet or wok over high heat. Add tofu in a single layer and fry, turning occasionally, until golden and crisp on all sides, about 5 minutes. Transfer to a plate.", "timer_minutes": 5 },
+    { "step": 3, "text": "Wipe the pan if needed. Melt butter over medium-high heat. Add garlic, ginger, and dried chiles. Cook, stirring constantly, until fragrant and the garlic is just turning golden, about 1 minute.", "timer_minutes": 1 },
+    { "step": 4, "text": "Add the black pepper and stir for 30 seconds — you'll smell it bloom in the butter.", "timer_minutes": null },
+    { "step": 5, "text": "Pour in soy sauce, sweet soy sauce, sugar, and 2 tablespoons water. Stir and bring to a simmer.", "timer_minutes": 1 },
+    { "step": 6, "text": "Return tofu to the pan and toss gently to coat every piece in the glossy sauce. Add green onions and toss for another 30 seconds until just wilted. Serve immediately over steamed rice.", "timer_minutes": 1 }
+  ],
+  "_pipeline": {
+    "synthesizedAt": "2026-03-25T00:00:00.000Z",
+    "sourceCount": 3,
+    "sources": ["nyt-cooking", "bon-appetit", "ottolenghi"],
+    "genre": "Quick Weeknight Meals",
+    "originalInspiration": "Yotam Ottolenghi's Black Pepper Tofu from Plenty",
+    "originalAuthor": "Yotam Ottolenghi",
+    "originalPublication": "Plenty (Ottolenghi) / NYT Cooking",
+    "consensusIngredientCount": 12,
+    "model": "claude-opus-4-6"
+  }
+}
