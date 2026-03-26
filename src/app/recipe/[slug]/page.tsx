@@ -524,7 +524,7 @@ function RecipeEditorNote({ slug }: { slug: string }) {
         </div>
       ))}
       <p style={{ fontFamily: MONO, fontSize: 9, color: C.text3, marginTop: 10, marginBottom: 0 }}>
-        Based on {data.recipesAnalyzed} versions · {data.sources.slice(0, 2).join(', ')}, and others
+        Based on {data.recipesAnalyzed} recipes · {data.sources.slice(0, 2).join(', ')}, and others
       </p>
     </div>
   )
@@ -553,7 +553,7 @@ function ConsensusAnnotations({ slug, isMobile }: { slug: string; isMobile: bool
         }}
       >
         <span>{expanded ? '\u25B4' : '\u25BE'}</span>
-        <span>How {data.recipesAnalyzed} versions compare</span>
+        <span>How {data.recipesAnalyzed} recipes compare</span>
       </div>
       {expanded && (
         <div style={{
@@ -581,7 +581,7 @@ function ConsensusAnnotations({ slug, isMobile }: { slug: string; isMobile: bool
             </div>
           )) : (
             <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: 0 }}>
-              Strong consensus across {data.recipesAnalyzed} versions — most cooks agree on the fundamentals here.
+              Strong consensus across {data.recipesAnalyzed} recipes — most cooks agree on the fundamentals here.
             </p>
           )}
         </div>
