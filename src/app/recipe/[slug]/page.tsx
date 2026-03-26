@@ -505,177 +505,88 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
 // ===== KITCHEN CONSENSUS =====
 import { CONSENSUS_DATA, type ConsensusPoint } from '@/app/recipe/consensus-data'
 
-function EggChart({ percentage, size = 48 }: { percentage: number; size?: number }) {
-  const w = size
-  const h = size * 1.35
-  const cx = w / 2
-  // Egg path: classic egg shape using cubic beziers — narrow top, wide bottom
-  const eggPath = `M${cx},${h * 0.04} C${w * 0.18},${h * 0.04} ${w * 0.05},${h * 0.38} ${w * 0.05},${h * 0.56} C${w * 0.05},${h * 0.8} ${w * 0.25},${h * 0.97} ${cx},${h * 0.97} C${w * 0.75},${h * 0.97} ${w * 0.95},${h * 0.8} ${w * 0.95},${h * 0.56} C${w * 0.95},${h * 0.38} ${w * 0.82},${h * 0.04} ${cx},${h * 0.04}Z`
-  const fillY = h * (1 - percentage / 100)
-  const color = percentage >= 80 ? C.blue : percentage >= 60 ? `${C.blue}CC` : `${C.blue}88`
-  const id = `egg-${Math.random().toString(36).slice(2, 8)}`
+function RecipeEditorNote({ slug }: { slug: string }) {
+  const data = CONSENSUS_DATA[slug]
+  if (!data || !data.differs || data.differs.length === 0) return null
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block', margin: '0 auto' }}>
-      <defs>
-        <clipPath id={id}>
-          <path d={eggPath} />
-        </clipPath>
-      </defs>
-      {/* Egg background */}
-      <path d={eggPath} fill={C.warm} stroke={C.rule} strokeWidth="1.5" />
-      {/* Fill from bottom */}
-      <rect x="0" y={fillY} width={w} height={h - fillY} fill={color} clipPath={`url(#${id})`} opacity="0.8" />
-      {/* Egg outline on top */}
-      <path d={eggPath} fill="none" stroke={C.ruleLight} strokeWidth="1" />
-      {/* Percentage text */}
-      <text x={cx} y={h * 0.55} textAnchor="middle" dominantBaseline="central"
-        style={{ fontSize: size * 0.24, fontFamily: MONO, fontWeight: 700, fill: C.text }}>
-        {percentage}%
-      </text>
-    </svg>
-  )
-}
-
-function IngredientEggCard({ point }: { point: ConsensusPoint }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '14px 8px 10px' }}>
-      <EggChart percentage={point.percentage} size={52} />
-      {/* Consensus answer */}
-      <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 700, color: C.text, margin: '8px 0 2px', lineHeight: 1.2 }}>
-        {point.consensus}
+    <div style={{
+      padding: '12px 16px', background: C.warm, borderLeft: `3px solid ${C.accent}`,
+      borderRadius: 8, marginBottom: 16,
+    }}>
+      <p style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, margin: '0 0 8px' }}>
+        What sets this version apart
       </p>
-      {/* Alternative */}
-      {point.alternative && (
-        <p style={{ fontSize: 9, fontFamily: SANS, color: C.text3, margin: '3px 0 0' }}>
-          vs. {point.alternative} ({point.altPercentage}%)
-        </p>
-      )}
+      {data.differs.map((d, i) => (
+        <div key={i} style={{ marginTop: i > 0 ? 8 : 0 }}>
+          <p style={{ fontFamily: SANS, fontSize: 14, fontWeight: 600, color: C.text, margin: '0 0 2px' }}>{d.point}</p>
+          <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, lineHeight: 1.5, margin: 0 }}>{d.detail}</p>
+        </div>
+      ))}
+      <p style={{ fontFamily: MONO, fontSize: 9, color: C.text3, marginTop: 10, marginBottom: 0 }}>
+        Based on {data.recipesAnalyzed} versions · {data.sources.slice(0, 2).join(', ')}, and others
+      </p>
     </div>
   )
 }
 
-function KitchenConsensus({ slug, isMobile }: { slug: string; isMobile: boolean }) {
+function ConsensusAnnotations({ slug, isMobile }: { slug: string; isMobile: boolean }) {
+  const [expanded, setExpanded] = useState(false)
   const data = CONSENSUS_DATA[slug]
   if (!data) return null
 
+  const isObvious = (p: ConsensusPoint) =>
+    p.percentage >= 85 && (!p.altPercentage || p.altPercentage < 25)
+
+  const interestingIngredients = data.ingredients.filter(p => !isObvious(p))
+  const interestingTechniques = data.techniques.filter(p => !isObvious(p))
+  const allPoints = [...interestingIngredients, ...interestingTechniques]
+  const hasPoints = allPoints.length > 0
+
   return (
-    <>
-      <div style={{ height: 1, background: C.rule }} />
-      <div style={{ paddingTop: 24, paddingBottom: 24 }}>
-        {/* Header */}
+    <div style={{ marginTop: 12 }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          fontFamily: MONO, fontSize: 11, color: C.blue, cursor: 'pointer',
+          padding: '8px 0', userSelect: 'none' as const, display: 'flex', alignItems: 'center', gap: 6,
+        }}
+      >
+        <span>{expanded ? '\u25B4' : '\u25BE'}</span>
+        <span>How {data.recipesAnalyzed} versions compare</span>
+      </div>
+      {expanded && (
         <div style={{
-          width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: isMobile ? 6 : 10,
-          padding: isMobile ? '10px 14px' : '12px 16px', background: C.cool, border: `1px solid ${C.ruleLight}`,
-          borderLeft: `3px solid ${C.blue}`, borderRadius: '8px 8px 0 0',
+          padding: '12px 0 4px',
+          columns: isMobile ? 1 : 2, columnGap: 24,
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 3h6" /><path d="M10 3v6.5L4 20h16l-6-10.5V3" />
-            <circle cx="12" cy="16" r="1" fill={C.blue} />
-            <circle cx="10" cy="14" r="0.5" fill={C.blue} />
-          </svg>
-          <span style={{ flex: 1, textAlign: 'left', fontFamily: SERIF, fontSize: isMobile ? 14 : 16, fontWeight: 600, color: C.text }}>Kitchen Consensus</span>
-          {!isMobile && (
-            <span style={{ fontFamily: SERIF, fontSize: 12, fontStyle: 'italic', color: C.text3 }}>how most cooks make this dish</span>
-          )}
-          <span style={{
-            fontSize: 9, fontFamily: MONO, color: C.blue, padding: '2px 8px',
-            background: C.blueBg, borderRadius: 4,
-          }}>
-            {data.recipesAnalyzed} recipes analyzed
-          </span>
-          {isMobile && (
-            <div style={{ width: '100%', paddingLeft: 28, marginTop: -2 }}>
-              <span style={{ fontFamily: SERIF, fontSize: 11, fontStyle: 'italic', color: C.text3 }}>how most cooks make this dish</span>
+          {hasPoints ? allPoints.map((point, i) => (
+            <div key={i} style={{ breakInside: 'avoid' as const, marginBottom: 12 }}>
+              <p style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase' as const, letterSpacing: 0.5, margin: '0 0 3px' }}>
+                {point.label}
+              </p>
+              <p style={{ fontFamily: SANS, fontSize: 13, color: C.text, margin: '0 0 5px', lineHeight: 1.3 }}>
+                {point.consensus}
+                {point.alternative && (
+                  <span style={{ color: C.text3 }}> vs. {point.alternative}</span>
+                )}
+              </p>
+              {/* Split pill bar */}
+              <div style={{ width: 96, height: 5, borderRadius: 3, background: C.ruleLight, overflow: 'hidden', display: 'flex' }}>
+                <div style={{ width: `${point.percentage}%`, background: C.blue, borderRadius: '3px 0 0 3px', transition: 'width 0.2s' }} />
+                {point.altPercentage && (
+                  <div style={{ width: `${point.altPercentage}%`, background: `${C.blue}55` }} />
+                )}
+              </div>
             </div>
+          )) : (
+            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: 0 }}>
+              Strong consensus across {data.recipesAnalyzed} versions — most cooks agree on the fundamentals here.
+            </p>
           )}
         </div>
-
-        {/* Content — always visible */}
-        <div style={{
-          padding: '20px 16px', background: C.cool,
-          border: `1px solid ${C.ruleLight}`, borderTop: 'none',
-          borderLeft: `3px solid ${C.blue}`, borderRadius: '0 0 8px 8px',
-        }}>
-            <p style={{ fontSize: 11, fontFamily: SANS, color: C.text3, margin: '0 0 20px', lineHeight: 1.4, textAlign: 'center' }}>
-              We compared {data.recipesAnalyzed} versions of this dish. Here&apos;s what most cooks agree on.
-            </p>
-
-            {/* INGREDIENTS CONSENSUS */}
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
-                Ingredients
-              </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 12 }}>
-                {data.ingredients.map((point, i) => (
-                  <div key={i} style={{ background: C.warm, borderRadius: 10, border: `1px solid ${C.ruleLight}`, width: data.ingredients.length <= 3 ? `${Math.floor(100 / data.ingredients.length) - 2}%` : data.ingredients.length <= 6 ? 'calc(33.33% - 8px)' : 'calc(25% - 9px)', minWidth: 110 }}>
-                    <IngredientEggCard point={point} />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* TECHNIQUES CONSENSUS */}
-            {data.techniques.length > 0 && (
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.blue, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 14px', textAlign: 'center' }}>
-                  Technique
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {data.techniques.map((point, i) => (
-                    <div key={i} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
-                      background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}`,
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 2px' }}>
-                          {point.label}
-                        </p>
-                        <p style={{ fontSize: 14, fontFamily: SANS, fontWeight: 600, color: C.text, margin: 0 }}>
-                          {point.consensus}
-                        </p>
-                        {point.alternative && (
-                          <p style={{ fontSize: 10, fontFamily: SANS, color: C.text3, margin: '2px 0 0' }}>
-                            vs. {point.alternative} ({point.altPercentage}%)
-                          </p>
-                        )}
-                      </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <span style={{ fontSize: 18, fontFamily: MONO, fontWeight: 700, color: C.blue }}>{point.percentage}%</span>
-                        <p style={{ fontSize: 8, fontFamily: MONO, color: C.text3, margin: '2px 0 0' }}>agree</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Helpful hints */}
-            {data.differs.length > 0 && (
-              <div style={{
-                padding: '10px 12px', background: C.accentBg,
-                borderLeft: `3px solid ${C.accent}`, borderRadius: 6,
-                marginBottom: 12,
-              }}>
-                <p style={{ fontSize: 10, fontFamily: MONO, fontWeight: 600, color: C.accent, margin: '0 0 6px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                  Helpful hints
-                </p>
-                {data.differs.map((d, i) => (
-                  <div key={i} style={{ marginTop: i > 0 ? 8 : 0 }}>
-                    <p style={{ fontSize: 13, fontFamily: SANS, fontWeight: 600, color: C.text, margin: '0 0 2px' }}>{d.point}</p>
-                    <p style={{ fontSize: 11, fontFamily: SANS, color: C.text2, margin: 0, lineHeight: 1.4 }}>{d.detail}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Sources footer */}
-            <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '8px 0 0', lineHeight: 1.4, textAlign: 'center' }}>
-              Synthesized from {data.recipesAnalyzed} versions across {data.sources.slice(0, 3).join(', ')}, and others.
-            </p>
-          </div>
-      </div>
-    </>
+      )}
+    </div>
   )
 }
 
@@ -1009,6 +920,8 @@ export default function RecipePage() {
             </div>
           )}
 
+          <RecipeEditorNote slug={slug} />
+
           {/* Action buttons: Grocery list · Share · Save */}
           <div style={{ display: 'flex', gap: 8 }}>
             {hasIngredients && (
@@ -1109,6 +1022,7 @@ export default function RecipePage() {
                   </p>
                 ))}
               </div>
+              <ConsensusAnnotations slug={slug} isMobile={isMobile} />
             </div>
             {/* Add to shopping list button */}
             <button
@@ -1321,9 +1235,6 @@ export default function RecipePage() {
         )}
 
         <div style={{ height: 1, background: C.rule }} />
-
-        {/* ===== KITCHEN CONSENSUS ===== */}
-        <KitchenConsensus slug={slug} isMobile={isMobile} />
 
         <div style={{ height: 1, background: C.rule }} />
 
