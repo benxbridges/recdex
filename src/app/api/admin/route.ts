@@ -34,6 +34,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
+    case 'set-featured': {
+      const { slug } = body
+      // Clear all featured flags first, then set the new one
+      await supabaseAdmin.from('recipes').update({ featured: false }).eq('featured', true)
+      const { error } = await supabaseAdmin.from('recipes').update({ featured: true }).eq('slug', slug)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true })
+    }
+
     default:
       return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
   }

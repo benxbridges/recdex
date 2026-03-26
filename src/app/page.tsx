@@ -181,9 +181,11 @@ export default function Home() {
         .order('created_at', { ascending: false })
       if (!allRecipes || allRecipes.length === 0) return
       allRecipesRef.current = allRecipes
-      const rotdIdx = getRotdIndex(allRecipes.length)
-      setTonightsPick(allRecipes[rotdIdx])
-      shuffleRecipes(allRecipes, allRecipes[rotdIdx]?.id)
+      // Use featured recipe as Tonight's Pick if one is set, otherwise fall back to date rotation
+      const featured = allRecipes.find(r => r.featured)
+      const pick = featured ?? allRecipes[getRotdIndex(allRecipes.length)]
+      setTonightsPick(pick)
+      shuffleRecipes(allRecipes, pick?.id)
     }
     fetchHomepage()
   }, [shuffleRecipes])
