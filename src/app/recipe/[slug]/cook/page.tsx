@@ -1222,7 +1222,7 @@ export default function CookModePage() {
     let numberSize: number, numberFontSize: number, numberBorderRadius: number
     let lineHeight: number, fontFamily: string
 
-    const stepPhase = recipe.steps[index] ? classifyStep(recipe.steps[index].text) : 'prep'
+    const stepPhase = recipe?.steps[index] ? classifyStep(recipe.steps[index].text) : 'prep'
     const isPassive = stepPhase === 'passive'
 
     if (isActive) {
