@@ -142,14 +142,20 @@ When importing recipes, check for duplicates:
 4. If a recipe exists with a similar name, SKIP IT — don't create a variant
 
 ## Session Checklist
-Start of session:
-1. Read this file + `tasks/lessons.md`
-2. Check `tasks/todo.md` for current priorities
-3. Verify dev server is running (`preview_list`)
-4. Ask what we're working on (or continue from todo)
 
-End of session:
+**Start of session (parallel sessions):**
+1. Read `COORDINATION.md` to understand what other sessions are doing
+2. Check "Open Questions" — your answer might already be there
+3. Read this file + `tasks/lessons.md`
+4. Verify dev server is running (`preview_list`)
+5. Mark your session as "In Progress" in COORDINATION.md
+
+**During work:**
+- If you make a decision that affects other sessions, update COORDINATION.md immediately
+- If you hit a blocker, flag it in COORDINATION.md
+
+**End of session:**
 1. Copy files to worktree, verify in preview
 2. Commit with descriptive message, push to main
-3. Update `tasks/todo.md` with progress
-4. Update `tasks/lessons.md` if any corrections happened
+3. Update `COORDINATION.md`: status, accomplishments, new blockers/questions
+4. Update `tasks/todo.md` and `tasks/lessons.md` if applicable
