@@ -91,79 +91,65 @@ export function scaleAmount(amount: string, factor: number): string {
 }
 
 /**
- * Classify whether a recipe step is "prep" or "cook" phase.
- * Returns 'prep' for setup/chopping/measuring, 'cook' for heat-based steps.
+ * Classify whether a recipe step is "prep" or "cook".
+ *
+ * Simple rule: **cook = involves heat**. Everything else is prep.
+ * - "Boil water" → cook (heat)
+ * - "Cook pasta then drain" → cook (heat)
+ * - "Whisk eggs in a bowl" → prep (no heat)
+ * - "Season chicken and set aside" → prep (no heat)
+ * - "Preheat the oven" → prep (setup for heat, not cooking yet)
+ * - "Serve with garnish" → prep (no heat — we don't use 'finish')
  */
-const PREP_PATTERNS = [
-  /\b(chop|dice|mince|slice|julienne|peel|trim|wash|rinse|drain)\b/i,
-  /\b(combine|mix|toss|whisk|stir together|blend)\b.*\b(bowl|container|dish)\b/i,
-  /\b(measure|weigh|prepare|set aside|gather|arrange)\b/i,
-  /\b(marinate|season|coat|rub|dress)\b/i,
-  /\b(preheat)\b/i,
-  /\b(line|grease|spray)\b.*\b(pan|sheet|baking|dish)\b/i,
+const HEAT_PATTERNS = [
+  // Direct heat verbs — if the step says "cook", "bake", "fry", etc., it's cook
+  // Excludes "warm" and "brown" when used as adjectives (warm milk, brown sugar)
+  /\b(heat|cook|bake|roast|grill|fry|sauté|saute|sear|broil|braise|simmer|boil|steam|poach|toast|caramelize|reduce|deglaze|stir-fry|flambe|flambé|smoke|blanch|melt|char)\b/i,
+  /\bbrown\b(?!\s+(sugar|butter|rice|bread|bag|paper|gravy|sauce|onion|mustard|ale|stock|broth))/i,
+  /\bwarm\b(?!\s+(water|milk|place|spot|towel|broth|stock|tortillas?|noodles?|liquid))/i,
+  // Equipment that ALWAYS implies heat (oven, stove, burner, flame) + time context
+  // Excludes pan/pot/skillet/wok — those are just containers, and "cool in pan" is not cooking
+  /\b(oven|stove|burner|flame)\b.*\b(minutes?|hours?|until)\b/i,
+  // Explicit oven/grill transfers
+  /\b(transfer to|place in|put in)\b.*\b(oven|grill|smoker|hot)\b/i,
 ]
 
-const COOK_PATTERNS = [
-  /\b(heat|warm|cook|bake|roast|grill|fry|sauté|saute|sear|broil|braise|simmer|boil|steam|poach|toast|brown|caramelize|reduce|deglaze|stir-fry)\b/i,
-  /\b(oven|stove|burner|flame|grill|skillet|pot|pan)\b.*\b(minutes?|hours?|until)\b/i,
-  /\b(transfer to|place in|put in)\b.*\b(oven|grill|smoker)\b/i,
-]
-
-export function classifyStep(text: string): 'prep' | 'cook' | 'finish' {
-  // "Serve", "garnish and serve", "let rest then serve" → finish
-  // Must be the PRIMARY action, not incidental ("transfer to a plate" is NOT finish)
-  if (/\b(serve\b|garnish and serve|let (it )?rest)\b/i.test(text) && !/\b(cook|heat|bake|roast|sear|simmer|boil|fry)\b/i.test(text)) {
-    return 'finish'
+export function classifyStep(text: string): 'prep' | 'cook' {
+  // If any heat verb or heat-context pattern matches → cook
+  for (const p of HEAT_PATTERNS) {
+    if (p.test(text)) return 'cook'
   }
-
-  let prepScore = 0
-  let cookScore = 0
-
-  for (const p of PREP_PATTERNS) {
-    if (p.test(text)) prepScore++
-  }
-  for (const p of COOK_PATTERNS) {
-    if (p.test(text)) cookScore++
-  }
-
-  if (cookScore > prepScore) return 'cook'
-  if (prepScore > 0) return 'prep'
-  return 'cook' // default to cook if ambiguous
+  // Everything else is prep — chopping, mixing, seasoning, serving, plating
+  return 'prep'
 }
 
 /**
- * Find the phase transition points in recipe steps.
- * Only shows meaningful transitions: prep→cook and cook→finish.
- * Ignores single-step "flickers" (e.g., one prep step among cook steps).
+ * Find prep→cook transition points.
+ *
+ * Only shows a divider when there are 2+ consecutive prep steps at the start,
+ * followed by a cook step. This tells the user: "get all this ready, then
+ * you'll start cooking."
+ *
+ * No "finish" dividers — too precious and recipe-specific.
+ * No dividers for short recipes (< 4 steps) or all-cook recipes.
  */
 export function findPhaseBreaks(steps: { text: string }[]): { index: number; fromPhase: string; toPhase: string }[] {
-  if (steps.length < 3) return [] // too short to have meaningful phases
+  if (steps.length < 4) return []
 
   const phases = steps.map(s => classifyStep(s.text))
-  const breaks: { index: number; fromPhase: string; toPhase: string }[] = []
 
-  // Smooth single-step outliers (e.g., cook-prep-cook → cook-cook-cook)
-  const smoothed = [...phases]
-  for (let i = 1; i < smoothed.length - 1; i++) {
-    if (smoothed[i] !== smoothed[i - 1] && smoothed[i] !== smoothed[i + 1]) {
-      smoothed[i] = smoothed[i - 1] // absorb into surrounding phase
-    }
+  // Find where the initial prep section ends
+  let prepEndIndex = 0
+  while (prepEndIndex < phases.length && phases[prepEndIndex] === 'prep') {
+    prepEndIndex++
   }
 
-  // Only emit meaningful transitions (prep→cook, cook→finish, prep→finish)
-  let currentPhase = smoothed[0]
-  for (let i = 1; i < smoothed.length; i++) {
-    if (smoothed[i] !== currentPhase) {
-      // Only show forward transitions (prep→cook→finish), not backward
-      const order = { prep: 0, cook: 1, finish: 2 }
-      if (order[smoothed[i]] > order[currentPhase]) {
-        breaks.push({ index: i, fromPhase: currentPhase, toPhase: smoothed[i] })
-      }
-      currentPhase = smoothed[i]
-    }
+  // Only show if there are 2+ prep steps at the start, followed by cook
+  if (prepEndIndex >= 2 && prepEndIndex < phases.length) {
+    return [{ index: prepEndIndex, fromPhase: 'prep', toPhase: 'cook' }]
   }
 
-  return breaks
+  return []
 }
 
 /**
@@ -211,8 +197,7 @@ export function highlightVerbs(text: string): TextSegment[] {
 /**
  * Phase labels and colors
  */
-export const PHASE_META = {
+export const PHASE_META: Record<string, { label: string; color: string; bg: string }> = {
   prep: { label: 'Prep', color: '#7B93A8', bg: 'rgba(123, 147, 168, 0.08)' },
   cook: { label: 'Cook', color: '#C4652A', bg: 'rgba(196, 101, 42, 0.08)' },
-  finish: { label: 'Finish', color: '#6B8E5A', bg: 'rgba(107, 142, 90, 0.08)' },
 }

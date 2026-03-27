@@ -12,19 +12,7 @@
  * Script uses 72s delay between calls to stay within limits.
  */
 
-import { readFileSync } from 'fs'
 import { createClient } from '@supabase/supabase-js'
-
-// Load .env.local manually (no dotenv dependency)
-try {
-  const envFile = readFileSync('.env.local', 'utf-8')
-  for (const line of envFile.split('\n')) {
-    const match = line.match(/^([^#=]+)=(.*)$/)
-    if (match && !process.env[match[1].trim()]) {
-      process.env[match[1].trim()] = match[2].trim()
-    }
-  }
-} catch {}
 
 const supabaseAdmin = createClient(
   'https://zacwsrcdvpglrcvirlng.supabase.co',
@@ -36,71 +24,6 @@ const DELAY_MS = 72_000 // 72 seconds = ~50/hour
 const args = process.argv.slice(2)
 const limit = parseInt(args.find(a => a.startsWith('--limit='))?.split('=')[1] || '500', 10)
 const dryRun = args.includes('--dry-run')
-
-// Words that add no visual information to a food photo search
-const STRIP_WORDS = new Set([
-  'classic', 'traditional', 'easy', 'simple', 'quick', 'best', 'perfect',
-  'homemade', 'authentic', 'ultimate', 'basic', 'original', 'old-fashioned',
-  'grandma', 'grandmas', "grandma's", 'famous', 'favorite', 'favourite',
-  'my', 'the', 'a', 'an', 'and', 'or', 'of', 'for', 'style', 'recipe',
-  'first', 'fermentation',
-])
-
-// Foreign connectors — translate to keep the ingredient after them
-const FOREIGN_CONNECTORS: Record<string, string> = {
-  'al': 'with', 'alla': 'with', 'alle': 'with', "all'": 'with',
-  'au': 'with', 'aux': 'with', 'con': 'with', 'com': 'with',
-  'di': '', 'de': '', 'del': '', 'della': '', 'des': '',
-  'en': 'in', 'in': 'in', 'e': 'and', 'et': 'and',
-}
-
-/**
- * Build a smart Unsplash search query from a recipe title.
- * Front-loads the main dish, keeps visible ingredients, strips meta-words.
- * e.g. "Slow-Roasted Chicken Thighs with Lemon and Olives" → "chicken thighs lemon olives food"
- *      "Crème Brûlée au Chocolat" → "creme brulee chocolate food"
- *      "Classic Risotto al Limone" → "risotto lemon food"
- */
-function buildSearchQuery(title: string): string {
-  // Handle parenthetical alt names — keep whichever is more descriptive
-  // e.g. "Plov (Central Asian Pilaf)" → "plov pilaf"
-  const cleaned = title
-    .replace(/['']/g, "'")
-    .replace(/\(([^)]+)\)/g, ' $1 ')  // unwrap parens
-    .replace(/[^\w\s'-]/g, ' ')        // strip special chars
-    .toLowerCase()
-    .trim()
-
-  const words = cleaned.split(/\s+/).filter(Boolean)
-  const result: string[] = []
-
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i]
-
-    // Translate foreign connectors
-    if (w in FOREIGN_CONNECTORS) {
-      const replacement = FOREIGN_CONNECTORS[w]
-      if (replacement && replacement !== 'and') {
-        // Skip 'with'/'in' — just let the next word (the ingredient) come through
-      }
-      continue
-    }
-
-    // Strip meta-words
-    if (STRIP_WORDS.has(w)) continue
-
-    // Strip cooking method adjectives (they don't affect how food LOOKS in a photo much)
-    // But keep them if they're the only word (edge case)
-    if (result.length > 0 && ['slow', 'pan', 'oven', 'slow-roasted', 'pan-seared', 'deep-fried'].includes(w)) continue
-
-    result.push(w)
-  }
-
-  // Append "food" to bias Unsplash toward food photography
-  result.push('food')
-
-  return result.join(' ')
-}
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
@@ -170,10 +93,9 @@ async function main() {
 
   for (let i = 0; i < recipes.length; i++) {
     const recipe = recipes[i]
-    const searchQuery = buildSearchQuery(recipe.title)
-    console.log(`[${i + 1}/${recipes.length}] "${recipe.title}" → "${searchQuery}"`)
+    console.log(`[${i + 1}/${recipes.length}] "${recipe.title}"`)
 
-    const imageUrl = await fetchUnsplashImage(searchQuery)
+    const imageUrl = await fetchUnsplashImage(recipe.title)
 
     if (!imageUrl) {
       console.log(`  No image found\n`)

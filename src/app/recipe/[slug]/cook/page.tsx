@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
 import { scaleAmount, highlightVerbs, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import CookModeTutorial from '@/app/components/CookModeTutorial'
 
 // Web Speech API types (not yet in all TS libs)
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -313,12 +315,11 @@ function FloatingTimerPanel({ timers, onGoToStep }: {
 
 // ─── Phase divider ───────────────────────────────────────────────────────
 
-function PhaseDivider({ phase }: { phase: 'prep' | 'cook' | 'finish' }) {
+function PhaseDivider({ phase }: { phase: 'prep' | 'cook' }) {
   const meta = PHASE_META[phase]
-  const icons = {
+  const icons: Record<string, React.ReactNode> = {
     prep: <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>,
     cook: <><path d="M12 12c0-3 2.5-5 2.5-8" /><path d="M8 12c0-3 2.5-5 2.5-8" /><path d="M16 12c0-3 2.5-5 2.5-8" /><rect x="4" y="14" width="16" height="6" rx="1" /></>,
-    finish: <><path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" /></>,
   }
   return (
     <div style={{
@@ -434,151 +435,195 @@ function StepNote({ stepIndex, slug }: { stepIndex: number; slug: string }) {
   )
 }
 
-// ─── Voice control + TTS ─────────────────────────────────────────────────
+// ─── Substitution card ───────────────────────────────────────────────────
 
-function useVoiceControl(
-  recipe: Recipe | null,
-  activeStep: number,
-  totalSteps: number,
-  goToStep: (step: number) => void,
-  startTimer: (key: string, seconds: number, label: string) => void,
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>,
-) {
-  const [isListening, setIsListening] = useState(false)
-  const [lastHeard, setLastHeard] = useState('')
-  const recognitionRef = useRef<SpeechRecognition | null>(null)
-  const isSpeakingRef = useRef(false)
-  const isListeningRef = useRef(false)
+function SubstitutionCard({ ingredientName, recipeName, recipeCuisine, stepText, onApply, onClose }: {
+  ingredientName: string
+  recipeName: string
+  recipeCuisine: string | null
+  stepText: string
+  onApply: (original: string, replacement: string, ratio: string) => void
+  onClose: () => void
+}) {
+  const [subs, setSubs] = useState<SubOption[]>([])
+  const [loading, setLoading] = useState(false)
+  const [source, setSource] = useState<'local' | 'ai'>('local')
+  const [showAll, setShowAll] = useState(false)
 
-  // Check if browser supports speech recognition
-  const isSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)
-
-  const speak = useCallback((text: string) => {
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.rate = 0.95
-    utterance.pitch = 1
-    utterance.volume = 0.8
-    // Prefer a natural-sounding voice
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Google') || v.lang.startsWith('en'))
-    if (preferred) utterance.voice = preferred
-    isSpeakingRef.current = true
-    utterance.onend = () => { isSpeakingRef.current = false }
-    window.speechSynthesis.speak(utterance)
-  }, [])
-
-  const readCurrentStep = useCallback(() => {
-    if (!recipe || activeStep >= totalSteps) return
-    const step = recipe.steps[activeStep]
-    speak(`Step ${activeStep + 1}. ${step.text}`)
-  }, [recipe, activeStep, totalSteps, speak])
-
-  const handleCommand = useCallback((transcript: string) => {
-    const cmd = transcript.toLowerCase().trim()
-    setLastHeard(cmd)
-
-    // Clear the display after 3 seconds
-    setTimeout(() => setLastHeard(''), 3000)
-
-    if (/\b(next|forward|continue)\b/.test(cmd)) {
-      if (activeStep < totalSteps) goToStep(activeStep + 1)
-      return
-    }
-    if (/\b(back|previous|go back)\b/.test(cmd)) {
-      if (activeStep > 0) goToStep(activeStep - 1)
-      return
-    }
-    if (/\b(read|repeat|what('s| is| does)? (the |this )?step)\b/.test(cmd)) {
-      readCurrentStep()
-      return
-    }
-    if (/\b(start|begin)\b.*\btimer\b|\btimer\b.*\b(start|begin|go)\b/.test(cmd)) {
-      if (recipe) {
-        const step = recipe.steps[activeStep]
-        if (step?.timer_minutes) {
-          const timerKey = `${recipe.id}-${activeStep}`
-          if (!timers[timerKey]?.active) {
-            startTimer(timerKey, step.timer_minutes * 60, `Step ${activeStep + 1}`)
-          }
-        }
-      }
-      return
-    }
-    // Go to specific step: "go to step 3"
-    const stepMatch = cmd.match(/\b(?:go to |step )\s*(\d+)\b/)
-    if (stepMatch) {
-      const target = parseInt(stepMatch[1]) - 1
-      if (target >= 0 && target < totalSteps) goToStep(target)
-      return
-    }
-    if (/\b(ingredients|what do i need)\b/.test(cmd)) {
-      if (recipe) {
-        const items = getIngredientItems(recipe.ingredients)
-        const list = items.slice(0, 5).map(i => `${i.amount || ''} ${i.unit || ''} ${i.name}`.trim()).join(', ')
-        speak(`You need: ${list}${items.length > 5 ? ` and ${items.length - 5} more ingredients` : ''}`)
-      }
-      return
-    }
-    if (/\b(stop listening|mute|quiet)\b/.test(cmd)) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      isListeningRef.current = false
-      return
-    }
-  }, [activeStep, totalSteps, goToStep, readCurrentStep, recipe, startTimer, timers, speak])
-
-  const toggleListening = useCallback(() => {
-    if (!isSupported) return
-
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-      isListeningRef.current = false
-      return
-    }
-
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    const recognition = new SpeechRecognition()
-    recognition.continuous = true
-    recognition.interimResults = false
-    recognition.lang = 'en-US'
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const last = event.results[event.results.length - 1]
-      if (last.isFinal) {
-        handleCommand(last[0].transcript)
-      }
-    }
-
-    recognition.onerror = () => {
-      setIsListening(false)
-      isListeningRef.current = false
-    }
-
-    recognition.onend = () => {
-      // Auto-restart if we're still supposed to be listening (use ref to avoid stale closure)
-      if (isListeningRef.current) {
-        try { recognition.start() } catch { setIsListening(false); isListeningRef.current = false }
-      }
-    }
-
-    recognitionRef.current = recognition
-    recognition.start()
-    setIsListening(true)
-    isListeningRef.current = true
-  }, [isSupported, isListening, handleCommand])
-
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      recognitionRef.current?.stop()
-      window.speechSynthesis?.cancel()
+    // Try local database first
+    const localMatch = findSubstitutions(ingredientName)
+    if (localMatch) {
+      setSubs(localMatch.subs)
+      setSource('local')
+      return
     }
-  }, [])
 
-  return { isListening, isSupported, toggleListening, speak, readCurrentStep, lastHeard, isSpeaking: isSpeakingRef }
+    // Fall back to API
+    setLoading(true)
+    fetch('/api/substitute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ingredient: ingredientName,
+        recipeTitle: recipeName,
+        recipeCuisine: recipeCuisine,
+        stepContext: stepText,
+      }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.subs) {
+          setSubs(data.subs)
+          setSource('ai')
+        }
+      })
+      .catch(() => { /* silently fail */ })
+      .finally(() => setLoading(false))
+  }, [ingredientName, recipeName, recipeCuisine, stepText])
+
+  const visibleSubs = showAll ? subs : subs.slice(0, 2)
+
+  return (
+    <div onClick={e => e.stopPropagation()} style={{
+      padding: '16px 16px 12px', borderRadius: 12,
+      background: C.warm, border: `1.5px solid ${C.accentMed}`,
+      animation: 'slideUp 0.15s ease',
+      marginTop: 8, marginBottom: 6,
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+            <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+          </svg>
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>
+            Swap {ingredientName}
+          </span>
+        </div>
+        <button onClick={onClose} aria-label="Close substitution panel" style={{
+          background: 'none', border: 'none', color: C.text3, fontSize: 20,
+          cursor: 'pointer', padding: 4, lineHeight: 1,
+          minWidth: 40, minHeight: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          WebkitTapHighlightColor: 'transparent', borderRadius: '50%',
+        }}>×</button>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0' }}>
+          <div style={{ width: 14, height: 14, border: `2px solid ${C.rule}`, borderTopColor: C.accent, borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+          <span style={{ fontSize: 11, color: C.text3, fontFamily: SANS }}>Finding substitutions...</span>
+        </div>
+      )}
+
+      {/* Options */}
+      {!loading && subs.length === 0 && (
+        <p style={{ fontSize: 11, color: C.text3, margin: 0, fontFamily: SANS }}>
+          No common substitutions found for this ingredient.
+        </p>
+      )}
+
+      {visibleSubs.map((sub, i) => (
+        <button key={i} onClick={() => onApply(ingredientName, sub.name, sub.ratio)} style={{
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          padding: '12px 14px', borderRadius: 10, textAlign: 'left',
+          border: `1px solid ${C.ruleLight}`, marginBottom: 8,
+          background: C.bg, cursor: 'pointer',
+          WebkitTapHighlightColor: 'transparent',
+          transition: 'border-color 0.15s',
+          minHeight: 48,
+        }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = C.accent }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = C.ruleLight }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: SANS }}>{sub.name}</span>
+              <span style={{ fontSize: 10, color: C.accent, fontFamily: MONO, fontWeight: 600 }}>{sub.ratio}</span>
+            </div>
+            {sub.notes && (
+              <p style={{ fontSize: 11, color: C.text3, margin: '3px 0 0', fontFamily: SANS, lineHeight: 1.4 }}>{sub.notes}</p>
+            )}
+            {sub.tags && sub.tags.length > 0 && (
+              <div style={{ display: 'flex', gap: 3, marginTop: 4, flexWrap: 'wrap' }}>
+                {sub.tags.map(tag => (
+                  <span key={tag} style={{
+                    fontSize: 8, fontWeight: 600, padding: '2px 6px', borderRadius: 3,
+                    background: C.greenBg, color: C.green, fontFamily: SANS, textTransform: 'uppercase', letterSpacing: 0.5,
+                  }}>{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+          <span style={{
+            fontSize: 11, fontWeight: 700, color: C.accent, fontFamily: SANS,
+            flexShrink: 0, padding: '6px 10px', borderRadius: 6,
+            background: C.accentBg, whiteSpace: 'nowrap',
+          }}>
+            Use →
+          </span>
+        </button>
+      ))}
+
+      {/* Show more / source */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        {subs.length > 2 && !showAll && (
+          <button onClick={() => setShowAll(true)} style={{
+            background: 'none', border: 'none', color: C.accent, fontSize: 11,
+            fontWeight: 600, cursor: 'pointer', fontFamily: SANS, padding: '6px 0',
+            minHeight: 36, WebkitTapHighlightColor: 'transparent',
+          }}>+{subs.length - 2} more options</button>
+        )}
+        {subs.length > 0 && (
+          <span style={{ fontSize: 9, color: C.text3, fontFamily: SANS, opacity: 0.6, marginLeft: 'auto', padding: '6px 0' }}>
+            {source === 'ai' ? 'AI suggestion' : 'Common sub'}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Swap banner (shows above active step when swaps are active) ─────────
+
+function SwapBanner({ swaps, onRemove }: {
+  swaps: Record<number, { original: string; replacement: string; ratio: string }>
+  onRemove: (index: number) => void
+}) {
+  const entries = Object.entries(swaps)
+  if (entries.length === 0) return null
+
+  return (
+    <div style={{
+      padding: '8px 16px', background: C.goldBg, borderBottom: `1px solid ${C.gold}30`,
+      display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
+      flexShrink: 0, animation: 'fadeIn 0.15s ease',
+    }}>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+        <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+      </svg>
+      {entries.map(([idx, swap]) => (
+        <span key={idx} style={{
+          fontSize: 11, fontFamily: SANS, color: C.text2,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '4px 10px', borderRadius: 6, background: C.bg,
+          border: `1px solid ${C.gold}30`,
+        }}>
+          <s style={{ color: C.text3, fontSize: 10 }}>{swap.original}</s>
+          <span style={{ color: C.gold, fontSize: 10 }}>→</span>
+          <strong style={{ color: C.text, fontWeight: 600 }}>{swap.replacement}</strong>
+          <button onClick={() => onRemove(Number(idx))} style={{
+            background: 'none', border: 'none', color: C.text3, cursor: 'pointer',
+            fontSize: 16, padding: '0 2px', lineHeight: 1, marginLeft: 4,
+            minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>×</button>
+        </span>
+      ))}
+    </div>
+  )
 }
 
 // ─── Photo capture component ────────────────────────────────────────────
@@ -586,6 +631,7 @@ function useVoiceControl(
 function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeTitle: string }) {
   const [photo, setPhoto] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
+  const [shared, setShared] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load existing photo
@@ -615,6 +661,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const resized = canvas.toDataURL('image/jpeg', 0.8)
         setPhoto(resized)
+        setShared(false)
         try {
           const photos = JSON.parse(localStorage.getItem('recdex-cook-photos') || '{}')
           photos[recipeSlug] = resized
@@ -627,13 +674,45 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
     reader.readAsDataURL(file)
   }
 
+  const handleShare = async () => {
+    const recipeUrl = `https://www.recipeindex.org/recipe/${recipeSlug}`
+    const shareText = `I just made ${recipeTitle}! Try it yourself:`
+
+    try {
+      // Build share data with photo if possible
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const shareData: any = {
+        title: `I made ${recipeTitle}!`,
+        text: shareText,
+        url: recipeUrl,
+      }
+
+      // Try to share with photo file
+      if (photo) {
+        const blob = await fetch(photo).then(r => r.blob())
+        const file = new File([blob], 'my-dish.jpg', { type: 'image/jpeg' })
+        if (navigator.canShare?.({ files: [file] })) {
+          shareData.files = [file]
+        }
+      }
+
+      await navigator.share(shareData)
+      setShared(true)
+    } catch (err) {
+      // User cancelled or share not supported — try SMS fallback
+      if ((err as Error)?.name === 'AbortError') return
+      const smsBody = encodeURIComponent(`${shareText} ${recipeUrl}`)
+      window.open(`sms:?&body=${smsBody}`, '_self')
+    }
+  }
+
   if (photo) {
     return (
       <div style={{ marginTop: 16, animation: 'slideUp 0.2s ease' }}>
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.rule}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt={recipeTitle} style={{ width: '100%', display: 'block', borderRadius: 10 }} />
-          {saved && (
+          {saved && !shared && (
             <div style={{
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               padding: '6px 14px', borderRadius: 16, background: 'rgba(0,0,0,0.7)',
@@ -643,6 +722,38 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
             </div>
           )}
         </div>
+
+        {/* Share CTA — prominent after photo */}
+        {!shared ? (
+          <button
+            onClick={handleShare}
+            style={{
+              width: '100%', marginTop: 12, padding: '14px 20px', borderRadius: 8,
+              border: 'none', background: '#34C759', color: '#fff',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'transform 0.15s',
+            }}
+            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
+            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <polyline points="16 6 12 2 8 6" />
+              <line x1="12" y1="2" x2="12" y2="15" />
+            </svg>
+            Text this to a friend
+          </button>
+        ) : (
+          <div style={{
+            width: '100%', marginTop: 12, padding: '12px 20px', borderRadius: 8,
+            border: `1px solid #34C759`, background: 'rgba(52,199,89,0.1)',
+            textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#34C759', fontFamily: SANS,
+          }}>
+            Shared!
+          </div>
+        )}
+
         <button
           onClick={() => fileInputRef.current?.click()}
           style={{
@@ -678,7 +789,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
           <path d="M8 2h8l2 4H6l2-4z" />
         </svg>
         <span style={{ fontSize: 13, fontWeight: 600 }}>Snap a photo of your dish</span>
-        <span style={{ fontSize: 11, color: C.text3 }}>Share what you made with the community</span>
+        <span style={{ fontSize: 11, color: C.text3 }}>Share what you made with a friend</span>
       </button>
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleCapture} style={{ display: 'none' }} />
     </div>
@@ -760,7 +871,11 @@ export default function CookModePage() {
   const [openTip, setOpenTip] = useState<string | null>(null)
   const [autoShownTips] = useState<Set<string>>(() => new Set())
   const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([])
+  const [activeSwaps, setActiveSwaps] = useState<Record<number, { original: string; replacement: string; ratio: string }>>({})
+  const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null)
+  const [showAmounts, setShowAmounts] = useState(false)
   const [servings, setServings] = useState<number>(4)
+  const [tutorialDone, setTutorialDone] = useState(false)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
   const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const isScrollingRef = useRef(false)
@@ -783,11 +898,33 @@ export default function CookModePage() {
   }
   const checkedCount = Object.values(checkedIngredients).filter(Boolean).length
 
-  // Load persisted ingredient checks
+  const applySwap = (index: number, original: string, replacement: string, ratio: string) => {
+    setActiveSwaps(prev => {
+      const next = { ...prev, [index]: { original, replacement, ratio } }
+      try { localStorage.setItem(`recdex-swaps-${slug}`, JSON.stringify(next)) } catch { /* */ }
+      return next
+    })
+    setOpenSwapIndex(null)
+  }
+
+  const removeSwap = (index: number) => {
+    setActiveSwaps(prev => {
+      const next = { ...prev }
+      delete next[index]
+      try { localStorage.setItem(`recdex-swaps-${slug}`, JSON.stringify(next)) } catch { /* */ }
+      return next
+    })
+  }
+
+  // Load persisted ingredient checks + swaps
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`recdex-checked-${slug}`)
       if (saved) setCheckedIngredients(JSON.parse(saved))
+    } catch { /* */ }
+    try {
+      const savedSwaps = localStorage.getItem(`recdex-swaps-${slug}`)
+      if (savedSwaps) setActiveSwaps(JSON.parse(savedSwaps))
     } catch { /* */ }
   }, [slug])
 
@@ -797,9 +934,55 @@ export default function CookModePage() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
+  // Keep screen on during cook mode via Wake Lock API
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen')
+        }
+      } catch {
+        // Wake lock request failed (e.g., low battery, tab not visible)
+      }
+    }
+
+    requestWakeLock()
+
+    // Re-acquire wake lock when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      wakeLock?.release()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+
   useEffect(() => {
     async function fetchRecipe() {
       setLoading(true)
+
+      // Check sessionStorage for temporary scanned recipes (e.g. from /scan)
+      if (slug === 'temp-scan') {
+        try {
+          const stored = sessionStorage.getItem('recdex-temp-recipe')
+          if (stored) {
+            const parsed = JSON.parse(stored)
+            setRecipe(parsed)
+            setLoading(false)
+            return
+          }
+        } catch {
+          console.error('[cook] Failed to load temp recipe from sessionStorage')
+        }
+      }
+
       try {
         const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
         if (error) throw error
@@ -933,10 +1116,7 @@ export default function CookModePage() {
     return () => { wakeLock?.release(); document.removeEventListener('visibilitychange', handleVisibility) }
   }, [])
 
-  // Voice control hook
-  const voice = useVoiceControl(recipe, activeStep, recipe?.steps?.length || 0, goToStep, startTimer, timers)
-
-  // Keyboard shortcuts: ←/→ for steps, Space for timer, R for read
+  // Keyboard shortcuts: ←/→ for steps, Space for timer
   useEffect(() => {
     if (!recipe) return
     const total = recipe.steps.length
@@ -955,13 +1135,35 @@ export default function CookModePage() {
             startTimer(timerKey, currentStep.timer_minutes * 60, `Step ${activeStep + 1}`)
           }
         }
-      } else if (e.key === 'r' || e.key === 'R') {
-        voice.readCurrentStep()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeStep, recipe, timers, goToStep, startTimer, voice])
+  }, [activeStep, recipe, timers, goToStep, startTimer])
+
+  // ─── Build ingredient amount lookup for inline annotations ──────────
+  // (Must be before early returns to maintain hooks order)
+  const ingredientAmountMap = useMemo(() => {
+    if (!recipe || !showAmounts) return new Map<string, string>()
+    const items = getIngredientItems(recipe.ingredients)
+    const map = new Map<string, string>()
+    // Prefixes to strip for matching (ingredient says "Large egg yolks", step says "egg yolks")
+    const STRIP_PREFIX = /^(large|small|medium|fresh|dried|frozen|whole|unsalted|salted|extra-virgin|extra virgin|pure|raw|organic|ground|crushed|minced|chopped|diced|sliced|grated|shredded|packed|loosely packed|thinly sliced|finely|coarsely|freshly)\s+/i
+    for (const item of items) {
+      if (!item.name || !item.amount) continue
+      const scaled = scaleAmount(item.amount, scaleFactor)
+      const label = [scaled, item.unit].filter(Boolean).join(' ')
+      if (!label) continue
+      const rawName = item.name.toLowerCase()
+      map.set(rawName, label)
+      // Also add stripped version for fuzzy matching
+      const stripped = rawName.replace(STRIP_PREFIX, '').replace(STRIP_PREFIX, '') // double-pass for "freshly ground"
+      if (stripped !== rawName && stripped.length > 2) {
+        map.set(stripped, label)
+      }
+    }
+    return map
+  }, [recipe, showAmounts, scaleFactor])
 
   // ─── Loading / error states ──────────────────────────────────────────
 
@@ -1007,7 +1209,7 @@ export default function CookModePage() {
 
   // Phase breaks for prep/cook/finish dividers
   const phaseBreaks = findPhaseBreaks(recipe.steps)
-  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook' | 'finish']))
+  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook']))
 
   // Dock magnification: compute style for each step
   function getStepStyle(index: number) {
@@ -1072,15 +1274,78 @@ export default function CookModePage() {
     }
   }
 
-  // ─── Render step text with bold action verbs ─────────────────────────
+  // ─── Render step text with bold action verbs + optional amounts ─────
   function renderStepText(text: string, isActive: boolean) {
     if (!isActive) return text
     const segments = highlightVerbs(text)
-    return segments.map((seg, i) =>
-      seg.bold
-        ? <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
-        : <span key={i}>{seg.text}</span>
-    )
+
+    if (!showAmounts || ingredientAmountMap.size === 0) {
+      return segments.map((seg, i) =>
+        seg.bold
+          ? <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
+          : <span key={i}>{seg.text}</span>
+      )
+    }
+
+    // With amounts: scan each non-bold segment for ingredient names and inject amount badges
+    return segments.map((seg, i) => {
+      if (seg.bold) {
+        return <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
+      }
+
+      // Try to find ingredient names in this text segment
+      const parts: React.ReactNode[] = []
+      let remaining = seg.text
+      let keyIdx = 0
+
+      // Sort ingredient names by length (longest first) to avoid partial matches
+      const sortedNames = [...ingredientAmountMap.keys()].sort((a, b) => b.length - a.length)
+
+      while (remaining.length > 0) {
+        let earliestMatch: { pos: number; name: string; matchLen: number } | null = null
+
+        for (const name of sortedNames) {
+          // Skip very short names (1-2 chars) to avoid false matches
+          if (name.length <= 2) continue
+          const pos = remaining.toLowerCase().indexOf(name)
+          if (pos !== -1 && (!earliestMatch || pos < earliestMatch.pos)) {
+            earliestMatch = { pos, name, matchLen: name.length }
+          }
+        }
+
+        if (!earliestMatch) {
+          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining}</span>)
+          break
+        }
+
+        // Text before the match
+        if (earliestMatch.pos > 0) {
+          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining.slice(0, earliestMatch.pos)}</span>)
+        }
+
+        // The ingredient name + amount badge
+        const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
+        const amount = ingredientAmountMap.get(earliestMatch.name)!
+        parts.push(
+          <span key={`${i}-${keyIdx++}`}>
+            {matchedText}
+            <span style={{
+              display: 'inline-block', fontSize: '0.65em', fontFamily: MONO,
+              color: C.gold, background: C.goldBg, padding: '1px 5px',
+              borderRadius: 4, marginLeft: 3, verticalAlign: 'middle',
+              fontWeight: 600, letterSpacing: -0.3, lineHeight: 1.3,
+              whiteSpace: 'nowrap',
+            }}>{amount}</span>
+          </span>
+        )
+
+        remaining = remaining.slice(earliestMatch.pos + earliestMatch.matchLen)
+        // Remove this name from future matches in this segment to avoid double-matching
+        sortedNames.splice(sortedNames.indexOf(earliestMatch.name), 1)
+      }
+
+      return <span key={i}>{parts}</span>
+    })
   }
 
   // ─── Ingredient rendering helper (with scaling) ──────────────────────
@@ -1088,26 +1353,76 @@ export default function CookModePage() {
     const isHighlighted = options.showHighlight && highlightedIngredients.has(i) && !checkedIngredients[i]
     const scaledAmount = item.amount ? scaleAmount(item.amount, scaleFactor) : ''
     const isScaled = scaleFactor !== 1
+    const swap = activeSwaps[i]
+    const isSwapOpen = openSwapIndex === i
 
     return (
-      <p key={i} onClick={() => toggleIngredient(i)} style={{
-        fontSize: options.fontSize, color: checkedIngredients[i] ? C.text3 : C.text, margin: '4px 0', fontFamily: SANS, lineHeight: 1.55,
-        cursor: 'pointer', userSelect: 'none' as const,
-        textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
-        opacity: checkedIngredients[i] ? 0.45 : 1,
-        background: isHighlighted ? C.accentBg : 'transparent',
-        fontWeight: isHighlighted ? 600 : 400,
-        padding: '2px 6px', borderRadius: 4, marginLeft: -6,
-        transition: 'all 0.25s ease',
-      }}>
-        {scaledAmount && (
-          <span style={{ fontWeight: isHighlighted ? 600 : 400, color: isScaled ? C.accent : undefined }}>
-            {scaledAmount}{item.unit ? ` ${item.unit}` : ''}{' '}
-          </span>
+      <div key={i}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          margin: '1px 0',
+        }}>
+          <p onClick={() => toggleIngredient(i)} style={{
+            flex: 1, fontSize: options.fontSize, color: checkedIngredients[i] ? C.text3 : C.text, margin: 0, fontFamily: SANS, lineHeight: 1.55,
+            cursor: 'pointer', userSelect: 'none' as const,
+            textDecoration: checkedIngredients[i] ? 'line-through' : 'none',
+            opacity: checkedIngredients[i] ? 0.45 : 1,
+            background: isHighlighted ? C.accentBg : 'transparent',
+            fontWeight: isHighlighted ? 600 : 400,
+            padding: '6px 8px', borderRadius: 6, marginLeft: -8,
+            transition: 'all 0.25s ease',
+          }}>
+            {scaledAmount && (
+              <span style={{ fontWeight: isHighlighted ? 600 : 400, color: isScaled ? C.accent : undefined }}>
+                {scaledAmount}{item.unit ? ` ${item.unit} ` : ' '}
+              </span>
+            )}
+            {swap ? (
+              <>
+                <s style={{ color: C.text3, textDecoration: 'line-through', fontWeight: 400 }}>{item.name}</s>
+                {' '}
+                <span style={{ color: C.gold, fontWeight: 600 }}>{swap.replacement}</span>
+              </>
+            ) : (
+              item.name
+            )}
+            {item.notes && <span style={{ color: C.text3, fontSize: options.fontSize - 1 }}> ({item.notes})</span>}
+          </p>
+          {/* Swap button — circular refresh/swap icon */}
+          <button
+            onClick={e => { e.stopPropagation(); setOpenSwapIndex(isSwapOpen ? null : i) }}
+            title={swap ? 'Change substitution' : `Swap ${item.name}`}
+            aria-label={swap ? `Change ${item.name} substitution` : `Find substitute for ${item.name}`}
+            style={{
+              width: 32, height: 32, minWidth: 32, borderRadius: '50%', border: 'none',
+              background: swap ? C.goldBg : isSwapOpen ? C.accentBg : 'transparent',
+              color: swap ? C.gold : isSwapOpen ? C.accent : C.text3,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              opacity: swap || isSwapOpen ? 1 : 0.5, transition: 'all 0.15s',
+              flexShrink: 0, padding: 0,
+              WebkitTapHighlightColor: 'transparent',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; if (!swap && !isSwapOpen) e.currentTarget.style.background = C.accentBg }}
+            onMouseLeave={e => { if (!swap && !isSwapOpen) { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent' } }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+              <path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+            </svg>
+          </button>
+        </div>
+        {/* Substitution card */}
+        {isSwapOpen && recipe && (
+          <SubstitutionCard
+            ingredientName={item.name}
+            recipeName={recipe.title}
+            recipeCuisine={recipe.cuisine}
+            stepText={recipe.steps[activeStep]?.text || ''}
+            onApply={(original, replacement, ratio) => applySwap(i, original, replacement, ratio)}
+            onClose={() => setOpenSwapIndex(null)}
+          />
         )}
-        {item.name}
-        {item.notes && <span style={{ color: C.text3, fontSize: options.fontSize - 1 }}> ({item.notes})</span>}
-      </p>
+      </div>
     )
   }
 
@@ -1122,19 +1437,29 @@ export default function CookModePage() {
         @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
         @keyframes eggFall{0%{transform:translateY(-20vh) rotate(0deg);opacity:1}70%{opacity:1}100%{transform:translateY(105vh) rotate(var(--egg-spin,720deg));opacity:0}}
         @keyframes eggWobble{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-        @keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(196,101,42,0.4)}50%{box-shadow:0 0 0 8px rgba(196,101,42,0)}}
+
       `}</style>
 
+      {/* First-time tutorial overlay */}
+      {!tutorialDone && <CookModeTutorial onComplete={() => setTutorialDone(true)} />}
+
       {/* HEADER */}
-      <div style={{ padding: '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <button onClick={() => router.push(`/recipe/${slug}`)} style={{ background: 'none', border: `1px solid ${C.rule}`, borderRadius: 6, padding: '6px 14px', color: C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>← Exit</button>
-          <div style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>
-            <h2 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: '2px 0 0' }}>
-              {recipe.title}<EggDot size={6} />
+      <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
+          {/* Left: back button */}
+          <button onClick={() => router.push(`/recipe/${slug}`)} style={{
+            background: 'none', border: 'none', color: C.text2, fontSize: 18,
+            cursor: 'pointer', padding: isMobile ? '4px 6px' : '6px 14px', flexShrink: 0,
+            ...(isMobile ? {} : { border: `1px solid ${C.rule}`, borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: SANS }),
+          }}>{isMobile ? '←' : '← Exit'}</button>
+
+          {/* Center: title */}
+          <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+            {!isMobile && <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>}
+            <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 15 : 17, fontWeight: 600, color: C.text, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              {recipe.title}<EggDot size={5} />
             </h2>
-            {recipe.creator_name && (
+            {!isMobile && recipe.creator_name && (
               <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
                 Recipe by{' '}
                 {recipe.creator_url ? (
@@ -1147,54 +1472,48 @@ export default function CookModePage() {
               </span>
             )}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {/* Voice control button */}
-            {voice.isSupported && (
-              <button
-                onClick={voice.toggleListening}
-                title={voice.isListening ? 'Stop voice control' : 'Start voice control (say "next", "back", "read step", "start timer")'}
-                style={{
-                  width: 32, height: 32, borderRadius: '50%', border: 'none',
-                  background: voice.isListening ? C.accent : 'transparent',
-                  color: voice.isListening ? '#fff' : C.text3,
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  animation: voice.isListening ? 'micPulse 1.5s ease infinite' : 'none',
-                  transition: 'all 0.15s',
-                }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <rect x="9" y="2" width="6" height="11" rx="3" />
-                  <path d="M5 10a7 7 0 0 0 14 0" />
-                  <path d="M12 19v3" />
-                </svg>
-              </button>
-            )}
-            {/* Read step aloud button */}
+
+          {/* Right: action buttons */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
+            {/* Inline amounts toggle */}
             <button
-              onClick={voice.readCurrentStep}
-              title="Read current step aloud (R)"
+              onClick={() => setShowAmounts(!showAmounts)}
+              title={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts in steps'}
+              aria-label={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts'}
               style={{
-                width: 32, height: 32, borderRadius: '50%', border: `1px solid ${C.ruleLight}`,
-                background: 'transparent', color: C.text3,
+                width: 36, height: 36, borderRadius: '50%', border: `1px solid ${showAmounts ? C.gold : C.ruleLight}`,
+                background: showAmounts ? C.goldBg : 'transparent',
+                color: showAmounts ? C.gold : C.text3,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.15s',
+                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-                <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-                <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2h8l-1 16H9L8 2z" /><path d="M12 6h4" /><path d="M11.5 10h4" /><path d="M11 14h3" />
+                <path d="M7 22h10" /><path d="M9 18h6" />
               </svg>
             </button>
-            {isMobile && ingredientItems.length > 0 && (
-              <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{ background: showIngredientsMobile ? C.text : 'none', border: `1px solid ${showIngredientsMobile ? C.text : C.rule}`, borderRadius: 6, padding: '6px 14px', color: showIngredientsMobile ? C.bg : C.text2, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>
-                Ingredients
+            {/* Mobile: step counter as ingredients toggle */}
+            {isMobile && ingredientItems.length > 0 ? (
+              <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{
+                background: showIngredientsMobile ? C.accent : 'transparent',
+                border: `1px solid ${showIngredientsMobile ? C.accent : C.rule}`, borderRadius: 20,
+                padding: '5px 12px', color: showIngredientsMobile ? '#fff' : C.text2,
+                fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', gap: 5,
+                transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
+              }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                {activeStep + 1}/{total}
               </button>
+            ) : (
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+                {activeStep + 1}/{total}
+              </span>
             )}
-            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
-              {activeStep + 1}/{total}
-            </span>
-            <ThemeToggle />
+            {!isMobile && <ThemeToggle />}
           </div>
         </div>
         {/* Progress bar */}
@@ -1208,16 +1527,6 @@ export default function CookModePage() {
           ))}
         </div>
 
-        {/* Voice command heard indicator */}
-        {voice.lastHeard && (
-          <div style={{
-            maxWidth: 1060, margin: '6px auto 0', padding: '3px 10px', borderRadius: 4,
-            background: C.accentBg, fontSize: 10, color: C.accent, fontFamily: MONO,
-            animation: 'fadeIn 0.15s ease', textAlign: 'center',
-          }}>
-            Heard: &ldquo;{voice.lastHeard}&rdquo;
-          </div>
-        )}
       </div>
 
       {/* Active timer strip (compact, top) */}
@@ -1242,6 +1551,9 @@ export default function CookModePage() {
           </div>
         )
       })()}
+
+      {/* Active substitution banner */}
+      <SwapBanner swaps={activeSwaps} onRemove={removeSwap} />
 
       {/* Timer completion alerts */}
       {timerAlerts.length > 0 && (
@@ -1271,16 +1583,24 @@ export default function CookModePage() {
 
       {/* Mobile ingredients panel */}
       {isMobile && showIngredientsMobile && ingredientItems.length > 0 && (
-        <div style={{ padding: '14px 24px', background: C.warm, borderBottom: `1px solid ${C.rule}`, flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+        <div style={{
+          padding: '14px 16px', background: C.warm, borderBottom: `1px solid ${C.rule}`,
+          flexShrink: 0, animation: 'slideUp 0.15s ease',
+          maxHeight: '55vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' as const,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {checkedCount > 0 && <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent }}>{checkedCount}/{ingredientItems.length} used</span>}
-              <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
+              <p style={{ fontSize: 10, fontWeight: 700, color: C.text2, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+              {checkedCount > 0 && (
+                <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, padding: '1px 6px', borderRadius: 8, background: C.accentBg }}>
+                  {checkedCount}/{ingredientItems.length}
+                </span>
+              )}
             </div>
+            <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
           </div>
-          <div style={{ columns: 2, columnGap: 20 }}>
-            {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 12, showHighlight: false }))}
+          <div>
+            {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: false }))}
           </div>
         </div>
       )}
@@ -1292,9 +1612,9 @@ export default function CookModePage() {
         <div ref={scrollContainerRef} style={{ flex: 1, overflowY: 'auto', padding: isMobile ? '20px 20px 120px' : '28px 40px 120px' }}>
           <div style={{ maxWidth: 620, margin: '0 auto' }}>
 
-            {/* Initial phase label */}
-            {recipe.steps.length > 0 && (
-              <PhaseDivider phase={classifyStep(recipe.steps[0].text) as 'prep' | 'cook' | 'finish'} />
+            {/* Initial phase label — only show if the recipe starts with prep (and has a prep→cook transition) */}
+            {recipe.steps.length > 0 && phaseBreakIndices.size > 0 && classifyStep(recipe.steps[0].text) === 'prep' && (
+              <PhaseDivider phase="prep" />
             )}
 
             {recipe.steps.map((step, i) => {
@@ -1570,6 +1890,31 @@ export default function CookModePage() {
                             })()
                           : `${recipe.title} is now in your cook history.`}
                       </p>
+                      {/* Share with a friend */}
+                      <button
+                        onClick={async () => {
+                          const recipeUrl = `https://www.recipeindex.org/recipe/${slug}`
+                          const shareText = `I just made ${recipe.title}! Try it yourself:`
+                          try {
+                            await navigator.share({ title: `I made ${recipe.title}!`, text: shareText, url: recipeUrl })
+                          } catch (err) {
+                            if ((err as Error)?.name === 'AbortError') return
+                            const smsBody = encodeURIComponent(`${shareText} ${recipeUrl}`)
+                            window.open(`sms:?&body=${smsBody}`, '_self')
+                          }
+                        }}
+                        style={{
+                          width: '100%', maxWidth: 280, margin: '0 auto 16px', padding: '13px 24px', borderRadius: 8,
+                          border: 'none', background: '#34C759', color: '#fff',
+                          fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        }}
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        Share recipe with a friend
+                      </button>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => router.push(`/recipe/${slug}`)} style={{ padding: '11px 24px', borderRadius: 6, border: 'none', background: C.green, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS }}>Back to recipe</button>
                         <button onClick={() => router.push('/')} style={{ padding: '11px 24px', borderRadius: 6, border: `1.5px solid ${C.rule}`, background: 'transparent', color: C.text2, fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: SANS }}>Home</button>
@@ -1584,7 +1929,7 @@ export default function CookModePage() {
                           {suggestions.map(s => (
                             <button
                               key={s.slug}
-                              onClick={() => router.push(`/recipe/${s.slug}/cook`)}
+                              onClick={() => { window.location.href = `/recipe/${s.slug}/cook` }}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 12,
                                 padding: '12px 14px', borderRadius: 8,

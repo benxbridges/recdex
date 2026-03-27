@@ -37,6 +37,16 @@ type ExtractedRecipe = {
   embedUrl?: string
 }
 
+// ===== PAYWALL DETECTION =====
+const PAYWALL_DOMAINS = ['cooking.nytimes.com', 'nytimes.com', 'wsj.com']
+
+function isPaywalledUrl(url: string): boolean {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase().replace('www.', '')
+    return PAYWALL_DOMAINS.some(d => hostname === d || hostname.endsWith('.' + d))
+  } catch { return false }
+}
+
 // ===== HELPERS =====
 function detectPlatform(url: string): Platform {
   try {
@@ -176,6 +186,11 @@ function ContributeInner() {
   const oembedTimer = useRef<ReturnType<typeof setTimeout>>(null)
   const autoExtractPending = useRef(false)
 
+  // Mirror / paywall state
+  const [isPaywalled, setIsPaywalled] = useState(false)
+  const [mirrorSearching, setMirrorSearching] = useState(false)
+  const [mirrorResults, setMirrorResults] = useState<{ url: string; title: string; domain: string }[]>([])
+
   // Shared review state
   const [extracted, setExtracted] = useState<ExtractedRecipe | null>(null)
   const [title, setTitle] = useState('')
@@ -228,10 +243,27 @@ function ContributeInner() {
   // oEmbed debounce + auto-extract for URL prefills
   useEffect(() => {
     const trimmed = url.trim()
-    if (!trimmed) { setOembed(null); setPlatform('other'); return }
+    if (!trimmed) { setOembed(null); setPlatform('other'); setIsPaywalled(false); setMirrorResults([]); return }
     const p = detectPlatform(trimmed)
     setPlatform(p)
     setOembed(null)
+
+    // Paywall detection — auto-search for mirrors
+    const paywalled = isPaywalledUrl(trimmed)
+    setIsPaywalled(paywalled)
+    if (paywalled) {
+      setMirrorResults([])
+      setMirrorSearching(true)
+      fetch('/api/find-mirror', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: trimmed }),
+      })
+        .then(r => r.json())
+        .then(data => { setMirrorResults(data.mirrors || []); setMirrorSearching(false) })
+        .catch(() => setMirrorSearching(false))
+    }
+
     if (p === 'tiktok' || p === 'youtube') {
       if (oembedTimer.current) clearTimeout(oembedTimer.current)
       oembedTimer.current = setTimeout(async () => {
@@ -567,6 +599,44 @@ function ContributeInner() {
                   {extractError && (
                     <div style={{ padding: '12px 16px', background: C.accentBg, borderRadius: 8, border: `1px solid rgba(232,123,90,0.2)`, marginBottom: 12 }}>
                       <p style={{ fontFamily: SANS, fontSize: 13, color: C.accent, margin: 0, lineHeight: 1.5 }}>{extractError}</p>
+                    </div>
+                  )}
+
+                  {/* ===== PAYWALL / MIRROR SEARCH ===== */}
+                  {isPaywalled && (
+                    <div style={{ padding: '14px 16px', background: C.warm, borderRadius: 8, border: `1px solid ${C.ruleLight}`, marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: mirrorSearching || mirrorResults.length > 0 ? 10 : 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                        <span style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text }}>
+                          Paywalled site — {mirrorSearching ? 'searching for a mirror…' : mirrorResults.length > 0 ? 'found mirrors to use instead:' : 'no mirrors found. Paste the recipe text below.'}
+                        </span>
+                        {mirrorSearching && <div style={{ width: 12, height: 12, border: `2px solid ${C.accent}`, borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />}
+                      </div>
+                      {mirrorResults.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {mirrorResults.map((m, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                setUrl(m.url)
+                                setIsPaywalled(false)
+                                setMirrorResults([])
+                                setTimeout(() => handleExtract('web'), 100)
+                              }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 10,
+                                background: C.bg, border: `1px solid ${C.ruleLight}`,
+                                borderRadius: 6, padding: '9px 12px', cursor: 'pointer',
+                                textAlign: 'left', width: '100%',
+                              }}
+                            >
+                              <span style={{ fontFamily: MONO, fontSize: 11, color: C.accent, flexShrink: 0, background: C.accentBg, padding: '2px 7px', borderRadius: 4 }}>{m.domain}</span>
+                              <span style={{ fontFamily: SANS, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{m.title || m.url}</span>
+                              <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3, flexShrink: 0 }}>Use →</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
