@@ -480,7 +480,8 @@ function BrowseContent() {
               <ThemeToggle />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontFamily: SANS, fontWeight: 500 }}>Kitchen</Link>
               <ThemeToggle />
             </div>
           )}
@@ -496,9 +497,6 @@ function BrowseContent() {
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.1, letterSpacing: -1 }}>
             Index<EggDot size={11} />
           </h2>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, margin: '8px 0 0', lineHeight: 1.5 }}>
-            Search by dish, ingredient, or cuisine.
-          </p>
         </div>
 
         {/* SEARCH BAR */}
