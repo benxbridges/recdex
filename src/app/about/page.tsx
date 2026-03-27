@@ -109,7 +109,7 @@ export default function AboutPage() {
           <div style={{ display: 'flex', gap: 16, marginTop: 12 }}>
             <Link href="/" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Browse recipes →</Link>
             <Link href="/community" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Join the community →</Link>
-            <Link href="/contribute" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Contribute a recipe →</Link>
+            <Link href="/contribute" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Import a recipe →</Link>
           </div>
         </div>
       </div>

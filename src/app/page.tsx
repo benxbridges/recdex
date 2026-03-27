@@ -321,7 +321,7 @@ export default function Home() {
                 <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
                 <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
                 <Link href="/scan" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>📷</span>Scan</Link>
-                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
+                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Import</Link>
                 <ThemeToggle />
               </div>
             )}
@@ -343,7 +343,7 @@ export default function Home() {
               { href: '/browse', label: 'Browse all recipes' },
               { href: '/pantry', label: 'Kitchen' },
               { href: '/scan', label: 'Scan a cookbook', icon: '📷' },
-              { href: '/contribute', label: '+ Contribute', accent: true },
+              { href: '/contribute', label: '+ Import', accent: true },
             ].map(item => (
               <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
                 textDecoration: 'none', padding: '10px 8px', borderRadius: 6,
@@ -663,7 +663,7 @@ export default function Home() {
             </div>
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
               <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} cuisines</p>
-              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, textDecoration: 'none' }}>Contribute</Link>{' · '}<Link href="/browse" style={{ color: C.accent, textDecoration: 'none' }}>Browse</Link></p>
+              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, textDecoration: 'none' }}>Import</Link>{' · '}<Link href="/browse" style={{ color: C.accent, textDecoration: 'none' }}>Browse</Link></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

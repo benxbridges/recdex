@@ -165,7 +165,7 @@ export default function TrendingPage() {
             </Link>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/contribute" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Contribute</Link>
+              <Link href="/contribute" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Import</Link>
               <div style={{ width: 1, height: 14, background: C.rule }} />
               <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>Trending</span>
               <ThemeToggle />

@@ -503,7 +503,7 @@ function ContributeInner() {
         {flowStep !== 'extracting' && flowStep !== 'success' && (
           <div style={{ marginBottom: 36 }}>
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px,5vw,38px)', fontWeight: 700, color: C.text, margin: '0 0 24px', lineHeight: 1.1, letterSpacing: -0.5 }}>
-              Cook a Recipe
+              Import a Recipe
             </h1>
             {/* Mode tabs — only visible when not deep in video flow */}
             {showTabs && (
@@ -677,7 +677,7 @@ function ContributeInner() {
                           letterSpacing: '-0.01em',
                         }}
                       >
-                        Cook this →
+                        Import Recipe →
                       </button>
                     </div>
                   )}
@@ -701,7 +701,7 @@ function ContributeInner() {
                       fontFamily: SANS, transition: 'all 0.15s', letterSpacing: '-0.01em',
                     }}
                   >
-                    Cook this →
+                    Import Recipe →
                   </button>
                 </div>
               </div>

@@ -157,22 +157,6 @@ function EggDot({ size = 9 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
 
-const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
-  easy: { label: 'Easy', color: C.green, bg: C.greenBg },
-  simple: { label: 'Easy', color: C.green, bg: C.greenBg },
-  beginner: { label: 'Easy', color: C.green, bg: C.greenBg },
-  medium: { label: 'Medium', color: C.gold, bg: C.goldBg },
-  moderate: { label: 'Medium', color: C.gold, bg: C.goldBg },
-  intermediate: { label: 'Medium', color: C.gold, bg: C.goldBg },
-  hard: { label: 'Advanced', color: C.accent, bg: C.accentBg },
-  difficult: { label: 'Advanced', color: C.accent, bg: C.accentBg },
-  advanced: { label: 'Advanced', color: C.accent, bg: C.accentBg },
-}
-
-function DifficultyBadge({ difficulty }: { difficulty: string }) {
-  const d = DIFFICULTY_MAP[difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
-  return <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: d.color, background: d.bg, padding: '3px 8px', borderRadius: 2, fontFamily: MONO }}>{d.label}</span>
-}
 
 function BrokenEggSVG({ width = 60 }: { width?: number }) {
   const h = width * 0.75
@@ -851,7 +835,6 @@ export default function RecipePage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            <DifficultyBadge difficulty={recipe.difficulty} />
             {recipe.time_total && <span style={{ fontSize: 12, fontFamily: MONO, color: C.text2 }}>{formatTime(recipe.time_total)}</span>}
             {recipe.time_active && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_active)} active</span></>}
             {recipe.cuisine && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
