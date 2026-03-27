@@ -319,6 +319,7 @@ export default function Home() {
             {!isMobile && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
                 <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
                 <Link href="/scan" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>📷</span>Scan</Link>
                 <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
                 <ThemeToggle />
@@ -340,6 +341,7 @@ export default function Home() {
           <div style={{ borderTop: `1px solid ${C.rule}`, background: C.bg, padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {[
               { href: '/browse', label: 'Browse all recipes' },
+              { href: '/pantry', label: 'Kitchen' },
               { href: '/scan', label: 'Scan a cookbook', icon: '📷' },
               { href: '/contribute', label: '+ Contribute', accent: true },
             ].map(item => (
