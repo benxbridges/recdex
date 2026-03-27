@@ -436,18 +436,42 @@ function BrowseContent() {
     else if (activeTime === 'under60') result = result.filter(r => r.time_total && r.time_total <= 60)
     else if (activeTime === 'over60') result = result.filter(r => r.time_total && r.time_total > 60)
 
-    // Text search across title, cuisine, description, tags, AND ingredients
+    // Ranked text search — score each recipe, sort by relevance
     if (q.length >= 2) {
-      result = result.filter(r => {
-        if (r.title.toLowerCase().includes(q)) return true
-        if (r.cuisine?.toLowerCase().includes(q)) return true
-        if (r.description?.toLowerCase().includes(q)) return true
-        if (r.tags?.some(t => t.toLowerCase().includes(q))) return true
+      const tokens = q.split(/\s+/).filter(t => t.length >= 2)
+
+      const scored = result.map(r => {
+        const title = r.title.toLowerCase()
+        const tags = r.tags?.map(t => t.toLowerCase()) || []
+        const cuisine = r.cuisine?.toLowerCase() || ''
+        const desc = r.description?.toLowerCase() || ''
         const items = getIngredientItems(r.ingredients)
-        const match = items.find(ing => ing.name.toLowerCase().includes(q))
-        if (match) { matchMap.set(r.id, match.name); return true }
-        return false
-      })
+        let score = 0
+
+        // Title: exact > starts-with > contains full query
+        if (title === q) score += 100
+        else if (title.startsWith(q + ' ') || title.startsWith(q)) score += 60
+        else if (title.includes(q)) score += 30
+
+        // Per-token scoring
+        for (const tok of tokens) {
+          if (title.includes(tok)) score += 20
+          if (tags.some(t => t === tok)) score += 18        // exact tag match
+          else if (tags.some(t => t.includes(tok))) score += 10
+          if (cuisine.includes(tok)) score += 8
+          const ingMatch = items.find(i => i.name.toLowerCase().includes(tok))
+          if (ingMatch) { matchMap.set(r.id, ingMatch.name); score += 6 }
+          if (desc.includes(tok)) score += 2
+        }
+
+        // Bonus: all tokens match title (precise multi-word query)
+        if (tokens.length > 1 && tokens.every(t => title.includes(t))) score += 20
+
+        return { recipe: r, score }
+      }).filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+
+      result = scored.map(({ recipe }) => recipe)
     }
 
     return { filtered: result, matchMap }

@@ -9,6 +9,7 @@ type Recipe = {
   slug: string
   title: string
   image_url: string | null
+  photo_credit: string | null
   cuisine: string | null
   source_attribution: string | null
   created_at: string
@@ -123,7 +124,7 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
     setLoading(true)
     const { data, error } = await supabase
       .from('recipes')
-      .select('slug, title, image_url, cuisine, source_attribution, created_at, ingredients, steps')
+      .select('slug, title, image_url, photo_credit, cuisine, source_attribution, created_at, ingredients, steps')
       .eq('status', 'published')
       .order('created_at', { ascending: false })
     if (!error && data) setRecipes(data as Recipe[])
@@ -225,51 +226,108 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
   )
 }
 
+const APPROVED_KEY = 'recdex-photo-approved'
+
+function loadApproved(): Set<string> {
+  try { return new Set(JSON.parse(localStorage.getItem(APPROVED_KEY) || '[]')) }
+  catch { return new Set() }
+}
+function saveApproved(set: Set<string>) {
+  localStorage.setItem(APPROVED_KEY, JSON.stringify(Array.from(set)))
+}
+
 // ===== PHOTO REVIEW TAB =====
 function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Recipe[]; password: string; onUpdate: () => void; unsplashKey: string }) {
-  const [filter, setFilter] = useState<'all' | 'has' | 'none'>('all')
+  const [filter, setFilter] = useState<'all' | 'has' | 'none' | 'nocredit' | 'approved' | 'pending'>('pending')
   const [page, setPage] = useState(0)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
+  const [approved, setApproved] = useState<Set<string>>(new Set())
   const perPage = 24
+
+  useEffect(() => { setApproved(loadApproved()) }, [])
+
+  const handleApprove = (slug: string) => {
+    setApproved(prev => {
+      const next = new Set(prev)
+      next.add(slug)
+      saveApproved(next)
+      return next
+    })
+    // Auto-advance: close expand if open
+    setExpandedSlug(s => s === slug ? null : s)
+  }
+
+  const handleUnapprove = (slug: string) => {
+    setApproved(prev => {
+      const next = new Set(prev)
+      next.delete(slug)
+      saveApproved(next)
+      return next
+    })
+  }
 
   const withImage = recipes.filter(r => r.image_url)
   const noImage = recipes.filter(r => !r.image_url)
+  const noCredit = recipes.filter(r => r.image_url && !r.photo_credit)
+  const approvedList = recipes.filter(r => approved.has(r.slug))
+  const pendingList = recipes.filter(r => !approved.has(r.slug))
 
   const filtered = useMemo(() => {
     if (filter === 'has') return withImage
     if (filter === 'none') return noImage
+    if (filter === 'nocredit') return noCredit
+    if (filter === 'approved') return approvedList
+    if (filter === 'pending') return pendingList
     return recipes
-  }, [filter, recipes, withImage, noImage])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, recipes, approved])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const pageRecipes = filtered.slice(page * perPage, (page + 1) * perPage)
 
-  // Reset page on filter change
   useEffect(() => { setPage(0) }, [filter])
+
+  const pct = recipes.length > 0 ? Math.round((approved.size / recipes.length) * 100) : 0
 
   return (
     <>
-      {/* Stats bar */}
-      <div style={{ display: 'flex', gap: 24, marginBottom: 20, padding: '12px 16px', background: C.warm, borderRadius: 8, border: `1px solid ${C.rule}`, flexWrap: 'wrap' }}>
-        <Stat label="Total" value={recipes.length} color={C.text} />
-        <Stat label="With Image" value={withImage.length} color={C.green} />
-        <Stat label="Missing Image" value={noImage.length} color={C.accent} />
+      {/* Audit progress bar */}
+      <div style={{ marginBottom: 20, padding: '14px 16px', background: C.warm, borderRadius: 8, border: `1px solid ${C.rule}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+            <Stat label="Total" value={recipes.length} color={C.text} />
+            <Stat label="Approved" value={approved.size} color={C.green} />
+            <Stat label="Pending" value={pendingList.length} color={C.gold} />
+            <Stat label="No Image" value={noImage.length} color={C.accent} />
+            <Stat label="No Credit" value={noCredit.length} color={C.text3} />
+          </div>
+          <button
+            onClick={() => { setApproved(new Set()); saveApproved(new Set()) }}
+            style={{ background: 'none', border: `1px solid ${C.rule}`, color: C.text3, borderRadius: 6, padding: '4px 10px', fontFamily: MONO, fontSize: 9, cursor: 'pointer' }}
+          >Reset audit</button>
+        </div>
+        <div style={{ height: 6, background: C.rule, borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${pct}%`, background: C.green, borderRadius: 3, transition: 'width 0.3s' }} />
+        </div>
+        <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, marginTop: 4, display: 'block' }}>{pct}% reviewed</span>
       </div>
 
       {/* Filter buttons */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {([
-          { key: 'all' as const, label: 'All', count: recipes.length },
-          { key: 'has' as const, label: 'Has Image', count: withImage.length },
-          { key: 'none' as const, label: 'No Image', count: noImage.length },
+          { key: 'pending' as const, label: 'Needs Review', count: pendingList.length, activeColor: C.gold },
+          { key: 'all' as const, label: 'All', count: recipes.length, activeColor: C.accent },
+          { key: 'approved' as const, label: 'Approved', count: approvedList.length, activeColor: C.green },
+          { key: 'nocredit' as const, label: 'No Credit', count: noCredit.length, activeColor: C.text2 },
+          { key: 'none' as const, label: 'No Image', count: noImage.length, activeColor: C.accent },
         ]).map(f => (
           <button
             key={f.key}
             onClick={() => setFilter(f.key)}
             style={{
-              background: filter === f.key ? C.accentBg : C.warm,
-              border: `1px solid ${filter === f.key ? C.accent : C.rule}`,
-              color: filter === f.key ? C.accent : C.text2,
+              background: filter === f.key ? `${f.activeColor}18` : C.warm,
+              border: `1px solid ${filter === f.key ? f.activeColor : C.rule}`,
+              color: filter === f.key ? f.activeColor : C.text2,
               borderRadius: 20, padding: '5px 14px',
               fontFamily: MONO, fontSize: 11, cursor: 'pointer',
               display: 'flex', alignItems: 'center', gap: 6,
@@ -277,7 +335,7 @@ function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Re
           >
             {f.label}
             <span style={{
-              background: filter === f.key ? C.accent : C.rule,
+              background: filter === f.key ? f.activeColor : C.rule,
               color: filter === f.key ? C.bg : C.text3,
               borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700,
             }}>{f.count}</span>
@@ -292,6 +350,9 @@ function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Re
             key={recipe.slug}
             recipe={recipe}
             expanded={expandedSlug === recipe.slug}
+            isApproved={approved.has(recipe.slug)}
+            onApprove={() => handleApprove(recipe.slug)}
+            onUnapprove={() => handleUnapprove(recipe.slug)}
             onToggleExpand={() => setExpandedSlug(expandedSlug === recipe.slug ? null : recipe.slug)}
             password={password}
             onUpdate={onUpdate}
@@ -299,6 +360,14 @@ function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Re
           />
         ))}
       </div>
+
+      {pageRecipes.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+          <p style={{ fontFamily: SANS, fontSize: 14, color: C.text3 }}>
+            {filter === 'pending' ? 'All photos approved!' : 'No recipes match this filter.'}
+          </p>
+        </div>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -330,13 +399,16 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
 }
 
 // ===== PHOTO CARD =====
-function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unsplashKey }: {
-  recipe: Recipe; expanded: boolean; onToggleExpand: () => void; password: string; onUpdate: () => void; unsplashKey: string
+function PhotoCard({ recipe, expanded, isApproved, onApprove, onUnapprove, onToggleExpand, password, onUpdate, unsplashKey }: {
+  recipe: Recipe; expanded: boolean; isApproved: boolean
+  onApprove: () => void; onUnapprove: () => void
+  onToggleExpand: () => void; password: string; onUpdate: () => void; unsplashKey: string
 }) {
   const [images, setImages] = useState<UnsplashImage[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchLoading, setSearchLoading] = useState(false)
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null)
+  const [selectedCredit, setSelectedCredit] = useState<string | null>(null)
   const [replacing, setReplacing] = useState(false)
 
   async function searchImages(q: string) {
@@ -350,13 +422,14 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
     setSearchLoading(false)
   }
 
-  function handleReject() {
-    onToggleExpand()
+  function handleOpenReplace() {
     if (!expanded) {
       searchImages(recipe.title)
       setSearchQuery(recipe.title)
       setSelectedUrl(null)
+      setSelectedCredit(null)
     }
+    onToggleExpand()
   }
 
   async function handleReplace() {
@@ -366,45 +439,51 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
       await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update-image', password, slug: recipe.slug, image_url: selectedUrl }),
+        body: JSON.stringify({ action: 'update-image', password, slug: recipe.slug, image_url: selectedUrl, photo_credit: selectedCredit }),
       })
       onUpdate()
+      onApprove()
     } catch { /* ignore */ }
     setReplacing(false)
   }
 
+  const borderColor = isApproved ? C.green : expanded ? C.gold : C.rule
+
   return (
-    <div style={{ borderRadius: 8, overflow: 'hidden', border: `1px solid ${C.rule}`, background: C.warm }}>
+    <div style={{ borderRadius: 8, overflow: 'hidden', border: `1.5px solid ${borderColor}`, background: C.warm, transition: 'border-color 0.2s' }}>
       {/* Thumbnail */}
-      <div style={{ width: '100%', height: 130, background: C.cool, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', height: 130, background: C.cool, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
         {recipe.image_url ? (
           <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
         ) : (
           <EggPlaceholder />
+        )}
+        {isApproved && (
+          <div style={{ position: 'absolute', top: 6, right: 6, background: C.green, color: '#fff', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>✓</div>
         )}
       </div>
 
       {/* Info */}
       <div style={{ padding: '10px 12px' }}>
         <h4 style={{
-          fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, margin: '0 0 6px',
+          fontFamily: SERIF, fontSize: 13, fontWeight: 600, color: C.text, margin: '0 0 4px',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.3,
         }}>{recipe.title}</h4>
-        {recipe.cuisine && (
-          <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>
-            {recipe.cuisine.split(/[,/]/)[0].trim()}
-          </span>
-        )}
-        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+        {/* Photo credit line */}
+        <div style={{ fontFamily: MONO, fontSize: 9, color: recipe.photo_credit ? C.text3 : C.accent, marginBottom: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {recipe.photo_credit ? `© ${recipe.photo_credit}` : recipe.image_url ? 'Missing credit' : 'No image'}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
           <button
-            title="Accept image"
-            style={{ flex: 1, background: C.greenBg, border: `1px solid ${C.green}`, color: C.green, borderRadius: 4, padding: '5px 0', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}
+            onClick={isApproved ? onUnapprove : onApprove}
+            title={isApproved ? 'Undo approval' : 'Approve image'}
+            style={{ flex: 1, background: isApproved ? C.greenBg : C.warm, border: `1px solid ${isApproved ? C.green : C.rule}`, color: isApproved ? C.green : C.text3, borderRadius: 4, padding: '5px 0', fontSize: 14, cursor: 'pointer', fontWeight: 700, transition: 'all 0.15s' }}
           >&#10003;</button>
           <button
-            onClick={handleReject}
-            title="Replace image"
-            style={{ flex: 1, background: C.accentBg, border: `1px solid ${C.accent}`, color: C.accent, borderRadius: 4, padding: '5px 0', fontSize: 14, cursor: 'pointer', fontWeight: 700 }}
-          >&#10007;</button>
+            onClick={handleOpenReplace}
+            title="Search for replacement"
+            style={{ flex: 1, background: expanded ? C.accentBg : C.warm, border: `1px solid ${expanded ? C.accent : C.rule}`, color: expanded ? C.accent : C.text3, borderRadius: 4, padding: '5px 0', fontSize: 14, cursor: 'pointer', fontWeight: 700, transition: 'all 0.15s' }}
+          >&#8635;</button>
         </div>
       </div>
 
@@ -426,7 +505,7 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
             <button
               onClick={() => searchImages(searchQuery)}
               style={{ background: C.text, color: C.bg, border: 'none', borderRadius: 4, padding: '6px 12px', fontFamily: MONO, fontSize: 10, cursor: 'pointer' }}
-            >Search</button>
+            >Go</button>
           </div>
 
           {searchLoading ? (
@@ -438,7 +517,7 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
               {images.map((img, i) => (
                 <div
                   key={i}
-                  onClick={() => setSelectedUrl(img.url)}
+                  onClick={() => { setSelectedUrl(img.url); setSelectedCredit(img.credit) }}
                   style={{
                     borderRadius: 4, overflow: 'hidden', cursor: 'pointer',
                     border: `2px solid ${selectedUrl === img.url ? C.accent : 'transparent'}`,
@@ -455,24 +534,6 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
             </div>
           )}
 
-          {/* Manual URL paste */}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-            <input
-              type="text"
-              placeholder="Or paste image URL..."
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim()
-                  if (val) setSelectedUrl(val)
-                }
-              }}
-              style={{
-                flex: 1, background: C.bg, border: `1px solid ${C.ruleLight}`, borderRadius: 4,
-                padding: '6px 10px', fontFamily: MONO, fontSize: 10, color: C.text3, outline: 'none',
-              }}
-            />
-          </div>
-
           {selectedUrl && (
             <button
               onClick={handleReplace}
@@ -483,7 +544,7 @@ function PhotoCard({ recipe, expanded, onToggleExpand, password, onUpdate, unspl
                 cursor: replacing ? 'wait' : 'pointer', opacity: replacing ? 0.6 : 1,
               }}
             >
-              {replacing ? 'Replacing...' : 'Replace Image'}
+              {replacing ? 'Saving...' : `Use this — ${selectedCredit || 'no credit'}`}
             </button>
           )}
         </div>
