@@ -530,60 +530,46 @@ function RecipeEditorNote({ slug }: { slug: string }) {
   )
 }
 
-function ConsensusAnnotations({ slug, isMobile }: { slug: string; isMobile: boolean }) {
+function ConsensusAnnotations({ slug }: { slug: string }) {
   const [expanded, setExpanded] = useState(false)
   const data = CONSENSUS_DATA[slug]
   if (!data) return null
 
-  const isObvious = (p: ConsensusPoint) =>
-    p.percentage >= 85 && (!p.altPercentage || p.altPercentage < 25)
+  const variations = [...data.ingredients, ...data.techniques].filter(p => !!p.alternative)
+  if (variations.length === 0) return null
 
-  const interestingIngredients = data.ingredients.filter(p => !isObvious(p))
-  const interestingTechniques = data.techniques.filter(p => !isObvious(p))
-  const allPoints = [...interestingIngredients, ...interestingTechniques]
-  const hasPoints = allPoints.length > 0
+  const toSentence = (p: ConsensusPoint): string => {
+    const alt = p.alternative!
+    const omitWords = ['none', 'no ', 'skip', 'omit', 'without']
+    if (omitWords.some(w => alt.toLowerCase().startsWith(w))) {
+      return `Some recipes skip the ${p.consensus.toLowerCase()}.`
+    }
+    const connectors = ['rather than', 'instead of', 'in place of']
+    const connector = connectors[variations.indexOf(p) % connectors.length]
+    return `Some recipes use ${alt.toLowerCase()} ${connector} ${p.consensus.toLowerCase()}.`
+  }
 
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ paddingTop: 16, paddingBottom: 16 }}>
       <div
         onClick={() => setExpanded(!expanded)}
         style={{
           fontFamily: MONO, fontSize: 11, color: C.blue, cursor: 'pointer',
-          padding: '8px 0', userSelect: 'none' as const, display: 'flex', alignItems: 'center', gap: 6,
+          userSelect: 'none' as const, display: 'flex', alignItems: 'center', gap: 6,
         }}
       >
         <span>{expanded ? '\u25B4' : '\u25BE'}</span>
         <span>How {data.recipesAnalyzed} recipes compare</span>
       </div>
       {expanded && (
-        <div style={{
-          padding: '12px 0 4px',
-          columns: isMobile ? 1 : 2, columnGap: 24,
-        }}>
-          {hasPoints ? allPoints.map((point, i) => (
-            <div key={i} style={{ breakInside: 'avoid' as const, marginBottom: 12 }}>
-              <p style={{ fontFamily: MONO, fontSize: 10, fontWeight: 600, color: C.text3, textTransform: 'uppercase' as const, letterSpacing: 0.5, margin: '0 0 3px' }}>
-                {point.label}
-              </p>
-              <p style={{ fontFamily: SANS, fontSize: 13, color: C.text, margin: '0 0 5px', lineHeight: 1.3 }}>
-                {point.consensus}
-                {point.alternative && (
-                  <span style={{ color: C.text3 }}> vs. {point.alternative}</span>
-                )}
-              </p>
-              {/* Split pill bar */}
-              <div style={{ width: 96, height: 5, borderRadius: 3, background: C.ruleLight, overflow: 'hidden', display: 'flex' }}>
-                <div style={{ width: `${point.percentage}%`, background: C.blue, borderRadius: '3px 0 0 3px', transition: 'width 0.2s' }} />
-                {point.altPercentage && (
-                  <div style={{ width: `${point.altPercentage}%`, background: `${C.blue}55` }} />
-                )}
-              </div>
-            </div>
-          )) : (
-            <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: 0 }}>
-              Strong consensus across {data.recipesAnalyzed} recipes — most cooks agree on the fundamentals here.
+        <div style={{ marginTop: 10 }}>
+          {variations.map((point, i) => (
+            <p key={i} style={{
+              fontFamily: SANS, fontSize: 13, color: C.text2, margin: '0 0 6px', lineHeight: 1.5,
+            }}>
+              {toSentence(point)}
             </p>
-          )}
+          ))}
         </div>
       )}
     </div>
@@ -1022,7 +1008,6 @@ export default function RecipePage() {
                   </p>
                 ))}
               </div>
-              <ConsensusAnnotations slug={slug} isMobile={isMobile} />
             </div>
             {/* Add to shopping list button */}
             <button
@@ -1085,6 +1070,8 @@ export default function RecipePage() {
         )}
 
         <div style={{ height: 1, background: C.rule }} />
+
+        <ConsensusAnnotations slug={slug} />
 
         {/* ===== COMMUNITY FEEDBACK (Kitchen Consensus) ===== */}
         {comments.length > 0 && (() => {
