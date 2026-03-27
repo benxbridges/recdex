@@ -540,13 +540,23 @@ function ConsensusAnnotations({ slug }: { slug: string }) {
 
   const toSentence = (p: ConsensusPoint): string => {
     const alt = p.alternative!
+    const pct = p.percentage
+    const consensus = p.consensus.toLowerCase()
+    const altLower = alt.toLowerCase()
     const omitWords = ['none', 'no ', 'skip', 'omit', 'without']
-    if (omitWords.some(w => alt.toLowerCase().startsWith(w))) {
-      return `Some recipes skip the ${p.consensus.toLowerCase()}.`
+
+    if (omitWords.some(w => altLower.startsWith(w))) {
+      const lead = pct >= 80 ? 'Most recipes include' : pct >= 60 ? 'Many recipes include' : 'Some recipes include'
+      return `${lead} ${consensus} — others skip it entirely.`
     }
-    const connectors = ['rather than', 'instead of', 'in place of']
-    const connector = connectors[variations.indexOf(p) % connectors.length]
-    return `Some recipes use ${alt.toLowerCase()} ${connector} ${p.consensus.toLowerCase()}.`
+
+    // ~50/50 split
+    if (pct < 60) {
+      return `Recipes are split between ${consensus} and ${altLower}.`
+    }
+
+    const lead = pct >= 80 ? 'Most recipes use' : 'Many recipes use'
+    return `${lead} ${consensus} — some go with ${altLower}.`
   }
 
   return (
