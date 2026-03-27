@@ -371,10 +371,10 @@ export default function Home() {
             fontWeight: 700, color: C.text, margin: '0 0 6px',
             letterSpacing: -0.5, lineHeight: 1.15,
           }}>
-            Paste any recipe. Start cooking.
+            Start cooking.
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, marginBottom: 18 }}>
-            From any blog, video, or cookbook — no life stories, just cook mode.
+            From any source — no paywall, no life story.
           </p>
 
           {/* Smart input */}
