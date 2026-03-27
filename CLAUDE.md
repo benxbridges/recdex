@@ -1,5 +1,8 @@
 # RecDex (Recipe Index)
 
+## Token Efficiency
+Be token-efficient: prefer targeted reads (offset/limit) over full file reads, use Grep/Glob before Read, batch independent tool calls, avoid re-reading files already in context, keep responses concise, and use Edit over Write for existing files.
+
 ## What This Is
 A recipe site built around actually cooking. People discover recipes here (browse, search, paste a URL) — but every design decision pushes toward getting them into cook mode and sharing what they made with friends. The whole funnel: Find → Cook → Share.
 

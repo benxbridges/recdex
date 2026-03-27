@@ -315,11 +315,12 @@ function FloatingTimerPanel({ timers, onGoToStep }: {
 
 // ─── Phase divider ───────────────────────────────────────────────────────
 
-function PhaseDivider({ phase }: { phase: 'prep' | 'cook' }) {
+function PhaseDivider({ phase }: { phase: 'prep' | 'cook' | 'passive' }) {
   const meta = PHASE_META[phase]
   const icons: Record<string, React.ReactNode> = {
     prep: <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>,
     cook: <><path d="M12 12c0-3 2.5-5 2.5-8" /><path d="M8 12c0-3 2.5-5 2.5-8" /><path d="M16 12c0-3 2.5-5 2.5-8" /><rect x="4" y="14" width="16" height="6" rx="1" /></>,
+    passive: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" /></>,
   }
   return (
     <div style={{
@@ -1209,7 +1210,7 @@ export default function CookModePage() {
 
   // Phase breaks for prep/cook/finish dividers
   const phaseBreaks = findPhaseBreaks(recipe.steps)
-  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook']))
+  const phaseBreakIndices = new Map(phaseBreaks.map(b => [b.index, b.toPhase as 'prep' | 'cook' | 'passive']))
 
   // Dock magnification: compute style for each step
   function getStepStyle(index: number) {
@@ -1221,12 +1222,15 @@ export default function CookModePage() {
     let numberSize: number, numberFontSize: number, numberBorderRadius: number
     let lineHeight: number, fontFamily: string
 
+    const stepPhase = recipe?.steps[index] ? classifyStep(recipe.steps[index].text) : 'prep'
+    const isPassive = stepPhase === 'passive'
+
     if (isActive) {
       fontSize = isMobile ? 17 : 20
       padding = isMobile ? '24px 20px' : '28px 24px'
       opacity = 1
-      borderColor = C.accentMed
-      bg = C.accentBg
+      borderColor = isPassive ? `${PHASE_META.passive.color}40` : C.accentMed
+      bg = isPassive ? PHASE_META.passive.bg : C.accentBg
       numberSize = isMobile ? 34 : 38
       numberFontSize = 15
       numberBorderRadius = 8
@@ -1648,11 +1652,11 @@ export default function CookModePage() {
                         borderRadius: style.numberBorderRadius, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontFamily: MONO, fontSize: style.numberFontSize, fontWeight: 700,
-                        background: style.isCompleted ? C.greenBg : style.isActive ? C.accent : C.ruleLight,
+                        background: style.isCompleted ? C.greenBg : style.isActive ? (classifyStep(step.text) === 'passive' ? PHASE_META.passive.color : C.accent) : C.ruleLight,
                         color: style.isCompleted ? C.green : style.isActive ? '#fff' : C.text3,
                         transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                       }}>
-                        {style.isCompleted ? '✓' : i + 1}
+                        {style.isCompleted ? '✓' : classifyStep(step.text) === 'passive' && style.isActive ? '⏳' : i + 1}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{
@@ -1665,6 +1669,50 @@ export default function CookModePage() {
                         }}>
                           {renderStepText(step.text, style.isActive)}
                         </p>
+
+                        {/* Step-specific ingredient chips */}
+                        {style.isActive && highlightedIngredients.size > 0 && (
+                          <div style={{
+                            display: 'flex', flexWrap: 'wrap' as const, gap: 6,
+                            marginTop: 10,
+                            animation: 'fadeIn 0.2s ease',
+                          }}>
+                            {ingredientItems.map((item, idx) => {
+                              if (!highlightedIngredients.has(idx)) return null
+                              const scaledAmt = item.amount ? scaleAmount(item.amount, scaleFactor) : ''
+                              const swap = activeSwaps[idx]
+                              const isChecked = checkedIngredients[idx]
+                              const displayName = swap ? swap.replacement : item.name
+                              return (
+                                <span key={idx} style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  padding: '4px 10px', borderRadius: 16,
+                                  background: C.warm, border: `1px solid ${C.ruleLight}`,
+                                  fontFamily: SANS, fontSize: 11, color: C.text2,
+                                  textDecoration: isChecked ? 'line-through' : 'none',
+                                  opacity: isChecked ? 0.45 : 1,
+                                  lineHeight: 1.3,
+                                }}>
+                                  {scaledAmt && (
+                                    <span style={{ fontFamily: MONO, fontWeight: 600, color: C.accent }}>
+                                      {scaledAmt}{item.unit ? ` ${item.unit}` : ''}
+                                    </span>
+                                  )}
+                                  <span style={{ color: swap ? C.gold : C.text2 }}>
+                                    {displayName}
+                                  </span>
+                                </span>
+                              )
+                            })}
+                          </div>
+                        )}
+
+                        {/* Passive step hint */}
+                        {style.isActive && classifyStep(step.text) === 'passive' && (
+                          <p style={{ fontSize: 11, color: PHASE_META.passive.color, margin: '10px 0 0', fontFamily: SANS, fontStyle: 'italic' }}>
+                            Waiting step — {step.timer_minutes ? 'start the timer and move on when ready.' : 'come back when this is done.'}
+                          </p>
+                        )}
 
                         {/* Timer */}
                         {step.timer_minutes && (style.isActive || timers[`${recipe.id}-${i}`]?.active) && (
@@ -1738,6 +1786,102 @@ export default function CookModePage() {
             {activeStep >= total && (
               <div style={{ marginTop: 20, animation: 'slideUp 0.3s ease' }}>
                 <EggConfetti />
+
+                {/* Cooking Recap Card */}
+                {(() => {
+                  // Cook count: read existing history before current cook is added
+                  const existingCooks = JSON.parse(localStorage.getItem('recdex-cooked') || '[]')
+                  const cookNumber = existingCooks.length + 1
+                  const ordinal = (n: number) => {
+                    if (n === 1) return '1st'
+                    if (n === 2) return '2nd'
+                    if (n === 3) return '3rd'
+                    if (n <= 10) return `${n}th`
+                    return String(n)
+                  }
+                  const cookCountText = cookNumber <= 10
+                    ? `This is your ${ordinal(cookNumber)} recipe on RecDex`
+                    : `You've cooked ${cookNumber} recipes on RecDex`
+
+                  // Techniques: scan all steps for tips
+                  const uniqueTips: string[] = []
+                  const seenIds = new Set<string>()
+                  for (const step of recipe.steps) {
+                    const tip = getTipsForStep(step.text)
+                    if (tip && !seenIds.has(tip.id)) {
+                      seenIds.add(tip.id)
+                      uniqueTips.push(tip.title)
+                      if (uniqueTips.length >= 5) break
+                    }
+                  }
+
+                  return (
+                    <div style={{
+                      background: C.warm,
+                      border: `1px solid ${C.ruleLight}`,
+                      borderRadius: 10,
+                      padding: '20px 24px',
+                      marginBottom: 16,
+                      animation: 'slideUp 0.3s ease 0.2s both',
+                    }}>
+                      {/* Cook count */}
+                      <p style={{
+                        fontFamily: SERIF,
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: C.text,
+                        margin: '0 0 4px',
+                      }}>
+                        {cookCountText}
+                      </p>
+
+                      {/* Total time */}
+                      {recipe.time_total ? (
+                        <p style={{
+                          fontFamily: SANS,
+                          fontSize: 13,
+                          color: C.text2,
+                          margin: uniqueTips.length > 0 ? '0 0 14px' : 0,
+                        }}>
+                          Total cook time: {formatTime(recipe.time_total)}
+                        </p>
+                      ) : uniqueTips.length > 0 ? <div style={{ marginBottom: 10 }} /> : null}
+
+                      {/* Techniques practiced */}
+                      {uniqueTips.length > 0 && (
+                        <div>
+                          <p style={{
+                            fontFamily: SANS,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: C.text3,
+                            textTransform: 'uppercase',
+                            letterSpacing: 1,
+                            margin: '0 0 8px',
+                          }}>
+                            Techniques in this cook
+                          </p>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {uniqueTips.map(title => (
+                              <span key={title} style={{
+                                display: 'inline-block',
+                                padding: '4px 10px',
+                                borderRadius: 12,
+                                background: C.goldBg,
+                                color: C.gold,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                fontFamily: SANS,
+                              }}>
+                                {title}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {!feedbackSubmitted ? (
                   <div style={{ borderRadius: 10, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>

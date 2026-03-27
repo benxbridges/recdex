@@ -101,6 +101,21 @@ export function scaleAmount(amount: string, factor: number): string {
  * - "Preheat the oven" → prep (setup for heat, not cooking yet)
  * - "Serve with garnish" → prep (no heat — we don't use 'finish')
  */
+const PASSIVE_PATTERNS = [
+  // "let it rest/sit/cool/stand/rise/chill/marinate/set/firm/refrigerate/soak/thaw/drain"
+  /\blet\s+(it\s+)?(rest|sit|cool|stand|rise|chill|marinate|set|firm|refrigerate|soak|thaw|drain)\b/i,
+  // "refrigerate/chill/freeze/cool/marinate/rest/soak for/until/overnight"
+  /\b(refrigerate|chill|freeze|cool|marinate|rest|soak)\s+(for|until|overnight)\b/i,
+  // "set aside for"
+  /\bset aside for\b/i,
+  // "allow to cool/rest/rise/set/firm"
+  /\ballow to\s+(cool|rest|rise|set|firm)\b/i,
+  // "cover and let/leave/refrigerate/chill/rest"
+  /\bcover and\s+(let|leave|refrigerate|chill|rest)\b/i,
+  // "wait/waiting for/until"
+  /\b(wait|waiting)\s+(for|until)\b/i,
+]
+
 const HEAT_PATTERNS = [
   // Direct heat verbs — if the step says "cook", "bake", "fry", etc., it's cook
   // Excludes "warm" and "brown" when used as adjectives (warm milk, brown sugar)
@@ -114,7 +129,12 @@ const HEAT_PATTERNS = [
   /\b(transfer to|place in|put in)\b.*\b(oven|grill|smoker|hot)\b/i,
 ]
 
-export function classifyStep(text: string): 'prep' | 'cook' {
+export function classifyStep(text: string): 'prep' | 'cook' | 'passive' {
+  // Passive first — waiting steps take priority over heat detection
+  // (e.g. "let cool" should be passive, not cook)
+  for (const p of PASSIVE_PATTERNS) {
+    if (p.test(text)) return 'passive'
+  }
   // If any heat verb or heat-context pattern matches → cook
   for (const p of HEAT_PATTERNS) {
     if (p.test(text)) return 'cook'
@@ -138,9 +158,9 @@ export function findPhaseBreaks(steps: { text: string }[]): { index: number; fro
 
   const phases = steps.map(s => classifyStep(s.text))
 
-  // Find where the initial prep section ends
+  // Find where the initial prep section ends (passive counts as non-cook too)
   let prepEndIndex = 0
-  while (prepEndIndex < phases.length && phases[prepEndIndex] === 'prep') {
+  while (prepEndIndex < phases.length && (phases[prepEndIndex] === 'prep' || phases[prepEndIndex] === 'passive')) {
     prepEndIndex++
   }
 
@@ -200,4 +220,5 @@ export function highlightVerbs(text: string): TextSegment[] {
 export const PHASE_META: Record<string, { label: string; color: string; bg: string }> = {
   prep: { label: 'Prep', color: '#7B93A8', bg: 'rgba(123, 147, 168, 0.08)' },
   cook: { label: 'Cook', color: '#C4652A', bg: 'rgba(196, 101, 42, 0.08)' },
+  passive: { label: 'Waiting', color: '#7B93A8', bg: 'rgba(123, 147, 168, 0.06)' },
 }
