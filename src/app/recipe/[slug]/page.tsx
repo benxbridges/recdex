@@ -538,25 +538,47 @@ function ConsensusAnnotations({ slug }: { slug: string }) {
   const variations = [...data.ingredients, ...data.techniques].filter(p => !!p.alternative)
   if (variations.length === 0) return null
 
-  const toSentence = (p: ConsensusPoint): string => {
+  const toSentence = (p: ConsensusPoint, i: number): string => {
     const alt = p.alternative!
     const pct = p.percentage
-    const consensus = p.consensus.toLowerCase()
-    const altLower = alt.toLowerCase()
+    const c = p.consensus.toLowerCase()
+    const a = alt.toLowerCase()
     const omitWords = ['none', 'no ', 'skip', 'omit', 'without']
 
-    if (omitWords.some(w => altLower.startsWith(w))) {
-      const lead = pct >= 80 ? 'Most recipes include' : pct >= 60 ? 'Many recipes include' : 'Some recipes include'
-      return `${lead} ${consensus} — others skip it entirely.`
+    if (omitWords.some(w => a.startsWith(w))) {
+      const templates = [
+        `Most recipes call for ${c} — others leave it out.`,
+        `${c.charAt(0).toUpperCase() + c.slice(1)} is standard here, though some recipes skip it.`,
+        `You'll usually see ${c}, but it's not universal.`,
+      ]
+      return templates[i % templates.length]
     }
 
-    // ~50/50 split
     if (pct < 60) {
-      return `Recipes are split between ${consensus} and ${altLower}.`
+      const templates = [
+        `Recipes are split between ${c} and ${a}.`,
+        `${c.charAt(0).toUpperCase() + c.slice(1)} or ${a} — both are common choices.`,
+        `No clear consensus here: some use ${c}, others prefer ${a}.`,
+      ]
+      return templates[i % templates.length]
     }
 
-    const lead = pct >= 80 ? 'Most recipes use' : 'Many recipes use'
-    return `${lead} ${consensus} — some go with ${altLower}.`
+    if (pct >= 80) {
+      const templates = [
+        `Most recipes use ${c} — ${a} is the exception.`,
+        `${c.charAt(0).toUpperCase() + c.slice(1)} is the standard; ${a} shows up occasionally.`,
+        `You'll almost always see ${c} here, not ${a}.`,
+      ]
+      return templates[i % templates.length]
+    }
+
+    // 60–79%
+    const templates = [
+      `Many recipes favor ${c} over ${a}.`,
+      `${c.charAt(0).toUpperCase() + c.slice(1)} is more common, but ${a} works too.`,
+      `More often than not, it's ${c} — though ${a} isn't unusual.`,
+    ]
+    return templates[i % templates.length]
   }
 
   return (
@@ -577,7 +599,7 @@ function ConsensusAnnotations({ slug }: { slug: string }) {
             <p key={i} style={{
               fontFamily: SANS, fontSize: 13, color: C.text2, margin: '0 0 6px', lineHeight: 1.5,
             }}>
-              {toSentence(point)}
+              {toSentence(point, i)}
             </p>
           ))}
         </div>
