@@ -56,19 +56,48 @@ function extractUrlPath(url: string): string | null {
   }
 }
 
+let requestsRemaining = 50 // conservative start; updated from headers
+
+async function sleepForReset() {
+  const waitMs = 65 * 60 * 1000 // 65 min to be safe
+  const resumeAt = new Date(Date.now() + waitMs)
+  console.log(`\n  Rate limit reached. Sleeping until ${resumeAt.toLocaleTimeString()} ...`)
+
+  // Print countdown every 5 minutes
+  const interval = setInterval(() => {
+    const mins = Math.ceil((resumeAt.getTime() - Date.now()) / 60000)
+    process.stdout.write(`\r  Resuming in ${mins} min...   `)
+  }, 5 * 60 * 1000)
+
+  await new Promise(r => setTimeout(r, waitMs))
+  clearInterval(interval)
+  process.stdout.write('\r  Resuming now.              \n\n')
+  requestsRemaining = 50
+}
+
 /**
  * Search Unsplash for a query and return all results.
+ * Automatically sleeps and retries if rate limited.
  */
-async function searchUnsplash(query: string, perPage = 30): Promise<any[] | 'RATE_LIMITED' | null> {
+async function searchUnsplash(query: string, perPage = 30): Promise<any[] | null> {
+  // Proactively sleep if we know we're out of requests
+  if (requestsRemaining <= 0) await sleepForReset()
+
   const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=${perPage}&content_filter=high`
   const res = await fetch(url, {
     headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` },
   })
 
+  // Update remaining from headers
+  const remaining = res.headers.get('x-ratelimit-remaining')
+  if (remaining !== null) requestsRemaining = parseInt(remaining, 10)
+
   if (res.status === 403 || res.status === 429) {
-    const remaining = res.headers.get('x-ratelimit-remaining')
-    console.warn(`  Rate limited (${res.status}). Remaining: ${remaining}`)
-    return 'RATE_LIMITED'
+    console.warn(`  Rate limited (${res.status}).`)
+    requestsRemaining = 0
+    await sleepForReset()
+    // Retry once after sleeping
+    return searchUnsplash(query, perPage)
   }
 
   if (!res.ok) {
@@ -87,7 +116,7 @@ async function searchUnsplash(query: string, perPage = 30): Promise<any[] | 'RAT
 async function findPhotographerBySearch(
   title: string,
   imageUrl: string
-): Promise<{ name: string; username: string } | 'RATE_LIMITED' | null> {
+): Promise<{ name: string; username: string } | null> {
   const storedPath = extractUrlPath(imageUrl)
   if (!storedPath) return null
 
@@ -99,7 +128,6 @@ async function findPhotographerBySearch(
 
   for (const query of queries) {
     const results = await searchUnsplash(query)
-    if (results === 'RATE_LIMITED') return 'RATE_LIMITED'
 
     if (results && results.length > 0) {
       // Match by comparing the URL path segment
@@ -153,7 +181,6 @@ async function main() {
 
   let updated = 0
   let failed = 0
-  let rateLimited = false
 
   for (let i = 0; i < needsCredit.length; i++) {
     const recipe = needsCredit[i]
@@ -161,45 +188,33 @@ async function main() {
 
     const result = await findPhotographerBySearch(recipe.title, recipe.image_url)
 
-    if (result === 'RATE_LIMITED') {
-      console.log(`\nRate limited after ${i} recipes. Re-run later to continue.`)
-      rateLimited = true
-      break
-    }
-
     if (!result) {
       console.log(`  x Not found via search`)
       failed++
-      continue
-    }
-
-    const credit = result.name
-
-    if (dryRun) {
-      console.log(`  -> Would set credit to "${credit}" (@${result.username})`)
     } else {
-      const { error: updateErr } = await supabaseAdmin
-        .from('recipes')
-        .update({ photo_credit: credit })
-        .eq('id', recipe.id)
-      if (updateErr) {
-        console.log(`  x Update failed: ${updateErr.message}`)
-        failed++
+      const credit = result.name
+      if (dryRun) {
+        console.log(`  -> Would set credit to "${credit}" (@${result.username})`)
       } else {
-        console.log(`  OK ${credit} (@${result.username})`)
-        updated++
+        const { error: updateErr } = await supabaseAdmin
+          .from('recipes')
+          .update({ photo_credit: credit })
+          .eq('id', recipe.id)
+        if (updateErr) {
+          console.log(`  x Update failed: ${updateErr.message}`)
+          failed++
+        } else {
+          console.log(`  OK ${credit} (@${result.username})`)
+          updated++
+        }
       }
     }
 
-    // Delay between recipes (already delayed between search calls within findPhotographerBySearch)
     await new Promise(r => setTimeout(r, 1000))
   }
 
   const skipped = recipes!.length - needsCredit.length
   console.log(`\nDone! Updated: ${updated}, Failed: ${failed}, Already had credit: ${skipped}`)
-  if (rateLimited) {
-    console.log(`Note: Script was rate-limited. Re-run to process remaining recipes.`)
-  }
 }
 
 main()
