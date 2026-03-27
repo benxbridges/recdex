@@ -1,0 +1,56 @@
+name: Import Recipes
+
+on:
+  # Run every 4 hours (matches CLAUDE.md schedule)
+  schedule:
+    - cron: '0 */4 * * *'
+  # Manual trigger from GitHub UI or API
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Number of recipes to import'
+        required: false
+        default: '25'
+      genre:
+        description: 'Genre override (e.g. "Italian", "seafood")'
+        required: false
+        default: ''
+      dry_run:
+        description: 'Dry run (no writes)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run auto-import
+        env:
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.count }}" != "" ] && [ "${{ inputs.count }}" != "25" ]; then
+            ARGS="$ARGS --count ${{ inputs.count }}"
+          fi
+          if [ "${{ inputs.genre }}" != "" ]; then
+            ARGS="$ARGS --genre '${{ inputs.genre }}'"
+          fi
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          echo "Running: node scripts/recipe-pipeline/auto-import.mjs $ARGS"
+          eval "node scripts/recipe-pipeline/auto-import.mjs $ARGS"
