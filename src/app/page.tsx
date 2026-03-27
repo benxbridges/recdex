@@ -591,7 +591,7 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {categories.slice(0, isMobile ? 8 : 12).map(cat => (
-              <Link key={cat.id} href={`/browse?cuisine=${encodeURIComponent(cat.name)}`} style={{
+              <Link key={cat.id} href={`/browse?category=${cat.id}`} style={{
                 padding: '8px 14px', borderRadius: 20, border: `1px solid ${C.ruleLight}`, background: C.warm,
                 textDecoration: 'none', fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text2,
                 display: 'flex', alignItems: 'center', gap: 6,
