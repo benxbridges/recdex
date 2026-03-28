@@ -26,4 +26,11 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           UNSPLASH_ACCESS_KEY: ${{ secrets.UNSPLASH_ACCESS_KEY }}
-        run: node scripts/recipe-pipeline/auto-import.mjs --count 25
+        run: |
+          GENRE=$(grep -oP 'genre:\s*\K[^\n]+' .trigger-import | sed 's/[[:space:]]*$//' || true)
+          if [ -n "$GENRE" ]; then
+            echo "Using genre from trigger file: $GENRE"
+            node scripts/recipe-pipeline/auto-import.mjs --count 25 --genre "$GENRE"
+          else
+            node scripts/recipe-pipeline/auto-import.mjs --count 25
+          fi
