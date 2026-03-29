@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
-import { scaleAmount, highlightVerbs, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { scaleAmount, highlightCoreSentence, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
 import CookModeTutorial from '@/app/components/CookModeTutorial'
@@ -144,7 +144,7 @@ function playTimerAlert() {
 
 function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
   minutes: number; label: string; timerKey: string
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>
+  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
   onStart: (key: string, seconds: number, label: string) => void
 }) {
   const t = timers[timerKey]
@@ -225,7 +225,7 @@ function EggConfetti() {
 // ─── Floating timer panel ────────────────────────────────────────────────
 
 function FloatingTimerPanel({ timers, onGoToStep }: {
-  timers: Record<string, { active: boolean; total: number; remaining: number; label: string }>
+  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
   onGoToStep: (step: number) => void
 }) {
   const activeTimers = Object.entries(timers).filter(([, t]) => t.active)
@@ -862,7 +862,7 @@ export default function CookModePage() {
   const [activeStep, setActiveStep] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
   const [showIngredientsMobile, setShowIngredientsMobile] = useState(false)
-  const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; label: string }>>({})
+  const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>>({})
   const [cookRating, setCookRating] = useState<string | null>(null)
   const [substitutions, setSubstitutions] = useState('')
   const [tip, setTip] = useState('')
@@ -1019,27 +1019,42 @@ export default function CookModePage() {
     fetchSuggestions()
   }, [recipe, slug])
 
-  // Timer tick with completion detection
+  // Timer tick with completion detection — uses Date.now() so it survives background tabs
   useEffect(() => {
     const hasActive = Object.values(timers).some(t => t.active && t.remaining > 0)
     if (!hasActive) return
-    const interval = setInterval(() => {
+
+    const recalcTimers = () => {
       setTimers(prev => {
         const next = { ...prev }
+        let changed = false
         Object.keys(next).forEach(k => {
           if (next[k].active && next[k].remaining > 0) {
-            const newRemaining = next[k].remaining - 1
-            next[k] = { ...next[k], remaining: newRemaining }
-            if (newRemaining === 0) {
-              setTimerAlerts(alerts => [...alerts, { key: k, label: next[k].label }])
-              playTimerAlert()
+            const elapsed = Math.floor((Date.now() - next[k].startedAt) / 1000)
+            const newRemaining = Math.max(0, next[k].total - elapsed)
+            if (newRemaining !== next[k].remaining) {
+              changed = true
+              next[k] = { ...next[k], remaining: newRemaining }
+              if (newRemaining === 0) {
+                setTimerAlerts(alerts => [...alerts, { key: k, label: next[k].label }])
+                playTimerAlert()
+              }
             }
           }
         })
-        return next
+        return changed ? next : prev
       })
-    }, 1000)
-    return () => clearInterval(interval)
+    }
+
+    const interval = setInterval(recalcTimers, 1000)
+    // Recalculate immediately when user returns to the tab
+    const handleVisibility = () => { if (document.visibilityState === 'visible') recalcTimers() }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [timers])
 
   // Auto-show cooking tips on first visit to a step
@@ -1055,7 +1070,7 @@ export default function CookModePage() {
   }, [activeStep, recipe, autoShownTips])
 
   const startTimer = useCallback((key: string, seconds: number, label: string) => {
-    setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, label } }))
+    setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, startedAt: Date.now(), label } }))
   }, [])
 
   const goToStep = useCallback((step: number) => {
@@ -1237,9 +1252,9 @@ export default function CookModePage() {
       lineHeight = 1.7
       fontFamily = SERIF
     } else if (distance === 1) {
-      fontSize = isMobile ? 14 : 15
+      fontSize = isMobile ? 15 : 16
       padding = isMobile ? '14px 16px' : '16px 20px'
-      opacity = 0.8
+      opacity = 0.85
       borderColor = C.rule
       bg = 'transparent'
       numberSize = 26
@@ -1248,9 +1263,9 @@ export default function CookModePage() {
       lineHeight = 1.55
       fontFamily = SANS
     } else if (distance === 2) {
-      fontSize = isMobile ? 13 : 14
+      fontSize = isMobile ? 14 : 15
       padding = isMobile ? '10px 16px' : '12px 20px'
-      opacity = 0.55
+      opacity = 0.7
       borderColor = C.ruleLight
       bg = 'transparent'
       numberSize = 22
@@ -1259,9 +1274,9 @@ export default function CookModePage() {
       lineHeight = 1.5
       fontFamily = SANS
     } else {
-      fontSize = isMobile ? 12 : 13
+      fontSize = isMobile ? 13 : 14
       padding = isMobile ? '8px 16px' : '10px 20px'
-      opacity = 0.35
+      opacity = 0.55
       borderColor = C.ruleLight
       bg = 'transparent'
       numberSize = 20
@@ -1278,10 +1293,10 @@ export default function CookModePage() {
     }
   }
 
-  // ─── Render step text with bold action verbs + optional amounts ─────
+  // ─── Render step text with bold core sentence + optional amounts ────
   function renderStepText(text: string, isActive: boolean) {
     if (!isActive) return text
-    const segments = highlightVerbs(text)
+    const segments = highlightCoreSentence(text)
 
     if (!showAmounts || ingredientAmountMap.size === 0) {
       return segments.map((seg, i) =>
@@ -1291,7 +1306,7 @@ export default function CookModePage() {
       )
     }
 
-    // With amounts: scan each non-bold segment for ingredient names and inject amount badges
+    // With amounts: scan each non-bold segment for ingredient names and inject inline amounts
     return segments.map((seg, i) => {
       if (seg.bold) {
         return <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
@@ -1327,19 +1342,15 @@ export default function CookModePage() {
           parts.push(<span key={`${i}-${keyIdx++}`}>{remaining.slice(0, earliestMatch.pos)}</span>)
         }
 
-        // The ingredient name + amount badge
+        // The ingredient name + plain bold amount
         const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
         const amount = ingredientAmountMap.get(earliestMatch.name)!
         parts.push(
           <span key={`${i}-${keyIdx++}`}>
             {matchedText}
             <span style={{
-              display: 'inline-block', fontSize: '0.65em', fontFamily: MONO,
-              color: C.gold, background: C.goldBg, padding: '1px 5px',
-              borderRadius: 4, marginLeft: 3, verticalAlign: 'middle',
-              fontWeight: 600, letterSpacing: -0.3, lineHeight: 1.3,
-              whiteSpace: 'nowrap',
-            }}>{amount}</span>
+              fontWeight: 700, color: C.text2, whiteSpace: 'nowrap',
+            }}> ({amount})</span>
           </span>
         )
 
@@ -1448,7 +1459,7 @@ export default function CookModePage() {
       {!tutorialDone && <CookModeTutorial onComplete={() => setTutorialDone(true)} />}
 
       {/* HEADER */}
-      <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0 }}>
+      <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0, position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
           {/* Left: back button */}
           <button onClick={() => router.push(`/recipe/${slug}`)} style={{
