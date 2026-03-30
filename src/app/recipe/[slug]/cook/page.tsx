@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
+import { getTipsForStep } from '@/app/lib/cooking-tips'
 import { scaleAmount, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
 import { toJpeg } from 'html-to-image'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
@@ -71,53 +71,6 @@ function formatTimerDisplay(seconds: number): string {
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
-}
-
-// ─── Tip badge + popover ─────────────────────────────────────────────────
-
-function TipBadge({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onToggle() }}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        padding: '3px 8px', borderRadius: 12,
-        border: `1px solid ${isOpen ? C.gold : C.ruleLight}`,
-        background: isOpen ? C.goldBg : 'transparent',
-        color: C.gold, fontSize: 10, fontWeight: 600,
-        cursor: 'pointer', fontFamily: SANS,
-        transition: 'all 0.15s',
-      }}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18h6" /><path d="M10 22h4" />
-        <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
-      </svg>
-      Tip
-    </button>
-  )
-}
-
-function TipPopover({ tip, onClose }: { tip: CookingTip; onClose: () => void }) {
-  return (
-    <div
-      onClick={e => e.stopPropagation()}
-      style={{
-        marginTop: 10, padding: '14px 16px', borderRadius: 10,
-        background: C.goldBg, border: `1.5px solid ${C.gold}`,
-        animation: 'slideUp 0.15s ease',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.gold, margin: 0, fontFamily: SANS }}>{tip.title}</p>
-        <button onClick={e => { e.stopPropagation(); onClose() }} style={{
-          background: 'none', border: 'none', color: C.text3, fontSize: 14,
-          cursor: 'pointer', padding: '0 2px', lineHeight: 1,
-        }}>×</button>
-      </div>
-      <p style={{ fontSize: 12, color: C.text, margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{tip.tip}</p>
-    </div>
-  )
 }
 
 // ─── Timer alert sound ───────────────────────────────────────────────────
@@ -731,6 +684,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setSaved(false)
 
     const reader = new FileReader()
     reader.onload = () => {
@@ -1457,7 +1411,7 @@ export default function CookModePage() {
 
       {/* HEADER */}
       <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
           {/* Row 1: back + centered title + step counter */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
             <button onClick={() => router.push(`/recipe/${slug}`)} style={{
@@ -1499,7 +1453,7 @@ export default function CookModePage() {
               </svg>
               Amounts
             </button>
-            {ingredientItems.length > 0 && (
+            {isMobile && ingredientItems.length > 0 && (
               <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{
                 padding: '4px 12px', borderRadius: 16,
                 background: showIngredientsMobile ? C.accent : 'transparent',
@@ -1518,7 +1472,7 @@ export default function CookModePage() {
           </div>
 
           {/* Progress bar */}
-          <div style={{ maxWidth: 1060, margin: '8px auto 0', display: 'flex', gap: 3 }}>
+          <div style={{ marginTop: 8, display: 'flex', gap: 3 }}>
             {recipe.steps.map((_, i) => (
               <div key={i} onClick={() => goToStep(i)} style={{
                 flex: 1, height: 4, borderRadius: 2, cursor: 'pointer',

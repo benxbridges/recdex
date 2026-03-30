@@ -1182,7 +1182,7 @@ export default function RecipePage() {
           )
         })()}
 
-        {/* Steps preview with blur-to-cook-mode */}
+        {/* Steps + Start Cooking CTA */}
         {hasSteps ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
