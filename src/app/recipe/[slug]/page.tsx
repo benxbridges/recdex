@@ -1190,8 +1190,8 @@ export default function RecipePage() {
               <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipe.steps.length} steps</span>
             </div>
 
-            {/* Show first 2 steps fully readable */}
-            {recipe.steps.slice(0, 2).map((s, i) => (
+            {/* Show all steps — no blur, let users scan freely */}
+            {recipe.steps.map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
                 <div style={{
                   width: 28, height: 28, borderRadius: 4, flexShrink: 0,
@@ -1207,72 +1207,22 @@ export default function RecipePage() {
               </div>
             ))}
 
-            {/* Blurred remaining steps + Start Cooking CTA */}
-            {recipe.steps.length > 2 && (
-              <div style={{ position: 'relative', marginTop: 4 }}>
-                {/* Blurred steps peek — show next 2-3 steps as blurred teaser */}
-                <div style={{
-                  filter: 'blur(4px)', WebkitFilter: 'blur(4px)',
-                  userSelect: 'none', pointerEvents: 'none',
-                  opacity: 0.6,
-                }}>
-                  {recipe.steps.slice(2, Math.min(5, recipe.steps.length)).map((s, i) => (
-                    <div key={i + 2} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 4, flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontFamily: MONO, fontSize: 12, fontWeight: 700,
-                        background: C.ruleLight, color: C.text3,
-                      }}>
-                        {i + 3}
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Gradient overlay + CTA */}
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: `linear-gradient(to bottom, transparent 0%, ${C.bg}dd 40%, ${C.bg} 75%)`,
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
-                  paddingBottom: 4,
-                }}>
-                  <a href={`/recipe/${slug}/cook`} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                    width: '100%', padding: '15px 24px', borderRadius: 8, border: 'none',
-                    background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
-                    fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-                    transition: 'transform 0.15s',
-                  }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                    Start Cooking
-                    <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.6, marginLeft: 2 }}>
-                      · {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
-                    </span>
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* Fallback: recipes with only 1-2 steps get a simple button */}
-            {recipe.steps.length <= 2 && (
-              <a href={`/recipe/${slug}/cook`} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                width: '100%', marginTop: 8, padding: '15px 24px', borderRadius: 8, border: 'none',
-                background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
-                fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="5 3 19 12 5 21 5 3" />
-                </svg>
-                Start Cooking
-              </a>
-            )}
+            {/* Start Cooking CTA */}
+            <a href={`/recipe/${slug}/cook`} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              width: '100%', marginTop: 8, padding: '15px 24px', borderRadius: 8, border: 'none',
+              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
+              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              transition: 'transform 0.15s',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Start Cooking
+              <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.6, marginLeft: 2 }}>
+                · {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
+              </span>
+            </a>
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
