@@ -4,8 +4,9 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import { getTipsForStep, type CookingTip } from '@/app/lib/cooking-tips'
-import { scaleAmount, highlightCoreSentence, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { getTipsForStep } from '@/app/lib/cooking-tips'
+import { scaleAmount, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { toJpeg } from 'html-to-image'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
 import CookModeTutorial from '@/app/components/CookModeTutorial'
@@ -70,53 +71,6 @@ function formatTimerDisplay(seconds: number): string {
 function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
-}
-
-// ─── Tip badge + popover ─────────────────────────────────────────────────
-
-function TipBadge({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={e => { e.stopPropagation(); onToggle() }}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4,
-        padding: '3px 8px', borderRadius: 12,
-        border: `1px solid ${isOpen ? C.gold : C.ruleLight}`,
-        background: isOpen ? C.goldBg : 'transparent',
-        color: C.gold, fontSize: 10, fontWeight: 600,
-        cursor: 'pointer', fontFamily: SANS,
-        transition: 'all 0.15s',
-      }}
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 18h6" /><path d="M10 22h4" />
-        <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
-      </svg>
-      Tip
-    </button>
-  )
-}
-
-function TipPopover({ tip, onClose }: { tip: CookingTip; onClose: () => void }) {
-  return (
-    <div
-      onClick={e => e.stopPropagation()}
-      style={{
-        marginTop: 10, padding: '14px 16px', borderRadius: 10,
-        background: C.goldBg, border: `1.5px solid ${C.gold}`,
-        animation: 'slideUp 0.15s ease',
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: C.gold, margin: 0, fontFamily: SANS }}>{tip.title}</p>
-        <button onClick={e => { e.stopPropagation(); onClose() }} style={{
-          background: 'none', border: 'none', color: C.text3, fontSize: 14,
-          cursor: 'pointer', padding: '0 2px', lineHeight: 1,
-        }}>×</button>
-      </div>
-      <p style={{ fontSize: 12, color: C.text, margin: 0, fontFamily: SANS, lineHeight: 1.6 }}>{tip.tip}</p>
-    </div>
-  )
 }
 
 // ─── Timer alert sound ───────────────────────────────────────────────────
@@ -627,12 +581,96 @@ function SwapBanner({ swaps, onRemove }: {
   )
 }
 
+// ─── Share Card — HTML/DOM-rendered with html-to-image export ─────────────
+
+function ShareCard({ photo, recipeTitle, recipeSlug }: {
+  photo: string; recipeTitle: string; recipeSlug: string
+}) {
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  const handleShare = async () => {
+    const recipeUrl = `https://www.recipeindex.org/recipe/${recipeSlug}`
+    try {
+      let shareData: { title: string; text: string; url: string; files?: File[] } = {
+        title: `I made ${recipeTitle}!`,
+        text: `I just made ${recipeTitle}! Try it yourself:`,
+        url: recipeUrl,
+      }
+
+      // Generate card image from DOM
+      if (cardRef.current) {
+        try {
+          const dataUrl = await toJpeg(cardRef.current, { quality: 0.92, pixelRatio: 2 })
+          const blob = await fetch(dataUrl).then(r => r.blob())
+          const file = new File([blob], 'my-cook.jpg', { type: 'image/jpeg' })
+          if (navigator.canShare?.({ files: [file] })) {
+            shareData = { ...shareData, files: [file] }
+          }
+        } catch { /* fall back to text-only share */ }
+      }
+
+      await navigator.share(shareData)
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return
+      const smsBody = encodeURIComponent(`I just made ${recipeTitle}! Try it yourself: ${recipeUrl}`)
+      window.open(`sms:?&body=${smsBody}`, '_self')
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 16 }}>
+      {/* Visible card preview */}
+      <div ref={cardRef} style={{
+        display: 'flex', borderRadius: 10, overflow: 'hidden',
+        border: `1px solid ${C.rule}`, background: C.warm,
+        aspectRatio: '3 / 2',
+      }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photo} alt={recipeTitle} style={{ width: '48%', objectFit: 'cover', flexShrink: 0 }} />
+        <div style={{
+          flex: 1, padding: '24px 20px', display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', minWidth: 0,
+        }}>
+          <p style={{ fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 6px', fontFamily: SANS }}>
+            I just cooked
+          </p>
+          <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: '0 0 12px', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden' }}>
+            {recipeTitle}<EggDot size={5} />
+          </h3>
+          <div style={{ width: 36, height: 1.5, background: C.rule, marginBottom: 12 }} />
+          <p style={{ fontSize: 12, color: C.text2, margin: '0 0 4px', fontFamily: SANS, lineHeight: 1.4 }}>
+            Try it yourself on
+          </p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: C.accent, margin: 0, fontFamily: SANS }}>
+            RecipeIndex<EggDot size={4} />
+          </p>
+          <p style={{ fontSize: 9, color: C.text3, margin: '12px 0 0', fontFamily: MONO, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+            recipeindex.org/recipe/{recipeSlug}
+          </p>
+        </div>
+      </div>
+
+      {/* Share button */}
+      <button onClick={handleShare} style={{
+        width: '100%', marginTop: 12, padding: '14px 20px', borderRadius: 8,
+        border: 'none', background: '#34C759', color: '#fff',
+        fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+      }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" />
+        </svg>
+        Text this to a friend
+      </button>
+    </div>
+  )
+}
+
 // ─── Photo capture component ────────────────────────────────────────────
 
 function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeTitle: string }) {
   const [photo, setPhoto] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [shared, setShared] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load existing photo
@@ -646,11 +684,11 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
   const handleCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setSaved(false)
 
     const reader = new FileReader()
     reader.onload = () => {
       const dataUrl = reader.result as string
-      // Resize to save localStorage space (max 400px wide)
       const img = new Image()
       img.onload = () => {
         const canvas = document.createElement('canvas')
@@ -662,49 +700,16 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         const resized = canvas.toDataURL('image/jpeg', 0.8)
         setPhoto(resized)
-        setShared(false)
         try {
           const photos = JSON.parse(localStorage.getItem('recdex-cook-photos') || '{}')
           photos[recipeSlug] = resized
           localStorage.setItem('recdex-cook-photos', JSON.stringify(photos))
           setSaved(true)
-        } catch { /* localStorage full — gracefully ignore */ }
+        } catch { /* localStorage full */ }
       }
       img.src = dataUrl
     }
     reader.readAsDataURL(file)
-  }
-
-  const handleShare = async () => {
-    const recipeUrl = `https://www.recipeindex.org/recipe/${recipeSlug}`
-    const shareText = `I just made ${recipeTitle}! Try it yourself:`
-
-    try {
-      // Build share data with photo if possible
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const shareData: any = {
-        title: `I made ${recipeTitle}!`,
-        text: shareText,
-        url: recipeUrl,
-      }
-
-      // Try to share with photo file
-      if (photo) {
-        const blob = await fetch(photo).then(r => r.blob())
-        const file = new File([blob], 'my-dish.jpg', { type: 'image/jpeg' })
-        if (navigator.canShare?.({ files: [file] })) {
-          shareData.files = [file]
-        }
-      }
-
-      await navigator.share(shareData)
-      setShared(true)
-    } catch (err) {
-      // User cancelled or share not supported — try SMS fallback
-      if ((err as Error)?.name === 'AbortError') return
-      const smsBody = encodeURIComponent(`${shareText} ${recipeUrl}`)
-      window.open(`sms:?&body=${smsBody}`, '_self')
-    }
   }
 
   if (photo) {
@@ -713,7 +718,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
         <div style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', border: `1px solid ${C.rule}` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={photo} alt={recipeTitle} style={{ width: '100%', display: 'block', borderRadius: 10 }} />
-          {saved && !shared && (
+          {saved && (
             <div style={{
               position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
               padding: '6px 14px', borderRadius: 16, background: 'rgba(0,0,0,0.7)',
@@ -724,36 +729,8 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
           )}
         </div>
 
-        {/* Share CTA — prominent after photo */}
-        {!shared ? (
-          <button
-            onClick={handleShare}
-            style={{
-              width: '100%', marginTop: 12, padding: '14px 20px', borderRadius: 8,
-              border: 'none', background: '#34C759', color: '#fff',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              transition: 'transform 0.15s',
-            }}
-            onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.97)' }}
-            onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-              <polyline points="16 6 12 2 8 6" />
-              <line x1="12" y1="2" x2="12" y2="15" />
-            </svg>
-            Text this to a friend
-          </button>
-        ) : (
-          <div style={{
-            width: '100%', marginTop: 12, padding: '12px 20px', borderRadius: 8,
-            border: `1px solid #34C759`, background: 'rgba(52,199,89,0.1)',
-            textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#34C759', fontFamily: SANS,
-          }}>
-            Shared!
-          </div>
-        )}
+        {/* Share card with branded image */}
+        <ShareCard photo={photo} recipeTitle={recipeTitle} recipeSlug={recipeSlug} />
 
         <button
           onClick={() => fileInputRef.current?.click()}
@@ -1077,9 +1054,13 @@ export default function CookModePage() {
     setActiveStep(step)
     setOpenTip(null)
     isScrollingRef.current = true
+    // Initial scroll, then re-center after content renders (tips, buttons change height)
     setTimeout(() => {
       stepRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      setTimeout(() => { isScrollingRef.current = false }, 600)
+      setTimeout(() => {
+        stepRefs.current[step]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        setTimeout(() => { isScrollingRef.current = false }, 600)
+      }, 350)
     }, 50)
   }, [])
 
@@ -1293,74 +1274,43 @@ export default function CookModePage() {
     }
   }
 
-  // ─── Render step text with bold core sentence + optional amounts ────
+  // ─── Render step text with optional inline ingredient amounts ────
   function renderStepText(text: string, isActive: boolean) {
-    if (!isActive) return text
-    const segments = highlightCoreSentence(text)
+    if (!isActive || !showAmounts || ingredientAmountMap.size === 0) return text
 
-    if (!showAmounts || ingredientAmountMap.size === 0) {
-      return segments.map((seg, i) =>
-        seg.bold
-          ? <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
-          : <span key={i}>{seg.text}</span>
+    // Scan text for ingredient names and inject bold amounts inline
+    const parts: React.ReactNode[] = []
+    let remaining = text
+    let keyIdx = 0
+    const sortedNames = [...ingredientAmountMap.keys()].sort((a, b) => b.length - a.length)
+
+    while (remaining.length > 0) {
+      let earliestMatch: { pos: number; name: string; matchLen: number } | null = null
+      for (const name of sortedNames) {
+        if (name.length <= 2) continue
+        const pos = remaining.toLowerCase().indexOf(name)
+        if (pos !== -1 && (!earliestMatch || pos < earliestMatch.pos)) {
+          earliestMatch = { pos, name, matchLen: name.length }
+        }
+      }
+      if (!earliestMatch) {
+        parts.push(<span key={keyIdx++}>{remaining}</span>)
+        break
+      }
+      if (earliestMatch.pos > 0) {
+        parts.push(<span key={keyIdx++}>{remaining.slice(0, earliestMatch.pos)}</span>)
+      }
+      const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
+      const amount = ingredientAmountMap.get(earliestMatch.name)!
+      parts.push(
+        <span key={keyIdx++}>
+          {matchedText}<span style={{ fontWeight: 700, color: C.text2, whiteSpace: 'nowrap' }}> ({amount})</span>
+        </span>
       )
+      remaining = remaining.slice(earliestMatch.pos + earliestMatch.matchLen)
+      sortedNames.splice(sortedNames.indexOf(earliestMatch.name), 1)
     }
-
-    // With amounts: scan each non-bold segment for ingredient names and inject inline amounts
-    return segments.map((seg, i) => {
-      if (seg.bold) {
-        return <strong key={i} style={{ fontWeight: 700, color: C.accent }}>{seg.text}</strong>
-      }
-
-      // Try to find ingredient names in this text segment
-      const parts: React.ReactNode[] = []
-      let remaining = seg.text
-      let keyIdx = 0
-
-      // Sort ingredient names by length (longest first) to avoid partial matches
-      const sortedNames = [...ingredientAmountMap.keys()].sort((a, b) => b.length - a.length)
-
-      while (remaining.length > 0) {
-        let earliestMatch: { pos: number; name: string; matchLen: number } | null = null
-
-        for (const name of sortedNames) {
-          // Skip very short names (1-2 chars) to avoid false matches
-          if (name.length <= 2) continue
-          const pos = remaining.toLowerCase().indexOf(name)
-          if (pos !== -1 && (!earliestMatch || pos < earliestMatch.pos)) {
-            earliestMatch = { pos, name, matchLen: name.length }
-          }
-        }
-
-        if (!earliestMatch) {
-          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining}</span>)
-          break
-        }
-
-        // Text before the match
-        if (earliestMatch.pos > 0) {
-          parts.push(<span key={`${i}-${keyIdx++}`}>{remaining.slice(0, earliestMatch.pos)}</span>)
-        }
-
-        // The ingredient name + plain bold amount
-        const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
-        const amount = ingredientAmountMap.get(earliestMatch.name)!
-        parts.push(
-          <span key={`${i}-${keyIdx++}`}>
-            {matchedText}
-            <span style={{
-              fontWeight: 700, color: C.text2, whiteSpace: 'nowrap',
-            }}> ({amount})</span>
-          </span>
-        )
-
-        remaining = remaining.slice(earliestMatch.pos + earliestMatch.matchLen)
-        // Remove this name from future matches in this segment to avoid double-matching
-        sortedNames.splice(sortedNames.indexOf(earliestMatch.name), 1)
-      }
-
-      return <span key={i}>{parts}</span>
-    })
+    return <>{parts}</>
   }
 
   // ─── Ingredient rendering helper (with scaling) ──────────────────────
@@ -1448,6 +1398,7 @@ export default function CookModePage() {
         *{box-sizing:border-box}body{margin:0;background:${C.bg}}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
         @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideDown{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
         @keyframes eggFall{0%{transform:translateY(-20vh) rotate(0deg);opacity:1}70%{opacity:1}100%{transform:translateY(105vh) rotate(var(--egg-spin,720deg));opacity:0}}
@@ -1460,88 +1411,78 @@ export default function CookModePage() {
 
       {/* HEADER */}
       <div style={{ padding: isMobile ? '10px 14px 8px' : '14px 24px 10px', borderBottom: `1.5px solid ${C.text}`, background: C.bg, flexShrink: 0, position: 'sticky', top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
-          {/* Left: back button */}
-          <button onClick={() => router.push(`/recipe/${slug}`)} style={{
-            background: 'none', border: 'none', color: C.text2, fontSize: 18,
-            cursor: 'pointer', padding: isMobile ? '4px 6px' : '6px 14px', flexShrink: 0,
-            ...(isMobile ? {} : { border: `1px solid ${C.rule}`, borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: SANS }),
-          }}>{isMobile ? '←' : '← Exit'}</button>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+          {/* Row 1: back + centered title + step counter */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: isMobile ? 6 : 12 }}>
+            <button onClick={() => router.push(`/recipe/${slug}`)} style={{
+              background: 'none', border: 'none', color: C.text2, fontSize: 18,
+              cursor: 'pointer', padding: isMobile ? '4px 6px' : '6px 14px', flexShrink: 0, width: 40, textAlign: 'left' as const,
+              ...(isMobile ? {} : { border: `1px solid ${C.rule}`, borderRadius: 6, fontSize: 12, fontWeight: 500, fontFamily: SANS, width: 'auto' }),
+            }}>{isMobile ? '←' : '← Exit'}</button>
 
-          {/* Center: title */}
-          <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
-            {!isMobile && <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>}
-            <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 15 : 17, fontWeight: 600, color: C.text, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-              {recipe.title}<EggDot size={5} />
-            </h2>
-            {!isMobile && recipe.creator_name && (
-              <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3 }}>
-                Recipe by{' '}
-                {recipe.creator_url ? (
-                  <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
-                    {recipe.creator_name}
-                  </a>
-                ) : (
-                  <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
-                )}
-              </span>
-            )}
+            <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
+              {!isMobile && <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>}
+              <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 15 : 17, fontWeight: 600, color: C.text, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                {recipe.title}<EggDot size={5} />
+              </h2>
+            </div>
+
+            <div style={{ width: 40, flexShrink: 0, textAlign: 'right' as const }}>
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{activeStep + 1}/{total}</span>
+              {!isMobile && <ThemeToggle />}
+            </div>
           </div>
 
-          {/* Right: action buttons */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 8, flexShrink: 0 }}>
-            {/* Inline amounts toggle */}
+          {/* Row 2: centered measurement toggle + ingredients button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 8 }}>
             <button
               onClick={() => setShowAmounts(!showAmounts)}
-              title={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts in steps'}
-              aria-label={showAmounts ? 'Hide ingredient amounts' : 'Show ingredient amounts'}
               style={{
-                width: 36, height: 36, borderRadius: '50%', border: `1px solid ${showAmounts ? C.gold : C.ruleLight}`,
+                padding: '4px 12px', borderRadius: 16,
+                border: `1px solid ${showAmounts ? C.gold : C.ruleLight}`,
                 background: showAmounts ? C.goldBg : 'transparent',
                 color: showAmounts ? C.gold : C.text3,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                display: 'flex', alignItems: 'center', gap: 5,
                 transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 2h8l-1 16H9L8 2z" /><path d="M12 6h4" /><path d="M11.5 10h4" /><path d="M11 14h3" />
                 <path d="M7 22h10" /><path d="M9 18h6" />
               </svg>
+              Amounts
             </button>
-            {/* Mobile: step counter as ingredients toggle */}
-            {isMobile && ingredientItems.length > 0 ? (
+            {isMobile && ingredientItems.length > 0 && (
               <button onClick={() => setShowIngredientsMobile(!showIngredientsMobile)} style={{
+                padding: '4px 12px', borderRadius: 16,
                 background: showIngredientsMobile ? C.accent : 'transparent',
-                border: `1px solid ${showIngredientsMobile ? C.accent : C.rule}`, borderRadius: 20,
-                padding: '5px 12px', color: showIngredientsMobile ? '#fff' : C.text2,
-                fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                border: `1px solid ${showIngredientsMobile ? C.accent : C.ruleLight}`,
+                color: showIngredientsMobile ? '#fff' : C.text3,
+                fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
                 display: 'flex', alignItems: 'center', gap: 5,
                 transition: 'all 0.15s', WebkitTapHighlightColor: 'transparent',
               }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <path d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                {activeStep + 1}/{total}
+                Ingredients
               </button>
-            ) : (
-              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
-                {activeStep + 1}/{total}
-              </span>
             )}
-            {!isMobile && <ThemeToggle />}
           </div>
-        </div>
-        {/* Progress bar */}
-        <div style={{ maxWidth: 1060, margin: '10px auto 0', display: 'flex', gap: 3 }}>
-          {recipe.steps.map((_, i) => (
-            <div key={i} onClick={() => goToStep(i)} style={{
-              flex: 1, height: 4, borderRadius: 2, cursor: 'pointer',
-              background: i < activeStep ? C.green : i === activeStep ? C.accent : C.ruleLight,
-              transition: 'background 0.3s',
-            }} />
-          ))}
-        </div>
 
+          {/* Progress bar */}
+          <div style={{ marginTop: 8, display: 'flex', gap: 3 }}>
+            {recipe.steps.map((_, i) => (
+              <div key={i} onClick={() => goToStep(i)} style={{
+                flex: 1, height: 4, borderRadius: 2, cursor: 'pointer',
+                background: i < activeStep ? C.green : i === activeStep ? C.accent : C.ruleLight,
+                transition: 'background 0.3s',
+              }} />
+            ))}
+          </div>
+
+        </div>
       </div>
 
       {/* Active timer strip (compact, top) */}
@@ -1596,28 +1537,42 @@ export default function CookModePage() {
         </div>
       )}
 
-      {/* Mobile ingredients panel */}
-      {isMobile && showIngredientsMobile && ingredientItems.length > 0 && (
-        <div style={{
-          padding: '14px 16px', background: C.warm, borderBottom: `1px solid ${C.rule}`,
-          flexShrink: 0, animation: 'slideUp 0.15s ease',
-          maxHeight: '55vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' as const,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: C.text2, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
-              {checkedCount > 0 && (
-                <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, padding: '1px 6px', borderRadius: 8, background: C.accentBg }}>
-                  {checkedCount}/{ingredientItems.length}
-                </span>
-              )}
+      {/* Ingredients overlay — fixed, drops from top */}
+      {showIngredientsMobile && ingredientItems.length > 0 && (
+        <>
+          <div onClick={() => setShowIngredientsMobile(false)} style={{
+            position: 'fixed', inset: 0, zIndex: 199,
+            background: 'rgba(0,0,0,0.3)', animation: 'fadeIn 0.15s ease',
+          }} />
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+            padding: '14px 16px 20px', background: C.bg,
+            borderBottom: `1.5px solid ${C.rule}`,
+            maxHeight: '60vh', overflowY: 'auto', WebkitOverflowScrolling: 'touch' as const,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            animation: 'slideDown 0.2s ease',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <p style={{ fontSize: 10, fontWeight: 700, color: C.text2, textTransform: 'uppercase', letterSpacing: 1.5, margin: 0, fontFamily: SANS }}>Ingredients</p>
+                {checkedCount > 0 && (
+                  <span style={{ fontSize: 9, fontFamily: MONO, color: C.accent, padding: '1px 6px', borderRadius: 8, background: C.accentBg }}>
+                    {checkedCount}/{ingredientItems.length}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
+                <button onClick={() => setShowIngredientsMobile(false)} style={{
+                  background: 'none', border: 'none', color: C.text3, fontSize: 18, cursor: 'pointer', padding: '2px 6px',
+                }}>×</button>
+              </div>
             </div>
-            <ServingsScaler original={originalServings} current={servings} onChange={setServings} />
+            <div>
+              {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: false }))}
+            </div>
           </div>
-          <div>
-            {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: false }))}
-          </div>
-        </div>
+        </>
       )}
 
       {/* MAIN CONTENT: Steps + Ingredients sidebar */}
@@ -1681,43 +1636,6 @@ export default function CookModePage() {
                           {renderStepText(step.text, style.isActive)}
                         </p>
 
-                        {/* Step-specific ingredient chips */}
-                        {style.isActive && highlightedIngredients.size > 0 && (
-                          <div style={{
-                            display: 'flex', flexWrap: 'wrap' as const, gap: 6,
-                            marginTop: 10,
-                            animation: 'fadeIn 0.2s ease',
-                          }}>
-                            {ingredientItems.map((item, idx) => {
-                              if (!highlightedIngredients.has(idx)) return null
-                              const scaledAmt = item.amount ? scaleAmount(item.amount, scaleFactor) : ''
-                              const swap = activeSwaps[idx]
-                              const isChecked = checkedIngredients[idx]
-                              const displayName = swap ? swap.replacement : item.name
-                              return (
-                                <span key={idx} style={{
-                                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                                  padding: '4px 10px', borderRadius: 16,
-                                  background: C.warm, border: `1px solid ${C.ruleLight}`,
-                                  fontFamily: SANS, fontSize: 11, color: C.text2,
-                                  textDecoration: isChecked ? 'line-through' : 'none',
-                                  opacity: isChecked ? 0.45 : 1,
-                                  lineHeight: 1.3,
-                                }}>
-                                  {scaledAmt && (
-                                    <span style={{ fontFamily: MONO, fontWeight: 600, color: C.accent }}>
-                                      {scaledAmt}{item.unit ? ` ${item.unit}` : ''}
-                                    </span>
-                                  )}
-                                  <span style={{ color: swap ? C.gold : C.text2 }}>
-                                    {displayName}
-                                  </span>
-                                </span>
-                              )
-                            })}
-                          </div>
-                        )}
-
                         {/* Passive step hint */}
                         {style.isActive && classifyStep(step.text) === 'passive' && (
                           <p style={{ fontSize: 11, color: PHASE_META.passive.color, margin: '10px 0 0', fontFamily: SANS, fontStyle: 'italic' }}>
@@ -1730,18 +1648,49 @@ export default function CookModePage() {
                           <InlineTimer minutes={step.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
                         )}
 
-                        {/* Inline step note (active step only) */}
-                        {style.isActive && <StepNote stepIndex={i} slug={slug} />}
+                        {/* Cooking tip — auto-show title, expandable */}
+                        {style.isActive && (() => {
+                          const stepTip = getTipsForStep(step.text)
+                          if (!stepTip) return null
+                          const isExpanded = openTip === stepTip.id
+                          return (
+                            <div onClick={e => e.stopPropagation()} style={{
+                              marginTop: 14, padding: '10px 14px', borderRadius: 8,
+                              background: C.goldBg, border: `1px solid ${C.gold}30`,
+                              animation: 'fadeIn 0.2s ease',
+                            }}>
+                              <div
+                                onClick={() => setOpenTip(isExpanded ? null : stepTip.id)}
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                                  <path d="M9 18h6" /><path d="M10 22h4" />
+                                  <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z" />
+                                </svg>
+                                <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.gold, fontFamily: SANS }}>{stepTip.title}</span>
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2.5" strokeLinecap="round"
+                                  style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }}>
+                                  <path d="M6 9l6 6 6-6" />
+                                </svg>
+                              </div>
+                              {isExpanded && (
+                                <p style={{ fontSize: 12, color: C.text, margin: '8px 0 0', fontFamily: SANS, lineHeight: 1.6, paddingLeft: 22 }}>
+                                  {stepTip.tip}
+                                </p>
+                              )}
+                            </div>
+                          )
+                        })()}
 
-                        {/* Navigation buttons */}
+                        {/* Navigation buttons — consistent sizing */}
                         {style.isActive && (
-                          <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', animation: 'slideUp 0.25s ease 0.1s both' }}>
+                          <div style={{ marginTop: 16, display: 'flex', gap: 8, animation: 'slideUp 0.25s ease 0.1s both' }}>
                             {activeStep > 0 && (
                               <button onClick={e => { e.stopPropagation(); goToStep(activeStep - 1) }} style={{
-                                padding: '11px 18px', borderRadius: 6,
+                                flex: 1, padding: '12px 16px', borderRadius: 6,
                                 border: `1.5px solid ${C.rule}`, background: 'transparent',
                                 color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-                                display: 'flex', alignItems: 'center', gap: 6,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                               }}>
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
                                 Back
@@ -1749,20 +1698,20 @@ export default function CookModePage() {
                             )}
                             {!isLastStep ? (
                               <button onClick={e => { e.stopPropagation(); goToStep(activeStep + 1) }} style={{
-                                padding: '11px 28px', borderRadius: 6, border: 'none',
+                                flex: 1, padding: '12px 16px', borderRadius: 6, border: 'none',
                                 background: C.text, color: C.bg,
                                 fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-                                display: 'flex', alignItems: 'center', gap: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                               }}>
                                 Next step
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
                               </button>
                             ) : (
                               <button onClick={e => { e.stopPropagation(); goToStep(total) }} style={{
-                                padding: '11px 28px', borderRadius: 6, border: 'none',
+                                flex: 1, padding: '12px 16px', borderRadius: 6, border: 'none',
                                 background: C.green, color: '#fff',
                                 fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-                                display: 'flex', alignItems: 'center', gap: 8,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                               }}>
                                 Finish cooking
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
@@ -1770,24 +1719,11 @@ export default function CookModePage() {
                             )}
                           </div>
                         )}
+
+                        {/* Inline step note — below navigation */}
+                        {style.isActive && <StepNote stepIndex={i} slug={slug} />}
                       </div>
-                      {/* Cooking technique tip badge */}
-                      {(() => {
-                        const stepTip = getTipsForStep(step.text)
-                        if (!stepTip) return null
-                        return (
-                          <div style={{ flexShrink: 0, alignSelf: 'flex-start', marginTop: style.isActive ? 4 : 2 }}>
-                            <TipBadge isOpen={openTip === stepTip.id} onToggle={() => setOpenTip(openTip === stepTip.id ? null : stepTip.id)} />
-                          </div>
-                        )
-                      })()}
                     </div>
-                    {/* Tip popover */}
-                    {(() => {
-                      const stepTip = getTipsForStep(step.text)
-                      if (!stepTip || openTip !== stepTip.id) return null
-                      return <TipPopover tip={stepTip} onClose={() => setOpenTip(null)} />
-                    })()}
                   </div>
                 </div>
               )
