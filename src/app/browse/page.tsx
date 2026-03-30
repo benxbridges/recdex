@@ -42,6 +42,36 @@ function normalizeCuisine(c: string | null): string {
   return c?.split(/[,/]/)[0].trim() || 'Other'
 }
 
+// Maps category IDs (from homepage pills) to the actual cuisine values stored in recipes
+const CUISINE_GROUPS: Record<string, string[]> = {
+  italian:       ['Italian', 'Italian-American'],
+  asian:         ['Japanese', 'Thai', 'Chinese', 'Korean', 'Vietnamese', 'Filipino', 'Taiwanese', 'Malaysian', 'Indonesian', 'Singaporean', 'Asian', 'East Asian'],
+  mexican:       ['Mexican', 'Latin American', 'Colombian', 'Peruvian', 'Argentine', 'Chilean', 'Brazilian', 'Venezuelan'],
+  indian:        ['Indian', 'South Asian', 'Pakistani', 'Sri Lankan', 'Bangladeshi', 'Nepalese'],
+  french:        ['French'],
+  middleeastern: ['Middle Eastern', 'Lebanese', 'Persian', 'Turkish', 'Israeli'],
+  northafrican:  ['North African', 'Moroccan', 'Tunisian', 'Egyptian', 'Algerian'],
+  african:       ['West African', 'Nigerian', 'Ghanaian', 'Senegalese', 'Ethiopian', 'East African'],
+  american:      ['American', 'Southern American', 'American-Southern', 'Cajun', 'Creole', 'Southern', 'Global'],
+  caribbean:     ['Caribbean', 'Jamaican', 'Cuban', 'Puerto Rican', 'Haitian', 'Trinidadian'],
+  british:       ['British', 'Irish', 'Scottish', 'Welsh'],
+  spanish:       ['Spanish', 'Portuguese', 'Catalan'],
+  easteuropean:  ['Eastern European', 'Polish', 'Russian', 'Ukrainian', 'Czech', 'Hungarian', 'Romanian', 'Slovak'],
+  korean:        ['Korean'],
+  japanese:      ['Japanese'],
+  southeastasian:['Southeast Asian', 'Thai', 'Vietnamese', 'Filipino', 'Malaysian', 'Indonesian', 'Singaporean', 'Burmese', 'Cambodian'],
+  centralasian:  ['Central Asian', 'Georgian', 'Armenian', 'Azerbaijani', 'Uzbek', 'Kazakh'],
+}
+
+const CATEGORY_NAMES: Record<string, string> = {
+  italian: 'Italian', asian: 'East & SE Asian', mexican: 'Mexican & Latin American',
+  indian: 'Indian & South Asian', french: 'French', middleeastern: 'Middle Eastern',
+  northafrican: 'North African', african: 'West African', american: 'American & Southern',
+  caribbean: 'Caribbean', british: 'British & Irish', spanish: 'Spanish & Portuguese',
+  easteuropean: 'Eastern European', korean: 'Korean', japanese: 'Japanese',
+  southeastasian: 'Southeast Asian', centralasian: 'Central Asian & Caucasus',
+}
+
 const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string }> = {
   easy: { label: 'Easy', color: C.green, bg: C.greenBg },
   simple: { label: 'Easy', color: C.green, bg: C.greenBg },
@@ -328,6 +358,7 @@ function BrowseContent() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState(searchParams.get('q') || '')
   const [activeCuisine, setActiveCuisine] = useState<string>('all')
+  const [activeCategory, setActiveCategory] = useState<string>('all')
   const [activeTime, setActiveTime] = useState<string>('all')
   const [isMobile, setIsMobile] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list')
@@ -337,8 +368,10 @@ function BrowseContent() {
   useEffect(() => {
     const q = searchParams.get('q')
     const cuisine = searchParams.get('cuisine')
+    const category = searchParams.get('category')
     if (q) setQuery(q)
     if (cuisine) setActiveCuisine(cuisine)
+    if (category) setActiveCategory(category)
   }, [searchParams])
 
   // Load all recipes once
@@ -385,8 +418,16 @@ function BrowseContent() {
 
     let result = recipes
 
-    // Cuisine filter
-    if (activeCuisine !== 'all') {
+    // Cuisine filter — category group (from homepage pills) takes precedence over individual cuisine
+    if (activeCategory !== 'all') {
+      const group = CUISINE_GROUPS[activeCategory]
+      if (group) {
+        result = result.filter(r => {
+          const c = normalizeCuisine(r.cuisine).toLowerCase()
+          return group.some(g => c === g.toLowerCase())
+        })
+      }
+    } else if (activeCuisine !== 'all') {
       result = result.filter(r => normalizeCuisine(r.cuisine) === activeCuisine)
     }
 
@@ -395,18 +436,42 @@ function BrowseContent() {
     else if (activeTime === 'under60') result = result.filter(r => r.time_total && r.time_total <= 60)
     else if (activeTime === 'over60') result = result.filter(r => r.time_total && r.time_total > 60)
 
-    // Text search across title, cuisine, description, tags, AND ingredients
+    // Ranked text search — score each recipe, sort by relevance
     if (q.length >= 2) {
-      result = result.filter(r => {
-        if (r.title.toLowerCase().includes(q)) return true
-        if (r.cuisine?.toLowerCase().includes(q)) return true
-        if (r.description?.toLowerCase().includes(q)) return true
-        if (r.tags?.some(t => t.toLowerCase().includes(q))) return true
+      const tokens = q.split(/\s+/).filter(t => t.length >= 2)
+
+      const scored = result.map(r => {
+        const title = r.title.toLowerCase()
+        const tags = r.tags?.map(t => t.toLowerCase()) || []
+        const cuisine = r.cuisine?.toLowerCase() || ''
+        const desc = r.description?.toLowerCase() || ''
         const items = getIngredientItems(r.ingredients)
-        const match = items.find(ing => ing.name.toLowerCase().includes(q))
-        if (match) { matchMap.set(r.id, match.name); return true }
-        return false
-      })
+        let score = 0
+
+        // Title: exact > starts-with > contains full query
+        if (title === q) score += 100
+        else if (title.startsWith(q + ' ') || title.startsWith(q)) score += 60
+        else if (title.includes(q)) score += 30
+
+        // Per-token scoring
+        for (const tok of tokens) {
+          if (title.includes(tok)) score += 20
+          if (tags.some(t => t === tok)) score += 18        // exact tag match
+          else if (tags.some(t => t.includes(tok))) score += 10
+          if (cuisine.includes(tok)) score += 8
+          const ingMatch = items.find(i => i.name.toLowerCase().includes(tok))
+          if (ingMatch) { matchMap.set(r.id, ingMatch.name); score += 6 }
+          if (desc.includes(tok)) score += 2
+        }
+
+        // Bonus: all tokens match title (precise multi-word query)
+        if (tokens.length > 1 && tokens.every(t => title.includes(t))) score += 20
+
+        return { recipe: r, score }
+      }).filter(({ score }) => score > 0)
+        .sort((a, b) => b.score - a.score)
+
+      result = scored.map(({ recipe }) => recipe)
     }
 
     return { filtered: result, matchMap }
@@ -414,7 +479,7 @@ function BrowseContent() {
 
   // Group by cuisine for default view
   const grouped = useMemo(() => {
-    if (query.trim().length >= 2 || activeCuisine !== 'all' || activeTime !== 'all') return null
+    if (query.trim().length >= 2 || activeCuisine !== 'all' || activeCategory !== 'all' || activeTime !== 'all') return null
     const groups: Record<string, Recipe[]> = {}
     for (const r of filtered) {
       const c = normalizeCuisine(r.cuisine)
@@ -424,7 +489,7 @@ function BrowseContent() {
     return Object.entries(groups).sort((a, b) => b[1].length - a[1].length)
   }, [filtered, query, activeCuisine, activeTime])
 
-  const isSearching = query.trim().length >= 2 || activeCuisine !== 'all' || activeTime !== 'all'
+  const isSearching = query.trim().length >= 2 || activeCuisine !== 'all' || activeCategory !== 'all' || activeTime !== 'all'
   const pad = 'clamp(16px, 4vw, 24px)'
   const cols = isMobile ? 2 : 3
 
@@ -441,6 +506,7 @@ function BrowseContent() {
   function clearSearch() {
     setQuery('')
     setActiveCuisine('all')
+    setActiveCategory('all')
     setActiveTime('all')
     inputRef.current?.focus()
   }
@@ -454,6 +520,7 @@ function BrowseContent() {
       }
       return `${filtered.length} result${filtered.length !== 1 ? 's' : ''} for "${q}"`
     }
+    if (activeCategory !== 'all') return `${filtered.length} ${CATEGORY_NAMES[activeCategory] ?? activeCategory} recipe${filtered.length !== 1 ? 's' : ''}`
     if (activeCuisine !== 'all') return `${filtered.length} ${activeCuisine} recipe${filtered.length !== 1 ? 's' : ''}`
     if (activeTime !== 'all') return `${filtered.length} recipe${filtered.length !== 1 ? 's' : ''}`
     return null
@@ -480,7 +547,8 @@ function BrowseContent() {
               <ThemeToggle />
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontFamily: SANS, fontWeight: 500 }}>Kitchen</Link>
               <ThemeToggle />
             </div>
           )}
@@ -496,9 +564,6 @@ function BrowseContent() {
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(30px, 5vw, 44px)', fontWeight: 700, color: C.text, margin: 0, lineHeight: 1.1, letterSpacing: -1 }}>
             Index<EggDot size={11} />
           </h2>
-          <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, margin: '8px 0 0', lineHeight: 1.5 }}>
-            Search by dish, ingredient, or cuisine.
-          </p>
         </div>
 
         {/* SEARCH BAR */}
@@ -510,7 +575,7 @@ function BrowseContent() {
             ref={inputRef}
             type="text"
             value={query}
-            onChange={e => { setQuery(e.target.value); setActiveCuisine('all') }}
+            onChange={e => { setQuery(e.target.value); setActiveCuisine('all'); setActiveCategory('all') }}
             placeholder="Search by dish, ingredient, or cuisine…"
             style={{
               width: '100%', boxSizing: 'border-box',
@@ -552,17 +617,17 @@ function BrowseContent() {
           <div style={{ width: 1, height: 16, background: C.rule, margin: '0 4px' }} />
 
           {/* Cuisine chips — top cuisines + "All" */}
-          <button onClick={() => setActiveCuisine('all')} style={{
-            background: activeCuisine === 'all' ? C.accentBg : C.warm,
-            border: `1px solid ${activeCuisine === 'all' ? C.accent : C.rule}`,
-            color: activeCuisine === 'all' ? C.accent : C.text2,
+          <button onClick={() => { setActiveCuisine('all'); setActiveCategory('all') }} style={{
+            background: activeCuisine === 'all' && activeCategory === 'all' ? C.accentBg : C.warm,
+            border: `1px solid ${activeCuisine === 'all' && activeCategory === 'all' ? C.accent : C.rule}`,
+            color: activeCuisine === 'all' && activeCategory === 'all' ? C.accent : C.text2,
             borderRadius: 20, padding: '4px 12px',
             fontFamily: MONO, fontSize: 10, cursor: 'pointer',
             letterSpacing: '0.03em', transition: 'all 0.1s ease',
           }}>All cuisines</button>
 
           {cuisines.slice(0, isMobile ? 6 : 10).map(({ name }) => (
-            <button key={name} onClick={() => { setActiveCuisine(name); setQuery('') }} style={{
+            <button key={name} onClick={() => { setActiveCuisine(name); setActiveCategory('all'); setQuery('') }} style={{
               background: activeCuisine === name ? C.accentBg : C.warm,
               border: `1px solid ${activeCuisine === name ? C.accent : C.rule}`,
               color: activeCuisine === name ? C.accent : C.text2,
@@ -597,7 +662,7 @@ function BrowseContent() {
               <p style={{ fontFamily: SERIF, fontSize: 20, color: C.text, margin: 0, flex: 1 }}>
                 {searchResultLabel}
               </p>
-              {(query.trim() || activeCuisine !== 'all' || activeTime !== 'all') && (
+              {(query.trim() || activeCuisine !== 'all' || activeCategory !== 'all' || activeTime !== 'all') && (
                 <button onClick={clearSearch} style={{ background: 'none', border: 'none', color: C.text3, fontFamily: MONO, fontSize: 10, cursor: 'pointer', textDecoration: 'underline', padding: 0, letterSpacing: '0.03em' }}>
                   clear
                 </button>

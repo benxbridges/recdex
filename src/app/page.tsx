@@ -181,9 +181,11 @@ export default function Home() {
         .order('created_at', { ascending: false })
       if (!allRecipes || allRecipes.length === 0) return
       allRecipesRef.current = allRecipes
-      const rotdIdx = getRotdIndex(allRecipes.length)
-      setTonightsPick(allRecipes[rotdIdx])
-      shuffleRecipes(allRecipes, allRecipes[rotdIdx]?.id)
+      // Use featured recipe as Tonight's Pick if one is set, otherwise fall back to date rotation
+      const featured = allRecipes.find(r => r.featured)
+      const pick = featured ?? allRecipes[getRotdIndex(allRecipes.length)]
+      setTonightsPick(pick)
+      shuffleRecipes(allRecipes, pick?.id)
     }
     fetchHomepage()
   }, [shuffleRecipes])
@@ -317,8 +319,9 @@ export default function Home() {
             {!isMobile && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
                 <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
                 <Link href="/scan" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>📷</span>Scan</Link>
-                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Contribute</Link>
+                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Import</Link>
                 <ThemeToggle />
               </div>
             )}
@@ -338,8 +341,9 @@ export default function Home() {
           <div style={{ borderTop: `1px solid ${C.rule}`, background: C.bg, padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {[
               { href: '/browse', label: 'Browse all recipes' },
+              { href: '/pantry', label: 'Kitchen' },
               { href: '/scan', label: 'Scan a cookbook', icon: '📷' },
-              { href: '/contribute', label: '+ Contribute', accent: true },
+              { href: '/contribute', label: '+ Import', accent: true },
             ].map(item => (
               <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
                 textDecoration: 'none', padding: '10px 8px', borderRadius: 6,
@@ -367,10 +371,10 @@ export default function Home() {
             fontWeight: 700, color: C.text, margin: '0 0 6px',
             letterSpacing: -0.5, lineHeight: 1.15,
           }}>
-            Paste any recipe. Start cooking.
+            Start cooking.
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, marginBottom: 18 }}>
-            From any blog, video, or cookbook — no life stories, just cook mode.
+            From any source — no paywall, no life story.
           </p>
 
           {/* Smart input */}
@@ -587,7 +591,7 @@ export default function Home() {
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {categories.slice(0, isMobile ? 8 : 12).map(cat => (
-              <Link key={cat.id} href={`/browse?cuisine=${encodeURIComponent(cat.name)}`} style={{
+              <Link key={cat.id} href={`/browse?category=${cat.id}`} style={{
                 padding: '8px 14px', borderRadius: 20, border: `1px solid ${C.ruleLight}`, background: C.warm,
                 textDecoration: 'none', fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text2,
                 display: 'flex', alignItems: 'center', gap: 6,
@@ -659,7 +663,7 @@ export default function Home() {
             </div>
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
               <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} cuisines</p>
-              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, textDecoration: 'none' }}>Contribute</Link>{' · '}<Link href="/browse" style={{ color: C.accent, textDecoration: 'none' }}>Browse</Link></p>
+              <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, textDecoration: 'none' }}>Import</Link>{' · '}<Link href="/browse" style={{ color: C.accent, textDecoration: 'none' }}>Browse</Link></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

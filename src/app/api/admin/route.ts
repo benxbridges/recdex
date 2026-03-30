@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true })
 
     case 'update-image': {
-      const { slug, image_url } = body
-      const { error } = await supabaseAdmin.from('recipes').update({ image_url }).eq('slug', slug)
+      const { slug, image_url, photo_credit } = body
+      const update: Record<string, string | null> = { image_url }
+      if (photo_credit !== undefined) update.photo_credit = photo_credit || null
+      const { error } = await supabaseAdmin.from('recipes').update(update).eq('slug', slug)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ success: true })
     }
@@ -30,6 +32,15 @@ export async function POST(req: NextRequest) {
     case 'delete-recipe': {
       const { slug } = body
       const { error } = await supabaseAdmin.from('recipes').delete().eq('slug', slug)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ success: true })
+    }
+
+    case 'set-featured': {
+      const { slug } = body
+      // Clear all featured flags first, then set the new one
+      await supabaseAdmin.from('recipes').update({ featured: false }).eq('featured', true)
+      const { error } = await supabaseAdmin.from('recipes').update({ featured: true }).eq('slug', slug)
       if (error) return NextResponse.json({ error: error.message }, { status: 500 })
       return NextResponse.json({ success: true })
     }
