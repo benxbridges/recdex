@@ -215,6 +215,37 @@ export function highlightVerbs(text: string): TextSegment[] {
 }
 
 /**
+ * Highlight the first "core action sentence" — the first sentence containing
+ * an action verb. Returns segments where that sentence is bold, rest is normal.
+ */
+export function highlightCoreSentence(text: string): TextSegment[] {
+  // Split into sentences: on ". " followed by uppercase, or ".\n", or end
+  const sentenceBreaks = text.split(/(?<=\.)\s+(?=[A-Z])/)
+
+  for (let i = 0; i < sentenceBreaks.length; i++) {
+    const sentence = sentenceBreaks[i]
+    const words = sentence.toLowerCase().replace(/[^a-zà-ü\s-]/g, ' ').split(/\s+/)
+    const hasAction = words.some(w => ACTION_VERBS.has(w))
+
+    if (hasAction) {
+      const segments: TextSegment[] = []
+      // Everything before this sentence
+      const before = sentenceBreaks.slice(0, i).join(' ')
+      if (before) segments.push({ text: before + ' ', bold: false })
+      // The action sentence itself
+      segments.push({ text: sentence, bold: true })
+      // Everything after
+      const after = sentenceBreaks.slice(i + 1).join(' ')
+      if (after) segments.push({ text: ' ' + after, bold: false })
+      return segments
+    }
+  }
+
+  // No action verb found — return all as normal
+  return [{ text, bold: false }]
+}
+
+/**
  * Phase labels and colors
  */
 export const PHASE_META: Record<string, { label: string; color: string; bg: string }> = {

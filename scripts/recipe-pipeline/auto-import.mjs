@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
 
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514'
+const CLAUDE_MODEL = 'claude-sonnet-4-6-20250627'
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 const RECIPES_PER_RUN = 25
 const UNSPLASH_RATE_LIMIT_MS = 1200
