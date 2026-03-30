@@ -550,7 +550,7 @@ function ContributeInner() {
             {mode === 'video' && flowStep === 'url' && (
               <div style={{ animation: 'fadeUp 0.3s ease' }}>
                 <p style={{ fontFamily: SANS, fontSize: 15, color: C.text2, lineHeight: 1.65, margin: '0 0 24px', maxWidth: 480 }}>
-                  Paste any recipe URL — YouTube, TikTok, Instagram, NYT Cooking, or any cooking blog. We extract the recipe and give you a structured version to review and publish.
+                  Paste any recipe URL — YouTube, TikTok, Instagram, or any cooking blog. We extract the recipe and give you a structured version to review and publish.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>

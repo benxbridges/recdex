@@ -508,7 +508,7 @@ function RecipeEditorNote({ slug }: { slug: string }) {
         </div>
       ))}
       <p style={{ fontFamily: MONO, fontSize: 9, color: C.text3, marginTop: 10, marginBottom: 0 }}>
-        Based on {data.recipesAnalyzed} recipes · {data.sources.slice(0, 2).join(', ')}, and others
+        Based on {data.recipesAnalyzed} recipes
       </p>
     </div>
   )
@@ -533,11 +533,11 @@ function ConsensusAnnotations({ slug, isMobile }: { slug: string; isMobile: bool
         onClick={() => setExpanded(!expanded)}
         style={{
           fontFamily: MONO, fontSize: 11, color: C.blue, cursor: 'pointer',
-          padding: '8px 0', userSelect: 'none' as const, display: 'flex', alignItems: 'center', gap: 6,
+          padding: '8px 0', userSelect: 'none' as const, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         }}
       >
         <span>{expanded ? '\u25B4' : '\u25BE'}</span>
-        <span>How {data.recipesAnalyzed} recipes compare</span>
+        <span>Kitchen Consensus · {data.recipesAnalyzed} recipes</span>
       </div>
       {expanded && (
         <div style={{
@@ -717,7 +717,11 @@ export default function RecipePage() {
   }
 
   const handleShare = () => {
-    setShowShareCard(true)
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title: recipe?.title || '', url: window.location.href }).catch(() => {})
+    } else {
+      setShowShareCard(true)
+    }
   }
 
   if (loading) {
@@ -752,7 +756,7 @@ export default function RecipePage() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
@@ -834,10 +838,10 @@ export default function RecipePage() {
             <span style={{ color: C.text2 }}>{recipe.title}</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            {recipe.time_total && <span style={{ fontSize: 12, fontFamily: MONO, color: C.text2 }}>{formatTime(recipe.time_total)}</span>}
-            {recipe.time_active && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(recipe.time_active)} active</span></>}
-            {recipe.cuisine && <><span style={{ color: C.rule }}>·</span><span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span></>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+            {recipe.time_total && <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.accent, background: C.accentBg, padding: '3px 10px', borderRadius: 12, letterSpacing: 0.3 }}>{formatTime(recipe.time_total)}</span>}
+            {recipe.time_active && <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.accent, background: C.accentBg, padding: '3px 10px', borderRadius: 12, letterSpacing: 0.3 }}>{formatTime(recipe.time_active)} active</span>}
+            {recipe.cuisine && <span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span>}
           </div>
 
           {!recipe.image_url && (
@@ -847,7 +851,7 @@ export default function RecipePage() {
           )}
 
           {recipe.description && (
-            <p style={{ fontFamily: SERIF, fontSize: 16, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
+            <p style={{ fontFamily: SERIF, fontSize: 17, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
               &ldquo;{recipe.description}&rdquo;
             </p>
           )}
@@ -994,15 +998,46 @@ export default function RecipePage() {
             <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '16px 20px', background: C.cool }}>
               <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
                 {ingredientItems.map((item, i) => (
-                  <p key={i} style={{ fontSize: 15, color: C.text, margin: '6px 0', fontFamily: SANS, lineHeight: 1.5, breakInside: 'avoid' as const }}>
-                    {item.amount && (
-                      <span style={{ color: servingsMultiplier !== 1 ? C.accent : C.text, fontWeight: servingsMultiplier !== 1 ? 600 : 400, transition: 'color 0.15s' }}>
-                        {scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}{' '}
-                      </span>
-                    )}
-                    {item.name}
-                    {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
-                  </p>
+                  <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '6px 0', breakInside: 'avoid' as const }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const stored = localStorage.getItem('recdex-grocery')
+                        let existing: { name: string; amount: string; unit: string; recipeId: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
+                        if (stored) { try { existing = JSON.parse(stored) } catch { /* */ } }
+                        if (!existing.some(e => e.recipeTitle === recipe.title && e.name === item.name)) {
+                          existing.push({
+                            name: item.name,
+                            amount: scaleAmount(item.amount, servingsMultiplier),
+                            unit: item.unit,
+                            recipeId: recipe.id,
+                            recipeTitle: recipe.title,
+                            recipeSlug: slug,
+                            checked: false,
+                          })
+                          localStorage.setItem('recdex-grocery', JSON.stringify(existing))
+                        }
+                        setShoppingToast(true)
+                        setTimeout(() => setShoppingToast(false), 1500)
+                      }}
+                      style={{
+                        background: 'none', border: 'none', color: C.text3, fontSize: 15,
+                        cursor: 'pointer', padding: 0, lineHeight: 1, flexShrink: 0,
+                        opacity: 0.4, transition: 'opacity 0.15s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.opacity = '1' }}
+                      onMouseLeave={e => { e.currentTarget.style.opacity = '0.4' }}
+                    >+</button>
+                    <p style={{ fontSize: 15, color: C.text, margin: 0, fontFamily: SANS, lineHeight: 1.5 }}>
+                      {item.amount && (
+                        <span style={{ color: servingsMultiplier !== 1 ? C.accent : C.text, fontWeight: servingsMultiplier !== 1 ? 600 : 400, transition: 'color 0.15s' }}>
+                          {scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}{' '}
+                        </span>
+                      )}
+                      {item.name}
+                      {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
+                    </p>
+                  </div>
                 ))}
               </div>
               <ConsensusAnnotations slug={slug} isMobile={isMobile} />
@@ -1010,21 +1045,24 @@ export default function RecipePage() {
             {/* Add to shopping list button */}
             <button
               onClick={() => {
-                const stored = localStorage.getItem('recdex-shopping-list')
-                let existing: { recipe: string; name: string; amount: string; unit: string }[] = []
+                const stored = localStorage.getItem('recdex-grocery')
+                let existing: { name: string; amount: string; unit: string; recipeId: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
                 if (stored) {
-                  try { existing = JSON.parse(stored) } catch { /* ignore */ }
+                  try { existing = JSON.parse(stored) } catch { /* */ }
                 }
                 const newItems = ingredientItems
-                  .filter(item => !existing.some(e => e.recipe === recipe.title && e.name === item.name))
+                  .filter(item => !existing.some(e => e.recipeTitle === recipe.title && e.name === item.name))
                   .map(item => ({
-                    recipe: recipe.title,
                     name: item.name,
                     amount: scaleAmount(item.amount, servingsMultiplier),
                     unit: item.unit,
+                    recipeId: recipe.id,
+                    recipeTitle: recipe.title,
+                    recipeSlug: slug,
+                    checked: false,
                   }))
                 if (newItems.length > 0) {
-                  localStorage.setItem('recdex-shopping-list', JSON.stringify([...existing, ...newItems]))
+                  localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
                 }
                 setShoppingToast(true)
                 setTimeout(() => setShoppingToast(false), 2500)
