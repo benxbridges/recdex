@@ -627,6 +627,200 @@ function SwapBanner({ swaps, onRemove }: {
   )
 }
 
+// ─── Share Card: Option A — Canvas-rendered ───────────────────────────────
+// Draws the card to a <canvas> element. Zero dependencies, generates a
+// shareable JPEG blob. Preview is the canvas itself.
+
+function ShareCardCanvas({ photo, recipeTitle, recipeSlug }: {
+  photo: string; recipeTitle: string; recipeSlug: string
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+
+    const W = 600, H = 400
+    canvas.width = W
+    canvas.height = H
+
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      // Background
+      ctx.fillStyle = '#FAF8F5'
+      ctx.fillRect(0, 0, W, H)
+
+      // Photo — left half, cropped to fill
+      const photoW = W * 0.48
+      const scale = Math.max(photoW / img.width, H / img.height)
+      const sw = photoW / scale, sh = H / scale
+      const sx = (img.width - sw) / 2, sy = (img.height - sh) / 2
+      ctx.save()
+      ctx.beginPath()
+      ctx.roundRect(16, 16, photoW - 8, H - 32, [10, 0, 0, 10])
+      ctx.clip()
+      ctx.drawImage(img, sx, sy, sw, sh, 16, 16, photoW - 8, H - 32)
+      ctx.restore()
+
+      // Right side content
+      const rx = photoW + 20
+      const rw = W - rx - 20
+
+      // "I just cooked" label
+      ctx.fillStyle = '#948C80'
+      ctx.font = '500 12px "Plus Jakarta Sans", system-ui, sans-serif'
+      ctx.textBaseline = 'top'
+      ctx.fillText('I JUST COOKED', rx, 36)
+
+      // Recipe title
+      ctx.fillStyle = '#1C1917'
+      ctx.font = '700 26px "Young Serif", Georgia, serif'
+      const titleWords = recipeTitle.split(' ')
+      let line = '', ty = 60
+      for (const word of titleWords) {
+        const test = line ? `${line} ${word}` : word
+        if (ctx.measureText(test).width > rw) {
+          ctx.fillText(line, rx, ty)
+          line = word
+          ty += 34
+        } else {
+          line = test
+        }
+      }
+      ctx.fillText(line, rx, ty)
+
+      // Divider line
+      ty += 46
+      ctx.fillStyle = '#DDD8D0'
+      ctx.fillRect(rx, ty, 40, 1.5)
+
+      // CTA text
+      ty += 20
+      ctx.fillStyle = '#5C564E'
+      ctx.font = '400 13px "Plus Jakarta Sans", system-ui, sans-serif'
+      ctx.fillText('Try it yourself on', rx, ty)
+
+      // Brand name
+      ty += 24
+      ctx.fillStyle = '#D4623E'
+      ctx.font = '600 16px "Plus Jakarta Sans", system-ui, sans-serif'
+      ctx.fillText('RecipeIndex', rx, ty)
+
+      // Egg dot brand mark
+      const dotX = rx + ctx.measureText('RecipeIndex').width + 5
+      ctx.fillStyle = '#D4623E'
+      ctx.beginPath()
+      ctx.ellipse(dotX + 4, ty + 6, 4, 5.5, 0, 0, Math.PI * 2)
+      ctx.fill()
+
+      // URL at bottom
+      ctx.fillStyle = '#948C80'
+      ctx.font = '400 10px "Plus Jakarta Sans", system-ui, sans-serif'
+      ctx.fillText(`recipeindex.org/recipe/${recipeSlug}`, rx, H - 30)
+
+      setReady(true)
+    }
+    img.src = photo
+  }, [photo, recipeTitle, recipeSlug])
+
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px', fontFamily: SANS }}>
+        Option A — Canvas
+      </p>
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: '100%', borderRadius: 10, border: `1px solid ${C.rule}`,
+          display: 'block',
+        }}
+      />
+      {ready && (
+        <p style={{ fontSize: 10, color: C.text3, margin: '6px 0 0', fontFamily: SANS }}>
+          Zero dependencies. Renders as image. Hardcoded colors (no CSS vars in canvas).
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─── Share Card: Option B — HTML/DOM-rendered ─────────────────────────────
+// Styled div using theme tokens. Captured to image via html-to-image or
+// shared as a visible preview. Uses your real CSS/fonts.
+
+function ShareCardDOM({ photo, recipeTitle, recipeSlug }: {
+  photo: string; recipeTitle: string; recipeSlug: string
+}) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 8px', fontFamily: SANS }}>
+        Option B — HTML/DOM
+      </p>
+      <div style={{
+        display: 'flex', borderRadius: 10, overflow: 'hidden',
+        border: `1px solid ${C.rule}`, background: C.warm,
+        aspectRatio: '3 / 2',
+      }}>
+        {/* Photo — left side */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photo} alt={recipeTitle}
+          style={{ width: '48%', objectFit: 'cover', flexShrink: 0 }}
+        />
+
+        {/* Content — right side */}
+        <div style={{
+          flex: 1, padding: '24px 20px', display: 'flex', flexDirection: 'column',
+          justifyContent: 'center', minWidth: 0,
+        }}>
+          {/* Label */}
+          <p style={{
+            fontSize: 9, fontWeight: 600, color: C.text3, textTransform: 'uppercase',
+            letterSpacing: 1.5, margin: '0 0 6px', fontFamily: SANS,
+          }}>
+            I just cooked
+          </p>
+
+          {/* Recipe title */}
+          <h3 style={{
+            fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text,
+            margin: '0 0 12px', lineHeight: 1.2,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const,
+            overflow: 'hidden',
+          }}>
+            {recipeTitle}<EggDot size={5} />
+          </h3>
+
+          {/* Divider */}
+          <div style={{ width: 36, height: 1.5, background: C.rule, marginBottom: 12 }} />
+
+          {/* CTA */}
+          <p style={{ fontSize: 12, color: C.text2, margin: '0 0 4px', fontFamily: SANS, lineHeight: 1.4 }}>
+            Try it yourself on
+          </p>
+          <p style={{ fontSize: 14, fontWeight: 700, color: C.accent, margin: 0, fontFamily: SANS }}>
+            RecipeIndex<EggDot size={4} />
+          </p>
+
+          {/* URL */}
+          <p style={{
+            fontSize: 9, color: C.text3, margin: '12px 0 0', fontFamily: MONO,
+            opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const,
+          }}>
+            recipeindex.org/recipe/{recipeSlug}
+          </p>
+        </div>
+      </div>
+      <p style={{ fontSize: 10, color: C.text3, margin: '6px 0 0', fontFamily: SANS }}>
+        Uses theme tokens + real fonts. Needs html-to-image (~4KB) to export as shareable image.
+      </p>
+    </div>
+  )
+}
+
 // ─── Photo capture component ────────────────────────────────────────────
 
 function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeTitle: string }) {
@@ -724,12 +918,16 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
           )}
         </div>
 
+        {/* Share card previews — both options for comparison */}
+        <ShareCardCanvas photo={photo} recipeTitle={recipeTitle} recipeSlug={recipeSlug} />
+        <ShareCardDOM photo={photo} recipeTitle={recipeTitle} recipeSlug={recipeSlug} />
+
         {/* Share CTA — prominent after photo */}
         {!shared ? (
           <button
             onClick={handleShare}
             style={{
-              width: '100%', marginTop: 12, padding: '14px 20px', borderRadius: 8,
+              width: '100%', marginTop: 16, padding: '14px 20px', borderRadius: 8,
               border: 'none', background: '#34C759', color: '#fff',
               fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -747,7 +945,7 @@ function PhotoCapture({ recipeSlug, recipeTitle }: { recipeSlug: string; recipeT
           </button>
         ) : (
           <div style={{
-            width: '100%', marginTop: 12, padding: '12px 20px', borderRadius: 8,
+            width: '100%', marginTop: 16, padding: '12px 20px', borderRadius: 8,
             border: `1px solid #34C759`, background: 'rgba(52,199,89,0.1)',
             textAlign: 'center', fontSize: 13, fontWeight: 600, color: '#34C759', fontFamily: SANS,
           }}>
