@@ -297,6 +297,25 @@ export default function PantryPage() {
     setTimeout(() => setListCopied(false), 2000)
   }
 
+  const textList = async () => {
+    const lines: string[] = ['Grocery List']
+    Object.entries(needByRecipe).forEach(([, { items }]) => {
+      const first = items[0]
+      if (first) lines.push(`\n${first.recipeTitle}:`)
+      items.forEach(item => {
+        const amt = item.amount ? `${item.amount}${item.unit ? ` ${item.unit}` : ''} ` : ''
+        lines.push(`- ${amt}${item.name}`)
+      })
+    })
+    const text = lines.join('\n')
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try { await navigator.share({ text }) } catch { /* cancelled */ }
+    } else {
+      const smsBody = encodeURIComponent(text)
+      window.open(`sms:?&body=${smsBody}`, '_self')
+    }
+  }
+
   const totalCount = groceryItems.length
   const recipeCount = new Set(groceryItems.map(i => i.recipeId)).size
 
@@ -859,7 +878,16 @@ export default function PantryPage() {
                     border: `1.5px solid ${C.rule}`, background: 'transparent',
                     color: listCopied ? C.green : C.text2, fontSize: 12, fontWeight: 500,
                     cursor: 'pointer', fontFamily: SANS, transition: 'all 0.15s',
-                  }}>{listCopied ? '✓ Copied' : 'Copy to clipboard'}</button>
+                  }}>{listCopied ? '✓ Copied' : 'Copy'}</button>
+                  <button onClick={textList} style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 6,
+                    border: `1.5px solid ${C.green}`, background: C.greenBg,
+                    color: C.green, fontSize: 12, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: SANS, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>
+                    Text list
+                  </button>
                   <button onClick={clearAll} style={{
                     padding: '10px 16px', borderRadius: 6,
                     border: `1.5px solid ${C.ruleLight}`, background: 'transparent',

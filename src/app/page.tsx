@@ -118,8 +118,8 @@ function getRotdIndex(total: number): number {
 // Animated placeholder hints
 const PLACEHOLDERS = [
   'Paste a recipe URL...',
-  'bonappetit.com/recipe/...',
-  'nytcooking.com/recipes/...',
+  'any recipe blog or site...',
+  'YouTube or TikTok link...',
   'any blog or video link...',
 ]
 
@@ -307,7 +307,7 @@ export default function Home() {
       `}</style>
 
       {/* ===== HEADER ===== */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
+      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setInput(''); setExtractState('idle'); setExtractedRecipe(null) }}>
