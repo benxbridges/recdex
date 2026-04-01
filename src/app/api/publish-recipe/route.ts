@@ -1,32 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { searchPhotos, toImageData, triggerDownload } from '@/app/lib/unsplash'
 
-// Use service role key for writes to bypass RLS
-const supabaseAdmin = createClient(
-  'https://zacwsrcdvpglrcvirlng.supabase.co',
-  process.env.SUPABASE_SERVICE_KEY || ''
-)
+// Use service role key for writes to bypass RLS — lazy init to avoid build-time crash
+function getSupabaseAdmin() {
+  return createClient(
+    'https://zacwsrcdvpglrcvirlng.supabase.co',
+    process.env.SUPABASE_SERVICE_KEY!
+  )
+}
 
-async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string } | null> {
+async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string; creditUrl: string; photoUrl: string; unsplashId: string } | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
   if (!accessKey) return null
 
   try {
-    const url = new URL('https://api.unsplash.com/search/photos')
-    url.searchParams.set('query', query)
-    url.searchParams.set('per_page', '1')
-    url.searchParams.set('orientation', 'landscape')
-
-    const res = await fetch(url.toString(), {
-      headers: { Authorization: `Client-ID ${accessKey}` },
-    })
-
-    if (!res.ok) return null
-
-    const data = await res.json()
-    const photo = data?.results?.[0]
+    const photos = await searchPhotos(query, accessKey, 1)
+    const photo = photos[0]
     if (!photo?.urls?.regular) return null
-    return { url: photo.urls.regular, credit: photo.user?.name || '' }
+    const data = toImageData(photo)
+    return { url: data.url, credit: data.credit, creditUrl: data.creditUrl, photoUrl: data.photoUrl, unsplashId: data.unsplashId }
   } catch {
     return null
   }
@@ -52,7 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Dedup check — skip if slug already exists
-  const { data: existing } = await supabaseAdmin.from('recipes').select('slug').eq('slug', recipe.slug).single()
+  const { data: existing } = await getSupabaseAdmin().from('recipes').select('slug').eq('slug', recipe.slug).single()
   if (existing) {
     return NextResponse.json({ success: true, slug: recipe.slug, skipped: true })
   }
@@ -60,15 +53,21 @@ export async function POST(req: NextRequest) {
   // If no image_url provided, try fetching one from Unsplash
   let imageUrl = recipe.image_url || null
   let photoCredit = recipe.photo_credit || null
+  let photographerUrl = recipe.photographer_url || null
+  let unsplashPhotoUrl = recipe.unsplash_photo_url || null
+  let unsplashId = recipe.unsplash_id || null
   if (!imageUrl) {
     const unsplash = await fetchUnsplashImage(recipe.title)
     if (unsplash) {
       imageUrl = unsplash.url
       photoCredit = unsplash.credit
+      photographerUrl = unsplash.creditUrl
+      unsplashPhotoUrl = unsplash.photoUrl
+      unsplashId = unsplash.unsplashId
     }
   }
 
-  const { error: insertError } = await supabaseAdmin.from('recipes').insert({
+  const { error: insertError } = await getSupabaseAdmin().from('recipes').insert({
     slug: recipe.slug,
     title: recipe.title,
     description: recipe.description || null,
@@ -90,6 +89,9 @@ export async function POST(req: NextRequest) {
     creator_url: recipe.creator_url || null,
     image_url: imageUrl,
     photo_credit: photoCredit,
+    photographer_url: photographerUrl,
+    unsplash_photo_url: unsplashPhotoUrl,
+    unsplash_id: unsplashId,
   })
 
   if (insertError) {
@@ -97,10 +99,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'save_failed' }, { status: 500 })
   }
 
+  // Trigger Unsplash download event (required by API guidelines)
+  if (unsplashId) {
+    const accessKey = process.env.UNSPLASH_ACCESS_KEY
+    if (accessKey) triggerDownload(unsplashId, accessKey)
+  }
+
   // Insert community submission record if provided
   if (submission?.url) {
     try {
-      await supabaseAdmin.from('community_submissions').insert({
+      await getSupabaseAdmin().from('community_submissions').insert({
         url: submission.url,
         platform: submission.platform || null,
         title: submission.title || null,

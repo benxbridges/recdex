@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
@@ -123,6 +123,37 @@ const PLACEHOLDERS = [
   'any blog or video link...',
 ]
 
+// ===== INGREDIENT MATCHING HELPERS =====
+type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
+
+function getIngredientItems(ingredients: unknown): IngredientItem[] {
+  if (!ingredients) return []
+  if (Array.isArray(ingredients)) {
+    if (ingredients.length > 0 && typeof ingredients[0] === 'object' && 'group' in (ingredients[0] as Record<string, unknown>)) {
+      return (ingredients as Array<{ items: IngredientItem[] }>).flatMap(g => g.items || [])
+    }
+    return ingredients as IngredientItem[]
+  }
+  return []
+}
+
+function ingredientMatches(userIngredient: string, recipeIngredient: string): boolean {
+  const u = userIngredient.toLowerCase().trim()
+  const r = recipeIngredient.toLowerCase().trim()
+  if (!u || !r) return false
+  if (r === u || r.includes(u) || u.includes(r)) return true
+  const uWords = u.split(/\s+/)
+  const rWords = r.split(/\s+/)
+  for (const uw of uWords) {
+    if (uw.length < 3) continue
+    for (const rw of rWords) {
+      if (rw.length < 3) continue
+      if (rw.startsWith(uw) || uw.startsWith(rw)) return true
+    }
+  }
+  return false
+}
+
 // ===== MAIN PAGE =====
 export default function Home() {
   const router = useRouter()
@@ -132,11 +163,15 @@ export default function Home() {
   const [categories, setCategories] = useState<Category[]>([])
   const [totalCount, setTotalCount] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   const [tonightsPick, setTonightsPick] = useState<Recipe | null>(null)
   const [shuffledRecipes, setShuffledRecipes] = useState<Recipe[]>([])
   const allRecipesRef = useRef<Recipe[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
+
+  // "What Can I Cook?" state
+  const [kitchenInput, setKitchenInput] = useState('')
+  const [kitchenTags, setKitchenTags] = useState<string[]>([])
 
   // Extraction state
   const [extractState, setExtractState] = useState<ExtractState>('idle')
@@ -262,6 +297,32 @@ export default function Home() {
   }
 
   // Start cooking with extracted recipe
+  // "What Can I Cook?" ingredient matching
+  const kitchenMatches = useMemo(() => {
+    if (kitchenTags.length === 0) return []
+    const userIngs = kitchenTags.map(t => t.toLowerCase())
+    return allRecipesRef.current
+      .map(r => {
+        const items = getIngredientItems(r.ingredients)
+        const matched = items.filter(i => userIngs.some(u => ingredientMatches(u, i.name)))
+        return { recipe: r, matched: matched.length, total: items.length, fraction: items.length > 0 ? matched.length / items.length : 0 }
+      })
+      .filter(m => m.matched > 0)
+      .sort((a, b) => b.fraction - a.fraction || a.total - b.total)
+      .slice(0, 5)
+  }, [kitchenTags])
+
+  const handleKitchenKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      const val = kitchenInput.trim().replace(/,$/, '')
+      if (val && !kitchenTags.includes(val.toLowerCase())) {
+        setKitchenTags(prev => [...prev, val.toLowerCase()])
+      }
+      setKitchenInput('')
+    }
+  }
+
   const startCooking = () => {
     if (!extractedRecipe) return
     const tempRecipe = {
@@ -314,49 +375,15 @@ export default function Home() {
               <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>}
+              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>The world's cookbook.</p>}
             </div>
-            {!isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-                <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
-                <Link href="/scan" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 3 }}><span style={{ fontSize: 10 }}>📷</span>Scan</Link>
-                <Link href="/contribute" style={{ textDecoration: 'none', color: C.accent, fontSize: 11, fontWeight: 600 }}>+ Import</Link>
-                <ThemeToggle />
-              </div>
-            )}
-            {isMobile && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <ThemeToggle />
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth="2" strokeLinecap="round">
-                    {mobileMenuOpen ? <><path d="M18 6L6 18" /><path d="M6 6l12 12" /></> : <><path d="M3 12h18" /><path d="M3 6h18" /><path d="M3 18h18" /></>}
-                  </svg>
-                </button>
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
+              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
-        {isMobile && mobileMenuOpen && (
-          <div style={{ borderTop: `1px solid ${C.rule}`, background: C.bg, padding: '12px 16px 16px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {[
-              { href: '/browse', label: 'Browse all recipes' },
-              { href: '/pantry', label: 'Kitchen' },
-              { href: '/scan', label: 'Scan a cookbook', icon: '📷' },
-              { href: '/contribute', label: '+ Import', accent: true },
-            ].map(item => (
-              <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} style={{
-                textDecoration: 'none', padding: '10px 8px', borderRadius: 6,
-                fontSize: 14, fontFamily: SANS, fontWeight: 'accent' in item ? 600 : 500,
-                color: 'accent' in item ? C.accent : C.text2,
-                display: 'flex', alignItems: 'center', gap: 8,
-              }}>
-                {'icon' in item && <span style={{ fontSize: 14 }}>{item.icon}</span>}
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        )}
       </header>
 
       {/* ===== HERO: SMART INPUT ===== */}
@@ -371,10 +398,10 @@ export default function Home() {
             fontWeight: 700, color: C.text, margin: '0 0 6px',
             letterSpacing: -0.5, lineHeight: 1.15,
           }}>
-            Start cooking.
+            Cook everything.
           </h2>
           <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, marginBottom: 18 }}>
-            From any source — no paywall, no life story.
+            The best recipes from the best cooks — all in one place.
           </p>
 
           {/* Smart input */}
@@ -540,7 +567,7 @@ export default function Home() {
                 ))}
               </div>
               <Link href="/browse" style={{ fontSize: 12, fontFamily: SANS, color: C.text3, textDecoration: 'none' }}>
-                or search <span style={{ color: C.accent, fontWeight: 600 }}>{totalCount} community recipes →</span>
+                or browse <span style={{ color: C.accent, fontWeight: 600 }}>{totalCount} recipes from around the world →</span>
               </Link>
             </div>
           )}
@@ -579,6 +606,83 @@ export default function Home() {
           </Link>
         </div>
       )}
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
+
+      {/* ===== WHAT CAN I COOK? ===== */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '24px 16px' : '28px clamp(16px,4vw,24px)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 16 }}>🍳</span>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>What can I cook?</p>
+          </div>
+          <Link href="/pantry" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>Full kitchen →</Link>
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 12,
+          padding: '10px 14px', marginBottom: kitchenTags.length > 0 ? 12 : 0,
+        }}>
+          {kitchenTags.map(tag => (
+            <span key={tag} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '5px 10px', borderRadius: 8, background: C.bg, border: `1px solid ${C.rule}`,
+              fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
+            }}>
+              {tag}
+              <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontSize: 11, color: C.text3, lineHeight: 1,
+              }}>×</button>
+            </span>
+          ))}
+          <input
+            value={kitchenInput}
+            onChange={e => setKitchenInput(e.target.value)}
+            onKeyDown={handleKitchenKeyDown}
+            placeholder={kitchenTags.length === 0 ? 'Type ingredients you have...' : 'Add more...'}
+            style={{
+              flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: 13, fontFamily: SANS, color: C.text, padding: '4px 0',
+            }}
+          />
+        </div>
+
+        {/* Quick matches */}
+        {kitchenMatches.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+            {kitchenMatches.slice(0, 3).map(m => (
+              <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
+                borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`,
+                textDecoration: 'none', transition: 'border-color 0.1s',
+              }}>
+                {m.recipe.image_url ? (
+                  <img src={m.recipe.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} loading="lazy" />
+                ) : (
+                  <div style={{ width: 36, height: 36, borderRadius: 6, background: C.cool, flexShrink: 0 }} />
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.recipe.title}
+                  </span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
+                    {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
+                  {m.matched}/{m.total}
+                </span>
+              </Link>
+            ))}
+            {kitchenMatches.length > 3 && (
+              <Link href="/pantry" style={{ fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '6px 0' }}>
+                +{kitchenMatches.length - 3} more matches →
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
 

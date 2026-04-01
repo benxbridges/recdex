@@ -24,6 +24,13 @@ type Recipe = {
   submitted_by?: string | null; source?: string | null; source_attribution?: string | null
   video_url?: string | null; creator_name?: string | null; creator_url?: string | null
   photo_credit?: string | null
+  unsplash_id?: string | null
+  photographer_url?: string | null
+  unsplash_photo_url?: string | null
+  cookbook_title?: string | null
+  cookbook_author?: string | null
+  cookbook_purchase_url?: string | null
+  source_url?: string | null
 }
 
 type Comment = {
@@ -243,6 +250,11 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
     setAdded(a)
     setAddedToList(true)
   }
+
+  // Trigger Unsplash download event on view (required by API guidelines)
+  useEffect(() => {
+    if (recipe?.unsplash_id) fetch(`/api/unsplash-download?id=${recipe.unsplash_id}`)
+  }, [recipe?.unsplash_id])
 
   // Check if this recipe's items are already in the shopping list
   useEffect(() => {
@@ -764,21 +776,11 @@ export default function RecipePage() {
                 Recipe Index<EggDot size={9} />
               </h1>
             </div>
-            {!isMobile ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
-                <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</span>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <span onClick={() => router.push('/pantry')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Kitchen</span>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <span onClick={() => router.push('/profile')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Profile</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
+                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
                 <ThemeToggle />
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span onClick={() => router.back()} style={{ color: C.text2, cursor: 'pointer', fontSize: 12, fontFamily: SANS }}>←</span>
-                <ThemeToggle />
-              </div>
-            )}
           </div>
         </div>
       </header>
@@ -811,11 +813,18 @@ export default function RecipePage() {
               {recipe.photo_credit && (
                 <div style={{
                   position: 'absolute', top: 8, right: 10,
-                  fontSize: 9, fontFamily: SANS, color: 'rgba(255,255,255,0.6)',
+                  fontSize: 11, fontFamily: SANS, color: 'rgba(255,255,255,0.8)',
                   textShadow: '0 1px 3px rgba(0,0,0,0.4)',
                   letterSpacing: '0.02em',
                 }}>
-                  Photo: {recipe.photo_credit}
+                  Photo by{' '}
+                  {recipe.photographer_url ? (
+                    <a href={recipe.photographer_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{recipe.photo_credit}</a>
+                  ) : recipe.photo_credit}
+                  {' '}on{' '}
+                  {recipe.unsplash_photo_url ? (
+                    <a href={recipe.unsplash_photo_url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Unsplash</a>
+                  ) : 'Unsplash'}
                 </div>
               )}
             </>
@@ -850,31 +859,66 @@ export default function RecipePage() {
             </h1>
           )}
 
+          {/* Source attribution — cookbook, author, or creator */}
+          {(recipe.cookbook_title || recipe.creator_name || recipe.source_attribution) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, opacity: 0.6 }}>
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              </svg>
+              <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>
+                {recipe.cookbook_title ? (
+                  <>
+                    From{' '}
+                    {recipe.cookbook_purchase_url ? (
+                      <a href={recipe.cookbook_purchase_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {recipe.cookbook_title}
+                      </a>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: C.text2 }}>{recipe.cookbook_title}</span>
+                    )}
+                    {recipe.cookbook_author && (
+                      <> by <span style={{ fontWeight: 600, color: C.text2 }}>{recipe.cookbook_author}</span></>
+                    )}
+                  </>
+                ) : recipe.creator_name ? (
+                  <>
+                    {recipe.source_attribution === 'RecDex Trending' ? 'Inspired by' : 'Recipe by'}{' '}
+                    {recipe.creator_url ? (
+                      <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {recipe.creator_name}
+                      </a>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: C.text2 }}>{recipe.creator_name}</span>
+                    )}
+                    {recipe.video_url && (
+                      <>
+                        {' · '}
+                        <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+                          Watch original ↗
+                        </a>
+                      </>
+                    )}
+                  </>
+                ) : recipe.source_attribution ? (
+                  <>
+                    Adapted from{' '}
+                    {recipe.source_url ? (
+                      <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {recipe.source_attribution}
+                      </a>
+                    ) : (
+                      <span style={{ fontWeight: 600, color: C.text2 }}>{recipe.source_attribution}</span>
+                    )}
+                  </>
+                ) : null}
+              </span>
+            </div>
+          )}
+
           {recipe.description && (
             <p style={{ fontFamily: SERIF, fontSize: 17, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
               &ldquo;{recipe.description}&rdquo;
             </p>
-          )}
-
-          {/* Creator attribution (video-sourced recipes) */}
-          {recipe.creator_name && recipe.video_url && (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 12px', borderRadius: 6, background: C.cool, border: `1px solid ${C.ruleLight}` }}>
-              <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>Recipe by</span>
-              {recipe.creator_url ? (
-                <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2, textDecoration: 'none' }}>
-                  {recipe.creator_name}
-                </a>
-              ) : (
-                <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2 }}>{recipe.creator_name}</span>
-              )}
-              <span style={{ color: C.rule }}>·</span>
-              <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, color: C.text3, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-                Watch original
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                </svg>
-              </a>
-            </div>
           )}
 
           {/* AI-extracted badge + creator credit for video-sourced recipes */}

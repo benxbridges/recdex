@@ -207,7 +207,7 @@ function ContributeInner() {
   const [copyrightCertified, setCopyrightCertified] = useState(false)
 
   // Image selection
-  const [imageOptions, setImageOptions] = useState<{ url: string; thumb: string; credit: string }[]>([])
+  const [imageOptions, setImageOptions] = useState<{ url: string; thumb: string; credit: string; creditUrl: string; photoUrl: string; unsplashId: string }[]>([])
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imagesLoading, setImagesLoading] = useState(false)
 
@@ -414,6 +414,10 @@ function ContributeInner() {
             creator_name: platform === 'web' ? (webAuthor || null) : (oembed?.author_name || null),
             creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
             image_url: selectedImage || (mode === 'video' ? (oembed?.thumbnail_url || null) : null),
+            photo_credit: (() => { const img = imageOptions.find(i => i.url === selectedImage); return img?.credit || null })(),
+            photographer_url: (() => { const img = imageOptions.find(i => i.url === selectedImage); return img?.creditUrl || null })(),
+            unsplash_photo_url: (() => { const img = imageOptions.find(i => i.url === selectedImage); return img?.photoUrl || null })(),
+            unsplash_id: (() => { const img = imageOptions.find(i => i.url === selectedImage); return img?.unsplashId || null })(),
             source_url: platform === 'web' ? url.trim() : (mode === 'video' ? url.trim() : null),
             source_attribution: platform === 'web' ? (() => { try { return new URL(url.trim()).hostname.replace('www.', '') } catch { return null } })() : null,
           },
@@ -479,20 +483,11 @@ function ContributeInner() {
               </h1>
               <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
             </Link>
-            {!isMobile ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
-                <Link href="/" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <Link href="/pantry" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <Link href="/profile" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Profile</Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
+                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+                <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
                 <ThemeToggle />
               </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <ThemeToggle />
-              </div>
-            )}
           </div>
         </div>
       </header>

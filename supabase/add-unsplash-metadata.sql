@@ -1,0 +1,3 @@
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS unsplash_id TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS photographer_url TEXT;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS unsplash_photo_url TEXT;

@@ -49,15 +49,16 @@ const GENRES = [
 ]
 
 function pickGenre() {
-  // Use day-of-year to rotate deterministically, so each run on a different
-  // day (or hour) picks a different genre. Multiple runs on the same day
-  // will use the same genre, but that's fine — dedup prevents duplicates.
+  // Rotate across genres using day+hour+week for better spread.
+  // Each 4-hour slot gets a unique genre, and the week offset
+  // ensures the same day-of-week doesn't always hit the same genre.
   const now = new Date()
   const dayOfYear = Math.floor(
     (now - new Date(now.getFullYear(), 0, 0)) / 86400000
   )
   const hourSlot = Math.floor(now.getHours() / 4) // 6 slots per day
-  const idx = (dayOfYear * 6 + hourSlot) % GENRES.length
+  const weekOfYear = Math.floor(dayOfYear / 7)
+  const idx = (dayOfYear * 6 + hourSlot + weekOfYear) % GENRES.length
   return GENRES[idx]
 }
 
@@ -177,7 +178,13 @@ async function fetchUnsplashImage(query, accessKey) {
     )
     const photo = photos[0] || data?.results?.[0]
     if (!photo?.urls?.regular) return null
-    return { url: photo.urls.regular, credit: photo.user?.name || '' }
+    return {
+      url: photo.urls.regular,
+      credit: photo.user?.name || '',
+      creditUrl: photo.user?.links?.html || '',
+      photoUrl: photo.links?.html || '',
+      unsplashId: photo.id || '',
+    }
   } catch {
     return null
   }
@@ -301,14 +308,30 @@ async function main() {
   const prompt = buildGenerationPrompt(genre, count, allTitles)
   const raw = await callClaude(SYSTEM_PROMPT, prompt, anthropicKey)
 
-  // Parse JSON — handle potential markdown fences
+  // Parse JSON — handle potential markdown fences, truncation, etc.
   let recipes
   try {
-    const cleaned = raw.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
-    recipes = JSON.parse(cleaned)
+    let cleaned = raw.replace(/^```[\w]*\n?/gm, '').replace(/\n?```\s*$/gm, '').trim()
+    // Fallback: find first '[' and last ']' if direct parse fails
+    try {
+      recipes = JSON.parse(cleaned)
+    } catch {
+      const start = cleaned.indexOf('[')
+      const end = cleaned.lastIndexOf(']')
+      if (start !== -1 && end > start) {
+        recipes = JSON.parse(cleaned.slice(start, end + 1))
+      } else {
+        throw new Error('No JSON array found in response')
+      }
+    }
   } catch (parseErr) {
     console.error('Failed to parse Claude response as JSON:')
     console.error(raw.slice(0, 500))
+    // Write to GitHub Actions summary if available
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      const fs = await import('fs')
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Import Failed\nJSON parse error. First 200 chars:\n\`\`\`\n${raw.slice(0, 200)}\n\`\`\`\n`)
+    }
     process.exit(1)
   }
 
@@ -354,11 +377,17 @@ async function main() {
     // Fetch Unsplash image
     let imageUrl = null
     let photoCredit = null
+    let photographerUrl = null
+    let unsplashPhotoUrl = null
+    let unsplashId = null
     if (!dryRun) {
       const img = await fetchUnsplashImage(title, unsplashKey)
       if (img) {
         imageUrl = img.url
         photoCredit = img.credit
+        photographerUrl = img.creditUrl
+        unsplashPhotoUrl = img.photoUrl
+        unsplashId = img.unsplashId
       }
       await sleep(UNSPLASH_RATE_LIMIT_MS)
     }
@@ -383,6 +412,9 @@ async function main() {
       source_url: recipe.source_url || null,
       image_url: imageUrl,
       photo_credit: photoCredit,
+      photographer_url: photographerUrl,
+      unsplash_photo_url: unsplashPhotoUrl,
+      unsplash_id: unsplashId,
     }
 
     if (dryRun) {
@@ -405,6 +437,13 @@ async function main() {
       continue
     }
 
+    // Trigger Unsplash download event (required by API guidelines)
+    if (unsplashId) {
+      fetch(`https://api.unsplash.com/photos/${unsplashId}/download`, {
+        headers: { Authorization: `Client-ID ${unsplashKey}` },
+      }).catch(() => {})
+    }
+
     console.log(`  ✓ Published: "${title}" (${slug})`)
     published++
     allTitles.push(title)
@@ -425,6 +464,28 @@ async function main() {
     for (const r of results) {
       console.log(`  • ${r.title} → /${r.slug}`)
     }
+  }
+
+  // Write GitHub Actions summary if available
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const fs = await import('fs')
+    const lines = [
+      `### Recipe Import: ${genre}`,
+      `| Metric | Count |`,
+      `|--------|-------|`,
+      `| Published | ${published} |`,
+      `| Skipped (dedup) | ${skipped} |`,
+      `| Errors | ${errors} |`,
+      `| Generated | ${recipes.length} |`,
+      '',
+    ]
+    if (results.length > 0) {
+      lines.push('**New recipes:**')
+      for (const r of results) {
+        lines.push(`- ${r.title}`)
+      }
+    }
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n')
   }
 }
 
