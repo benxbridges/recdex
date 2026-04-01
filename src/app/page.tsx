@@ -141,17 +141,16 @@ function ingredientMatches(userIngredient: string, recipeIngredient: string): bo
   const u = userIngredient.toLowerCase().trim()
   const r = recipeIngredient.toLowerCase().trim()
   if (!u || !r) return false
-  if (r === u || r.includes(u) || u.includes(r)) return true
-  const uWords = u.split(/\s+/)
-  const rWords = r.split(/\s+/)
-  for (const uw of uWords) {
-    if (uw.length < 3) continue
-    for (const rw of rWords) {
-      if (rw.length < 3) continue
-      if (rw.startsWith(uw) || uw.startsWith(rw)) return true
-    }
-  }
-  return false
+  if (r === u) return true
+  // Recipe ingredient contains the full user input (e.g. user: "sweet potato", recipe: "roasted sweet potatoes")
+  if (r.includes(u)) return true
+  // Multi-word user input (e.g. "sweet potato"): don't fall back to word-level matching
+  // — "sweet potato" should NOT match "potato" recipe ingredient
+  if (u.includes(' ')) return false
+  // Single-word user input: match if it appears as a whole-word token in the recipe ingredient
+  // (e.g. "chicken" matches "chicken breast", "boneless chicken thigh")
+  const rWords = r.split(/[\s,]+/)
+  return rWords.some(rw => rw === u || (u.length >= 4 && (rw.startsWith(u) || u.startsWith(rw))))
 }
 
 // ===== MAIN PAGE =====
@@ -172,6 +171,8 @@ export default function Home() {
   // "What Can I Cook?" state
   const [kitchenInput, setKitchenInput] = useState('')
   const [kitchenTags, setKitchenTags] = useState<string[]>([])
+  const [kitchenSuggestions, setKitchenSuggestions] = useState<string[]>([])
+  const [showAllKitchenMatches, setShowAllKitchenMatches] = useState(false)
 
   // Extraction state
   const [extractState, setExtractState] = useState<ExtractState>('idle')
@@ -305,21 +306,58 @@ export default function Home() {
       .map(r => {
         const items = getIngredientItems(r.ingredients)
         const matched = items.filter(i => userIngs.some(u => ingredientMatches(u, i.name)))
-        return { recipe: r, matched: matched.length, total: items.length, fraction: items.length > 0 ? matched.length / items.length : 0 }
+        // Score: weight fraction heavily, but also reward matching the specific typed ingredients
+        const tagMatchCount = userIngs.filter(u => items.some(i => ingredientMatches(u, i.name))).length
+        const score = (matched.length / Math.max(items.length, 1)) * 0.7 + (tagMatchCount / Math.max(userIngs.length, 1)) * 0.3
+        return { recipe: r, matched: matched.length, total: items.length, fraction: items.length > 0 ? matched.length / items.length : 0, score }
       })
       .filter(m => m.matched > 0)
-      .sort((a, b) => b.fraction - a.fraction || a.total - b.total)
-      .slice(0, 5)
+      .sort((a, b) => b.score - a.score || a.total - b.total)
+      .slice(0, 10)
   }, [kitchenTags])
+
+  const COMMON_INGREDIENTS = [
+    'chicken', 'beef', 'pork', 'salmon', 'shrimp', 'tofu', 'eggs', 'bacon',
+    'pasta', 'rice', 'potatoes', 'sweet potato', 'lentils', 'chickpeas',
+    'garlic', 'onion', 'tomatoes', 'spinach', 'broccoli', 'zucchini', 'mushrooms', 'bell pepper',
+    'butter', 'olive oil', 'cream', 'parmesan', 'cheddar', 'feta',
+    'lemon', 'lime', 'ginger', 'cilantro', 'basil', 'thyme',
+    'soy sauce', 'miso', 'tahini', 'coconut milk',
+  ]
+
+  const handleKitchenInputChange = (val: string) => {
+    setKitchenInput(val)
+    if (val.length >= 2) {
+      const q = val.toLowerCase().trim()
+      const suggestions = COMMON_INGREDIENTS.filter(
+        ing => ing.startsWith(q) && !kitchenTags.includes(ing)
+      ).slice(0, 5)
+      setKitchenSuggestions(suggestions)
+    } else {
+      setKitchenSuggestions([])
+    }
+  }
+
+  const addKitchenTag = (val: string) => {
+    const normalized = val.trim().toLowerCase()
+    if (normalized && !kitchenTags.includes(normalized)) {
+      setKitchenTags(prev => [...prev, normalized])
+    }
+    setKitchenInput('')
+    setKitchenSuggestions([])
+    setShowAllKitchenMatches(false)
+  }
 
   const handleKitchenKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
-      const val = kitchenInput.trim().replace(/,$/, '')
-      if (val && !kitchenTags.includes(val.toLowerCase())) {
-        setKitchenTags(prev => [...prev, val.toLowerCase()])
-      }
-      setKitchenInput('')
+      const val = kitchenInput.replace(/,$/, '').trim()
+      if (val) addKitchenTag(val)
+    } else if (e.key === 'Tab' && kitchenSuggestions.length > 0) {
+      e.preventDefault()
+      addKitchenTag(kitchenSuggestions[0])
+    } else if (e.key === 'Escape') {
+      setKitchenSuggestions([])
     }
   }
 
@@ -585,24 +623,30 @@ export default function Home() {
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: C.accent }} />
             <span style={{ fontSize: 11, fontWeight: 700, fontFamily: MONO, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5 }}>Tonight&apos;s pick</span>
           </div>
-          <Link href={`/recipe/${tonightsPick.slug}`} style={{ display: 'block', borderRadius: 14, overflow: 'hidden', background: C.warm, marginBottom: 16, aspectRatio: '16/9' }}>
+          <Link href={`/recipe/${tonightsPick.slug}`} style={{ display: 'block', borderRadius: 14, overflow: 'hidden', background: C.warm, aspectRatio: '16/9', position: 'relative' }}>
             {tonightsPick.image_url ? <img src={tonightsPick.image_url} alt={tonightsPick.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <BrokenEggCard />}
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(tonightsPick.time_total)}</span>
-            {tonightsPick.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{tonightsPick.cuisine}</span></>}
-          </div>
-          <h3 style={{ fontFamily: SERIF, fontSize: isMobile ? 24 : 28, fontWeight: 700, color: C.text, lineHeight: 1.15, margin: '0 0 8px', letterSpacing: -0.5 }}>{tonightsPick.title}</h3>
-          {tonightsPick.description && <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, lineHeight: 1.6, margin: '0 0 16px', maxWidth: 480 }}>{tonightsPick.description}</p>}
-          <Link href={`/recipe/${tonightsPick.slug}/cook`} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '14px 32px', borderRadius: 12, border: 'none',
-            background: C.accent, color: '#fff',
-            fontSize: 16, fontWeight: 700, fontFamily: SANS, textDecoration: 'none',
-            boxShadow: '0 4px 16px rgba(232,123,90,0.3)',
-          }}>
-            Start Cooking
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+            {/* Gradient scrim */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '65%', background: 'linear-gradient(transparent, rgba(0,0,0,0.75))', borderRadius: '0 0 14px 14px' }} />
+            {/* Title + meta overlay */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: isMobile ? '16px 18px' : '20px 24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: 'rgba(255,255,255,0.7)' }}>{formatTime(tonightsPick.time_total)}</span>
+                {tonightsPick.cuisine && <><span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 8 }}>·</span><span style={{ fontSize: 10, fontFamily: SANS, color: 'rgba(255,255,255,0.7)' }}>{tonightsPick.cuisine}</span></>}
+              </div>
+              <h3 style={{ fontFamily: SERIF, fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#fff', lineHeight: 1.15, margin: 0, letterSpacing: -0.5 }}>{tonightsPick.title}</h3>
+            </div>
+            {/* Start Cooking CTA */}
+            <span onClick={(e) => { e.preventDefault(); window.location.href = `/recipe/${tonightsPick.slug}/cook` }} style={{
+              position: 'absolute', bottom: isMobile ? 16 : 20, right: isMobile ? 18 : 24,
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: isMobile ? '10px 18px' : '12px 24px', borderRadius: 10,
+              background: C.accent, color: '#fff',
+              fontSize: isMobile ? 13 : 15, fontWeight: 700, fontFamily: SANS,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)', cursor: 'pointer',
+            }}>
+              Start Cooking
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
+            </span>
           </Link>
         </div>
       )}
@@ -638,7 +682,7 @@ export default function Home() {
           ))}
           <input
             value={kitchenInput}
-            onChange={e => setKitchenInput(e.target.value)}
+            onChange={e => handleKitchenInputChange(e.target.value)}
             onKeyDown={handleKitchenKeyDown}
             placeholder={kitchenTags.length === 0 ? 'Type ingredients you have...' : 'Add more...'}
             style={{
@@ -648,10 +692,25 @@ export default function Home() {
           />
         </div>
 
+        {/* Autocomplete suggestions */}
+        {kitchenSuggestions.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+            {kitchenSuggestions.map(s => (
+              <button key={s} onClick={() => addKitchenTag(s)} style={{
+                padding: '4px 10px', borderRadius: 14, border: `1px solid ${C.accent}44`,
+                background: C.accentBg, color: C.accent, fontSize: 11, fontFamily: SANS,
+                fontWeight: 500, cursor: 'pointer',
+              }}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Quick matches */}
         {kitchenMatches.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-            {kitchenMatches.slice(0, 3).map(m => (
+            {kitchenMatches.slice(0, showAllKitchenMatches ? 10 : 3).map(m => (
               <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
                 borderRadius: 8, background: C.warm, border: `1px solid ${C.ruleLight}`,
@@ -675,10 +734,13 @@ export default function Home() {
                 </span>
               </Link>
             ))}
-            {kitchenMatches.length > 3 && (
-              <Link href="/pantry" style={{ fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none', textAlign: 'center', padding: '6px 0' }}>
+            {kitchenMatches.length > 3 && !showAllKitchenMatches && (
+              <button onClick={() => setShowAllKitchenMatches(true)} style={{
+                fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600,
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '6px 0',
+              }}>
                 +{kitchenMatches.length - 3} more matches →
-              </Link>
+              </button>
             )}
           </div>
         )}

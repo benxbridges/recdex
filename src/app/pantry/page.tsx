@@ -69,24 +69,15 @@ function ingredientMatches(userIngredient: string, recipeIngredient: string): bo
   const u = userIngredient.toLowerCase().trim()
   const r = recipeIngredient.toLowerCase().trim()
   if (!u || !r) return false
-  // exact match
   if (r === u) return true
-  // user word appears in recipe ingredient name
+  // Recipe ingredient contains full user input (e.g. user: "sweet potato", recipe: "roasted sweet potatoes")
   if (r.includes(u)) return true
-  // recipe ingredient word appears in user input (e.g. user typed "chicken breast", recipe has "chicken")
-  if (u.includes(r)) return true
-  // check individual words for partial matching (e.g. "tomato" matches "tomatoes")
-  const uWords = u.split(/\s+/)
-  const rWords = r.split(/\s+/)
-  for (const uw of uWords) {
-    if (uw.length < 3) continue
-    for (const rw of rWords) {
-      if (rw.length < 3) continue
-      // stem-like match: one starts with the other (tomato/tomatoes, chicken/chickens)
-      if (rw.startsWith(uw) || uw.startsWith(rw)) return true
-    }
-  }
-  return false
+  // Multi-word user input: don't fall back to word-level matching
+  // — "sweet potato" should NOT match a "potato" recipe ingredient
+  if (u.includes(' ')) return false
+  // Single-word: match only if it appears as a whole-word token in the recipe ingredient
+  const rWords = r.split(/[\s,]+/)
+  return rWords.some(rw => rw === u || (u.length >= 4 && (rw.startsWith(u) || u.startsWith(rw))))
 }
 
 // ===== SMALL COMPONENTS =====
@@ -138,6 +129,7 @@ export default function PantryPage() {
   // "What can I cook?" state
   const [cookInput, setCookInput] = useState('')
   const [cookTags, setCookTags] = useState<string[]>([])
+  const [cookSuggestions, setCookSuggestions] = useState<string[]>([])
   const [usePantry, setUsePantry] = useState(true)
   const [allRecipes, setAllRecipes] = useState<RecipeRow[]>([])
   const [recipesLoaded, setRecipesLoaded] = useState(false)
@@ -182,14 +174,34 @@ export default function PantryPage() {
   }, [])
 
   // ===== "What can I cook?" logic =====
+  const COMMON_INGREDIENTS = [
+    'chicken', 'beef', 'pork', 'salmon', 'shrimp', 'tofu', 'eggs', 'bacon',
+    'pasta', 'rice', 'potatoes', 'sweet potato', 'lentils', 'chickpeas',
+    'garlic', 'onion', 'tomatoes', 'spinach', 'broccoli', 'zucchini', 'mushrooms', 'bell pepper',
+    'butter', 'olive oil', 'cream', 'parmesan', 'cheddar', 'feta',
+    'lemon', 'lime', 'ginger', 'cilantro', 'basil', 'thyme',
+    'soy sauce', 'miso', 'tahini', 'coconut milk',
+  ]
+
+  const addCookTag = (val: string) => {
+    const normalized = val.trim()
+    if (normalized && !cookTags.some(t => t.toLowerCase() === normalized.toLowerCase())) {
+      setCookTags(prev => [...prev, normalized])
+    }
+    setCookInput('')
+    setCookSuggestions([])
+  }
+
   const handleCookInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === ',') {
       e.preventDefault()
       const val = cookInput.replace(/,/g, '').trim()
-      if (val && !cookTags.some(t => t.toLowerCase() === val.toLowerCase())) {
-        setCookTags(prev => [...prev, val])
-      }
-      setCookInput('')
+      if (val) addCookTag(val)
+    } else if (e.key === 'Tab' && cookSuggestions.length > 0) {
+      e.preventDefault()
+      addCookTag(cookSuggestions[0])
+    } else if (e.key === 'Escape') {
+      setCookSuggestions([])
     }
   }
 
@@ -201,18 +213,26 @@ export default function PantryPage() {
       const lastPart = parts[parts.length - 1]
       const newTags = parts.slice(0, -1).filter(p => !cookTags.some(t => t.toLowerCase() === p.toLowerCase()))
       if (newTags.length > 0) setCookTags(prev => [...prev, ...newTags])
-      // If val ends with comma, add all including last
       if (val.endsWith(',')) {
-        const finalTag = lastPart
-        if (finalTag && !cookTags.some(t => t.toLowerCase() === finalTag.toLowerCase()) && !newTags.some(t => t.toLowerCase() === finalTag.toLowerCase())) {
-          setCookTags(prev => [...prev, finalTag])
+        if (lastPart && !cookTags.some(t => t.toLowerCase() === lastPart.toLowerCase()) && !newTags.some(t => t.toLowerCase() === lastPart.toLowerCase())) {
+          setCookTags(prev => [...prev, lastPart])
         }
         setCookInput('')
       } else {
         setCookInput(lastPart || '')
       }
+      setCookSuggestions([])
     } else {
       setCookInput(val)
+      if (val.length >= 2) {
+        const q = val.toLowerCase().trim()
+        const suggestions = COMMON_INGREDIENTS.filter(
+          ing => ing.startsWith(q) && !cookTags.some(t => t.toLowerCase() === ing.toLowerCase())
+        ).slice(0, 5)
+        setCookSuggestions(suggestions)
+      } else {
+        setCookSuggestions([])
+      }
     }
   }
 
@@ -387,6 +407,20 @@ export default function PantryPage() {
               onFocus={e => { e.currentTarget.style.borderColor = C.accent }}
               onBlur={e => { e.currentTarget.style.borderColor = C.rule }}
             />
+            {/* Autocomplete suggestions */}
+            {cookSuggestions.length > 0 && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {cookSuggestions.map(s => (
+                  <button key={s} onClick={() => addCookTag(s)} style={{
+                    padding: '5px 12px', borderRadius: 14, border: `1px solid ${C.accent}44`,
+                    background: C.accentBg, color: C.accent, fontSize: 12, fontFamily: SANS,
+                    fontWeight: 500, cursor: 'pointer',
+                  }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Entered tags */}

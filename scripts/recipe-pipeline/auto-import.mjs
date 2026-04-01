@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
 
-const CLAUDE_MODEL = 'claude-sonnet-4-6-20250627'
+const CLAUDE_MODEL = 'claude-sonnet-4-6'
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 const RECIPES_PER_RUN = 25
 const UNSPLASH_RATE_LIMIT_MS = 1200
@@ -66,6 +66,19 @@ function pickGenre() {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// Parse "25 min", "1 hr 30 min", "2 hrs" → integer minutes
+function parseTimeToMinutes(val) {
+  if (!val) return null
+  if (typeof val === 'number') return val
+  const s = String(val).toLowerCase()
+  let mins = 0
+  const hrMatch = s.match(/(\d+)\s*hr/)
+  const minMatch = s.match(/(\d+)\s*min/)
+  if (hrMatch) mins += parseInt(hrMatch[1]) * 60
+  if (minMatch) mins += parseInt(minMatch[1])
+  return mins > 0 ? mins : null
 }
 
 function slugify(title) {
@@ -129,7 +142,7 @@ async function callClaude(systemPrompt, userPrompt, apiKey, retries = 2) {
         },
         body: JSON.stringify({
           model: CLAUDE_MODEL,
-          max_tokens: 16000,
+          max_tokens: 32000,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }),
@@ -399,8 +412,8 @@ async function main() {
       description: recipe.description || null,
       cuisine: recipe.cuisine || null,
       difficulty: 'medium',
-      time_total: recipe.time_total || null,
-      time_active: recipe.time_active || null,
+      time_total: parseTimeToMinutes(recipe.time_total),
+      time_active: parseTimeToMinutes(recipe.time_active),
       servings: recipe.servings || null,
       servings_label: recipe.servings_label || 'servings',
       ingredients: recipe.ingredients || [],
