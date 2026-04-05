@@ -187,13 +187,6 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
           </p>
         )}
 
-        {matchedIngredient && (
-          <div style={{ marginTop: 2 }}>
-            <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '2px 8px', borderRadius: 3, letterSpacing: '0.04em' }}>
-              ◆ {matchedIngredient}
-            </span>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -245,11 +238,6 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
             {recipe.description}
           </p>
         )}
-        {matchedIngredient && (
-          <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '1px 7px', borderRadius: 3, letterSpacing: '0.04em', marginTop: 3, display: 'inline-block' }}>
-            ◆ {matchedIngredient}
-          </span>
-        )}
       </div>
 
       {/* Meta: time */}
@@ -296,11 +284,6 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
       <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
         {recipe.title}
       </span>
-      {matchedIngredient && (
-        <span style={{ fontSize: 9, fontFamily: MONO, color: C.gold, background: C.goldBg, padding: '1px 6px', borderRadius: 3, letterSpacing: '0.04em', flexShrink: 0 }}>
-          {matchedIngredient}
-        </span>
-      )}
       {recipe.cuisine && (
         <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
           {normalizeCuisine(recipe.cuisine)}
@@ -440,32 +423,69 @@ function BrowseContent() {
     if (q.length >= 2) {
       const tokens = q.split(/\s+/).filter(t => t.length >= 2)
 
+      // Word-boundary matching — "cake" matches "cakes" but NOT "pancakes"
+      const escapeRx = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const matchesWord = (text: string, token: string) =>
+        new RegExp(`\\b${escapeRx(token)}`, 'i').test(text)
+
+      // Category-aware boosting (NYT Cooking-style)
+      // Maps search terms → the meal courses they most likely mean
+      const MEAL_COURSE_HINTS: Record<string, string[]> = {
+        cake: ['dessert', 'baking'], pie: ['dessert', 'baking'], cookie: ['dessert', 'baking'],
+        cookies: ['dessert', 'baking'], brownie: ['dessert', 'baking'], brownies: ['dessert', 'baking'],
+        tart: ['dessert', 'baking'], pudding: ['dessert'], mousse: ['dessert'],
+        parfait: ['dessert'], macaron: ['dessert'], muffin: ['dessert', 'breakfast', 'baking'],
+        cupcake: ['dessert', 'baking'], donut: ['dessert', 'breakfast'], scone: ['dessert', 'breakfast', 'baking'],
+        pancake: ['breakfast', 'brunch'], pancakes: ['breakfast', 'brunch'],
+        waffle: ['breakfast', 'brunch'], waffles: ['breakfast', 'brunch'],
+        omelette: ['breakfast', 'brunch'], omelet: ['breakfast', 'brunch'],
+        frittata: ['breakfast', 'brunch'], granola: ['breakfast', 'snack'],
+        soup: ['soup'], stew: ['soup', 'main course'], chowder: ['soup'],
+        salad: ['salad'], slaw: ['salad', 'side dish'],
+        bread: ['baking'], roll: ['baking', 'side dish'], biscuit: ['baking', 'breakfast'],
+        dip: ['appetizer', 'snack'], hummus: ['appetizer', 'snack'],
+        cocktail: ['drink', 'beverage'], smoothie: ['drink', 'breakfast'],
+      }
+      const impliedCourses = new Set<string>()
+      for (const [hint, courses] of Object.entries(MEAL_COURSE_HINTS)) {
+        if (tokens.some(t => t === hint || t === hint + 's' || t + 's' === hint)) {
+          courses.forEach(c => impliedCourses.add(c))
+        }
+      }
+
       const scored = result.map(r => {
         const title = r.title.toLowerCase()
-        const tags = r.tags?.map(t => t.toLowerCase()) || []
+        const tags = r.tags?.map(t => t.toLowerCase().replace(/-/g, ' ')) || []
         const cuisine = r.cuisine?.toLowerCase() || ''
         const desc = r.description?.toLowerCase() || ''
         const items = getIngredientItems(r.ingredients)
         let score = 0
 
         // Title: exact > starts-with > contains full query
-        if (title === q) score += 100
-        else if (title.startsWith(q + ' ') || title.startsWith(q)) score += 60
-        else if (title.includes(q)) score += 30
+        if (title === q) score += 150
+        else if (title.startsWith(q + ' ') || title.startsWith(q)) score += 80
+        else if (matchesWord(title, q)) score += 30
 
-        // Per-token scoring
+        // Per-token scoring with word-boundary matching
         for (const tok of tokens) {
-          if (title.includes(tok)) score += 20
+          if (matchesWord(title, tok)) score += 20
           if (tags.some(t => t === tok)) score += 18        // exact tag match
-          else if (tags.some(t => t.includes(tok))) score += 10
-          if (cuisine.includes(tok)) score += 8
-          const ingMatch = items.find(i => i.name.toLowerCase().includes(tok))
+          else if (tags.some(t => matchesWord(t, tok))) score += 10
+          if (matchesWord(cuisine, tok)) score += 8
+          const ingMatch = items.find(i => matchesWord(i.name.toLowerCase(), tok))
           if (ingMatch) { matchMap.set(r.id, ingMatch.name); score += 6 }
-          if (desc.includes(tok)) score += 2
+          if (matchesWord(desc, tok)) score += 2
         }
 
         // Bonus: all tokens match title (precise multi-word query)
-        if (tokens.length > 1 && tokens.every(t => title.includes(t))) score += 20
+        if (tokens.length > 1 && tokens.every(t => matchesWord(title, t))) score += 20
+
+        // Category-aware boost: if query implies a course, boost matching recipes
+        if (impliedCourses.size > 0 && score > 0) {
+          const inImpliedCourse = tags.some(t => impliedCourses.has(t))
+          if (inImpliedCourse) score += 40
+          else score -= 15
+        }
 
         return { recipe: r, score }
       }).filter(({ score }) => score > 0)
@@ -538,20 +558,11 @@ function BrowseContent() {
             </h1>
             <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
           </Link>
-          {!isMobile ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>Browse</span>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Kitchen</Link>
               <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
               <ThemeToggle />
             </div>
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <Link href="/pantry" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontFamily: SANS, fontWeight: 500 }}>Kitchen</Link>
-              <ThemeToggle />
-            </div>
-          )}
         </div>
       </header>
 

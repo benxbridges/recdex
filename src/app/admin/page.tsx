@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
 type Recipe = {
@@ -142,6 +144,12 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: `14px ${pad}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: C.text, margin: 0 }}>RecDex Admin</h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS, marginRight: 12 }}>
+              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
+              <ThemeToggle />
+            </div>
+            <div style={{ width: 1, height: 20, background: C.rule, margin: '0 8px' }} />
             {(['photos', 'recipes'] as const).map(t => (
               <button
                 key={t}

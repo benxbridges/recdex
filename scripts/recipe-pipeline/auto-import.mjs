@@ -24,7 +24,7 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
 
-const CLAUDE_MODEL = 'claude-sonnet-4-6-20250627'
+const CLAUDE_MODEL = 'claude-sonnet-4-6'
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
 const RECIPES_PER_RUN = 25
 const UNSPLASH_RATE_LIMIT_MS = 1200
@@ -49,15 +49,16 @@ const GENRES = [
 ]
 
 function pickGenre() {
-  // Use day-of-year to rotate deterministically, so each run on a different
-  // day (or hour) picks a different genre. Multiple runs on the same day
-  // will use the same genre, but that's fine — dedup prevents duplicates.
+  // Rotate across genres using day+hour+week for better spread.
+  // Each 4-hour slot gets a unique genre, and the week offset
+  // ensures the same day-of-week doesn't always hit the same genre.
   const now = new Date()
   const dayOfYear = Math.floor(
     (now - new Date(now.getFullYear(), 0, 0)) / 86400000
   )
   const hourSlot = Math.floor(now.getHours() / 4) // 6 slots per day
-  const idx = (dayOfYear * 6 + hourSlot) % GENRES.length
+  const weekOfYear = Math.floor(dayOfYear / 7)
+  const idx = (dayOfYear * 6 + hourSlot + weekOfYear) % GENRES.length
   return GENRES[idx]
 }
 
@@ -65,6 +66,19 @@ function pickGenre() {
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+// Parse "25 min", "1 hr 30 min", "2 hrs" → integer minutes
+function parseTimeToMinutes(val) {
+  if (!val) return null
+  if (typeof val === 'number') return val
+  const s = String(val).toLowerCase()
+  let mins = 0
+  const hrMatch = s.match(/(\d+)\s*hr/)
+  const minMatch = s.match(/(\d+)\s*min/)
+  if (hrMatch) mins += parseInt(hrMatch[1]) * 60
+  if (minMatch) mins += parseInt(minMatch[1])
+  return mins > 0 ? mins : null
 }
 
 function slugify(title) {
@@ -128,7 +142,7 @@ async function callClaude(systemPrompt, userPrompt, apiKey, retries = 2) {
         },
         body: JSON.stringify({
           model: CLAUDE_MODEL,
-          max_tokens: 16000,
+          max_tokens: 32000,
           system: systemPrompt,
           messages: [{ role: 'user', content: userPrompt }],
         }),
@@ -177,7 +191,13 @@ async function fetchUnsplashImage(query, accessKey) {
     )
     const photo = photos[0] || data?.results?.[0]
     if (!photo?.urls?.regular) return null
-    return { url: photo.urls.regular, credit: photo.user?.name || '' }
+    return {
+      url: photo.urls.regular,
+      credit: photo.user?.name || '',
+      creditUrl: photo.user?.links?.html || '',
+      photoUrl: photo.links?.html || '',
+      unsplashId: photo.id || '',
+    }
   } catch {
     return null
   }
@@ -301,14 +321,30 @@ async function main() {
   const prompt = buildGenerationPrompt(genre, count, allTitles)
   const raw = await callClaude(SYSTEM_PROMPT, prompt, anthropicKey)
 
-  // Parse JSON — handle potential markdown fences
+  // Parse JSON — handle potential markdown fences, truncation, etc.
   let recipes
   try {
-    const cleaned = raw.replace(/^```json?\n?/m, '').replace(/\n?```$/m, '').trim()
-    recipes = JSON.parse(cleaned)
+    let cleaned = raw.replace(/^```[\w]*\n?/gm, '').replace(/\n?```\s*$/gm, '').trim()
+    // Fallback: find first '[' and last ']' if direct parse fails
+    try {
+      recipes = JSON.parse(cleaned)
+    } catch {
+      const start = cleaned.indexOf('[')
+      const end = cleaned.lastIndexOf(']')
+      if (start !== -1 && end > start) {
+        recipes = JSON.parse(cleaned.slice(start, end + 1))
+      } else {
+        throw new Error('No JSON array found in response')
+      }
+    }
   } catch (parseErr) {
     console.error('Failed to parse Claude response as JSON:')
     console.error(raw.slice(0, 500))
+    // Write to GitHub Actions summary if available
+    if (process.env.GITHUB_STEP_SUMMARY) {
+      const fs = await import('fs')
+      fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Import Failed\nJSON parse error. First 200 chars:\n\`\`\`\n${raw.slice(0, 200)}\n\`\`\`\n`)
+    }
     process.exit(1)
   }
 
@@ -354,11 +390,17 @@ async function main() {
     // Fetch Unsplash image
     let imageUrl = null
     let photoCredit = null
+    let photographerUrl = null
+    let unsplashPhotoUrl = null
+    let unsplashId = null
     if (!dryRun) {
       const img = await fetchUnsplashImage(title, unsplashKey)
       if (img) {
         imageUrl = img.url
         photoCredit = img.credit
+        photographerUrl = img.creditUrl
+        unsplashPhotoUrl = img.photoUrl
+        unsplashId = img.unsplashId
       }
       await sleep(UNSPLASH_RATE_LIMIT_MS)
     }
@@ -370,8 +412,8 @@ async function main() {
       description: recipe.description || null,
       cuisine: recipe.cuisine || null,
       difficulty: 'medium',
-      time_total: recipe.time_total || null,
-      time_active: recipe.time_active || null,
+      time_total: parseTimeToMinutes(recipe.time_total),
+      time_active: parseTimeToMinutes(recipe.time_active),
       servings: recipe.servings || null,
       servings_label: recipe.servings_label || 'servings',
       ingredients: recipe.ingredients || [],
@@ -383,6 +425,9 @@ async function main() {
       source_url: recipe.source_url || null,
       image_url: imageUrl,
       photo_credit: photoCredit,
+      photographer_url: photographerUrl,
+      unsplash_photo_url: unsplashPhotoUrl,
+      unsplash_id: unsplashId,
     }
 
     if (dryRun) {
@@ -405,6 +450,13 @@ async function main() {
       continue
     }
 
+    // Trigger Unsplash download event (required by API guidelines)
+    if (unsplashId) {
+      fetch(`https://api.unsplash.com/photos/${unsplashId}/download`, {
+        headers: { Authorization: `Client-ID ${unsplashKey}` },
+      }).catch(() => {})
+    }
+
     console.log(`  ✓ Published: "${title}" (${slug})`)
     published++
     allTitles.push(title)
@@ -425,6 +477,28 @@ async function main() {
     for (const r of results) {
       console.log(`  • ${r.title} → /${r.slug}`)
     }
+  }
+
+  // Write GitHub Actions summary if available
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const fs = await import('fs')
+    const lines = [
+      `### Recipe Import: ${genre}`,
+      `| Metric | Count |`,
+      `|--------|-------|`,
+      `| Published | ${published} |`,
+      `| Skipped (dedup) | ${skipped} |`,
+      `| Errors | ${errors} |`,
+      `| Generated | ${recipes.length} |`,
+      '',
+    ]
+    if (results.length > 0) {
+      lines.push('**New recipes:**')
+      for (const r of results) {
+        lines.push(`- ${r.title}`)
+      }
+    }
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n')
   }
 }
 
