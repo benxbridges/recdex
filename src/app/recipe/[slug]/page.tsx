@@ -70,8 +70,14 @@ function capitalizeIngredient(name: string): string {
 function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
   let items: IngredientItem[] = []
   if (!ingredients || ingredients.length === 0) return items
-  if (ingredients[0]?.group) items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
-  else items = ingredients as IngredientItem[]
+  // Grouped container shape: [{ group: "Sauce", items: [...] }]
+  // vs flat-with-per-item-group: [{ name, amount, unit, group: "Sauce" }]
+  // Only treat as container if there's an actual items array.
+  if (ingredients[0]?.group && Array.isArray(ingredients[0]?.items)) {
+    items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
+  } else {
+    items = ingredients as IngredientItem[]
+  }
   return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
 }
 
@@ -1027,8 +1033,23 @@ export default function RecipePage() {
 
           <RecipeEditorNote slug={slug} />
 
-          {/* Action buttons: Grocery list · Share · Save */}
+          {/* Action row: Cook (primary) · Grocery list · Share · Save */}
           <div style={{ display: 'flex', gap: 8 }}>
+            <Link href={`/recipe/${slug}/cook`} aria-label="Cook this recipe" style={{
+              flex: 2, padding: isMobile ? '12px 12px' : '12px 20px', borderRadius: 6,
+              border: 'none', background: C.accent, color: '#fff',
+              fontSize: isMobile ? 14 : 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              textDecoration: 'none', letterSpacing: 0.3,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              boxShadow: '0 2px 8px rgba(232,123,90,0.25)',
+              transition: 'transform 0.1s, box-shadow 0.15s',
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2v2M10 2v2M14 2v2M4 6h16v2a8 8 0 0 1-16 0z" />
+                <path d="M4 22h16" />
+              </svg>
+              COOK
+            </Link>
             {hasIngredients && (
               <button onClick={() => setShowGroceryList(true)} aria-label="Grocery list" style={{
                 flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
@@ -1040,7 +1061,7 @@ export default function RecipePage() {
                   <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                   <rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" />
                 </svg>
-                {!isMobile && 'Grocery list'}
+                {!isMobile && 'Grocery'}
               </button>
             )}
             <button onClick={handleShare} aria-label="Share" style={{

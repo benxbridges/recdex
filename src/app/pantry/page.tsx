@@ -510,9 +510,9 @@ export default function PantryPage() {
 
         {/* Page title + tabs */}
         <div style={{ paddingTop: 28, paddingBottom: 8 }}>
-          <p style={{ fontSize: 9, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 6px', fontFamily: SANS }}>Kitchen</p>
+          <p style={{ fontSize: 9, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 6px', fontFamily: SANS }}>Pantry</p>
           <h2 style={{ fontFamily: SERIF, fontSize: 'clamp(22px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: '0 0 2px', letterSpacing: -0.5 }}>
-            {tabTitle()}
+            Cook with what you have.
           </h2>
           <p style={{ fontSize: 11, fontFamily: MONO, color: C.text3, margin: '0 0 20px' }}>
             {tabSubtitle()}

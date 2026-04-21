@@ -50,8 +50,14 @@ function capitalizeIngredient(name: string): string {
 function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
   let items: IngredientItem[] = []
   if (!ingredients || ingredients.length === 0) return items
-  if (ingredients[0]?.group) items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
-  else items = ingredients as IngredientItem[]
+  // Grouped container shape: [{ group: "Sauce", items: [...] }]
+  // vs flat-with-per-item-group: [{ name, amount, unit, group: "Sauce" }]
+  // Only treat as container if there's an actual items array.
+  if (ingredients[0]?.group && Array.isArray(ingredients[0]?.items)) {
+    items = ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
+  } else {
+    items = ingredients as IngredientItem[]
+  }
   return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
 }
 
