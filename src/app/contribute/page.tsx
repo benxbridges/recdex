@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { resolveTimerMinutes } from '@/app/lib/cook-utils'
 import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
@@ -201,7 +202,7 @@ function ContributeInner() {
   const [timeActive, setTimeActive] = useState('')
   const [servings, setServings] = useState('')
   const [ingredients, setIngredients] = useState<Ingredient[]>([BLANK_INGREDIENT()])
-  const [steps, setSteps] = useState<string[]>([''])
+  const [steps, setSteps] = useState<{ text: string; timer_minutes: number | null }[]>([{ text: '', timer_minutes: null }])
   const [publishError, setPublishError] = useState('')
   const [similarWarning, setSimilarWarning] = useState('')
   const [copyrightCertified, setCopyrightCertified] = useState(false)
@@ -287,8 +288,13 @@ function ContributeInner() {
 
   const canExtract = Boolean(url.trim() && platform !== 'other' && !oembedLoading && (oembed || platform === 'instagram' || platform === 'web'))
 
-  const handleExtract = async (overridePlatform?: Platform) => {
+  // When true, the next successful extraction routes straight to cook mode
+  // (Cook Now path) instead of stopping at the review form.
+  const cookNowRef = useRef(false)
+
+  const handleExtract = async (overridePlatform?: Platform, opts?: { cookNow?: boolean }) => {
     const effectivePlatform = overridePlatform || platform
+    if (opts?.cookNow) cookNowRef.current = true
     setExtractError('')
     setFlowStep('extracting')
     try {
@@ -306,12 +312,14 @@ function ContributeInner() {
       const data = await res.json()
 
       if (data.error === 'insufficient_content') {
+        cookNowRef.current = false
         setFlowStep('url')
         setExtractError('')
         setShowPasteBox(true)
         return
       }
       if (data.error || !data.recipe) {
+        cookNowRef.current = false
         setFlowStep('url')
         setExtractError('Extraction failed — try again, or paste the recipe text below.')
         setShowPasteBox(true)
@@ -329,12 +337,54 @@ function ContributeInner() {
       setTimeActive(recipe.time_active != null ? String(recipe.time_active) : '')
       setServings(recipe.servings != null ? String(recipe.servings) : '')
       setIngredients(recipe.ingredients?.length > 0 ? recipe.ingredients : [BLANK_INGREDIENT()])
-      setSteps(recipe.steps?.length > 0 ? recipe.steps.map(s => s.text) : [''])
+      // Keep text + timer_minutes paired; backfill missed timers via client-side regex
+      const enrichedSteps = recipe.steps?.length > 0
+        ? recipe.steps.map(s => ({ text: s.text, timer_minutes: resolveTimerMinutes(s) }))
+        : [{ text: '', timer_minutes: null }]
+      setSteps(enrichedSteps)
+
+      // Cook Now path: skip review, hand the recipe to cook mode via
+      // sessionStorage, navigate directly to cook. No DB write yet — user
+      // can publish from the completion screen if they want to share.
+      if (cookNowRef.current) {
+        cookNowRef.current = false
+        try {
+          const cookRecipe = {
+            id: 'temp-cook',
+            slug: 'temp-scan',
+            title: recipe.title || 'Untitled',
+            description: recipe.description || null,
+            cuisine: recipe.cuisine || null,
+            difficulty: recipe.difficulty || 'easy',
+            time_total: recipe.time_total ?? null,
+            servings: recipe.servings ?? null,
+            ingredients: recipe.ingredients || [],
+            steps: enrichedSteps.map((s, i) => ({ step: i + 1, text: s.text, timer_minutes: s.timer_minutes })),
+            image_url: null,
+            video_url: effectivePlatform !== 'web' ? url.trim() : null,
+            source_url: effectivePlatform === 'web' ? url.trim() : null,
+            creator_name: data.authorName || oembed?.author_name || null,
+            // Stash the pristine extraction so Share-to-Index has the full payload
+            _pending: {
+              authorUrl: data.authorUrl || oembed?.author_url || null,
+              platform: effectivePlatform,
+              url: url.trim(),
+              oembed,
+              extracted: recipe,
+            },
+          }
+          sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(cookRecipe))
+        } catch { /* sessionStorage full — fall through to review */ }
+        router.push('/recipe/temp-scan/cook')
+        return
+      }
+
       setFlowStep('review')
 
       // Fetch image options from Unsplash
       if (recipe.title) fetchImageOptions(recipe.title)
     } catch {
+      cookNowRef.current = false
       setFlowStep('url')
       setExtractError('Something went wrong. Try again.')
     }
@@ -368,7 +418,7 @@ function ContributeInner() {
     setTitle(''); setDescription(''); setCuisine(''); setDifficulty('easy')
     setTimeTotal(''); setTimeActive(''); setServings('')
     setIngredients([BLANK_INGREDIENT()])
-    setSteps([''])
+    setSteps([{ text: '', timer_minutes: null }])
   }
 
   const checkOriginality = async () => {
@@ -384,7 +434,7 @@ function ContributeInner() {
 
   const handlePublish = async () => {
     const validIngredients = ingredients.filter(i => i.name.trim())
-    const validSteps = steps.filter(s => s.trim())
+    const validSteps = steps.filter(s => s.text.trim())
     if (!title.trim()) { setPublishError('Recipe title is required.'); return }
     if (validIngredients.length === 0) { setPublishError('Add at least one ingredient.'); return }
     if (validSteps.length === 0) { setPublishError('Add at least one step.'); return }
@@ -409,7 +459,7 @@ function ContributeInner() {
             time_active: timeActive ? parseInt(timeActive) : null,
             servings: servings ? parseInt(servings) : null,
             ingredients: validIngredients.map(i => ({ name: i.name.trim(), amount: i.amount.trim(), unit: i.unit.trim(), notes: i.notes?.trim() || '' })),
-            steps: validSteps.map((text, i) => ({ step: i + 1, text: text.trim(), timer_minutes: extracted?.steps?.[i]?.timer_minutes ?? null })),
+            steps: validSteps.map((s, i) => ({ step: i + 1, text: s.text.trim(), timer_minutes: s.timer_minutes ?? null })),
             video_url: mode === 'video' && platform !== 'web' ? url.trim() : null,
             creator_name: platform === 'web' ? (webAuthor || null) : (oembed?.author_name || null),
             creator_url: mode === 'video' ? (oembed?.author_url || null) : null,
@@ -454,7 +504,7 @@ function ContributeInner() {
     setExtractError(''); setPublishError(''); setSimilarWarning(''); setShowPasteBox(false); setPastedText('')
     setTitle(''); setDescription(''); setCuisine(''); setDifficulty('easy')
     setTimeTotal(''); setTimeActive(''); setServings('')
-    setIngredients([BLANK_INGREDIENT()]); setSteps([''])
+    setIngredients([BLANK_INGREDIENT()]); setSteps([{ text: '', timer_minutes: null }])
   }
 
   const inp: React.CSSProperties = {
@@ -545,7 +595,7 @@ function ContributeInner() {
             {mode === 'video' && flowStep === 'url' && (
               <div style={{ animation: 'fadeUp 0.3s ease' }}>
                 <p style={{ fontFamily: SANS, fontSize: 15, color: C.text2, lineHeight: 1.65, margin: '0 0 24px', maxWidth: 480 }}>
-                  Paste any recipe URL — YouTube, TikTok, Instagram, or any cooking blog. We extract the recipe and give you a structured version to review and publish.
+                  Paste any recipe URL — YouTube, TikTok, Instagram, or any cooking blog. We&apos;ll extract the recipe and drop you straight into cook mode.
                 </p>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -561,7 +611,7 @@ function ContributeInner() {
                       placeholder="https://cooking.nytimes.com/recipes/..."
                       autoFocus
                       style={{ ...inp, paddingLeft: 40, fontSize: 14 }}
-                      onKeyDown={e => { if (e.key === 'Enter' && canExtract) handleExtract() }}
+                      onKeyDown={e => { if (e.key === 'Enter' && canExtract) handleExtract(undefined, { cookNow: true }) }}
                     />
                   </div>
 
@@ -661,7 +711,7 @@ function ContributeInner() {
                         }}
                       />
                       <button
-                        onClick={() => handleExtract()}
+                        onClick={() => handleExtract(undefined, { cookNow: true })}
                         disabled={!pastedText.trim()}
                         style={{
                           marginTop: 10, fontFamily: SANS, fontSize: 14, fontWeight: 700,
@@ -672,7 +722,7 @@ function ContributeInner() {
                           letterSpacing: '-0.01em',
                         }}
                       >
-                        Import Recipe →
+                        Cook now →
                       </button>
                     </div>
                   )}
@@ -686,7 +736,7 @@ function ContributeInner() {
                   </div>
 
                   <button
-                    onClick={() => handleExtract()}
+                    onClick={() => handleExtract(undefined, { cookNow: true })}
                     disabled={!canExtract}
                     style={{
                       width: '100%', padding: '15px 24px', borderRadius: 8, border: 'none',
@@ -694,9 +744,23 @@ function ContributeInner() {
                       color: canExtract ? '#fff' : C.text3,
                       fontSize: 15, fontWeight: 700, cursor: canExtract ? 'pointer' : 'default',
                       fontFamily: SANS, transition: 'all 0.15s', letterSpacing: '-0.01em',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     }}
                   >
-                    Import Recipe →
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M3 12l18-6-4 18-7-7-7-5z"/></svg>
+                    Cook now →
+                  </button>
+                  <button
+                    onClick={() => handleExtract()}
+                    disabled={!canExtract}
+                    style={{
+                      marginTop: 8, width: '100%', padding: '10px 24px', borderRadius: 6, border: 'none',
+                      background: 'transparent', color: canExtract ? C.text3 : C.ruleLight,
+                      fontSize: 12, fontWeight: 500, cursor: canExtract ? 'pointer' : 'default',
+                      fontFamily: SANS, textDecoration: 'underline', textUnderlineOffset: 3,
+                    }}
+                  >
+                    Review and customize first
                   </button>
                 </div>
               </div>
@@ -945,19 +1009,45 @@ function ContributeInner() {
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       {lbl('Steps')}
-                      <button onClick={() => setSteps(prev => [...prev, ''])} style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: 600, padding: 0 }}>+ Add step</button>
+                      <button onClick={() => setSteps(prev => [...prev, { text: '', timer_minutes: null }])} style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontFamily: SANS, fontSize: 12, fontWeight: 600, padding: 0 }}>+ Add step</button>
                     </div>
+                    <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '0 0 8px', lineHeight: 1.4 }}>
+                      Set a timer per step where the recipe calls for one — it'll ring in cook mode.
+                    </p>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {steps.map((s, i) => (
                         <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                           <span style={{ fontFamily: MONO, fontSize: 12, color: C.text3, paddingTop: 9, flexShrink: 0, minWidth: 18, textAlign: 'right' }}>{i + 1}</span>
-                          <textarea
-                            value={s}
-                            onChange={e => setSteps(prev => { const a = [...prev]; a[i] = e.target.value; return a })}
-                            rows={2}
-                            style={{ ...inp, flex: 1, resize: 'vertical', lineHeight: 1.55, fontSize: 13, padding: '8px 12px' }}
-                            placeholder={`Step ${i + 1}…`}
-                          />
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <textarea
+                              value={s.text}
+                              onChange={e => setSteps(prev => { const a = [...prev]; a[i] = { ...a[i], text: e.target.value }; return a })}
+                              rows={2}
+                              style={{ ...inp, resize: 'vertical', lineHeight: 1.55, fontSize: 13, padding: '8px 12px' }}
+                              placeholder={`Step ${i + 1}…`}
+                            />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={s.timer_minutes ? C.accent : C.text3} strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M12 2v2" /></svg>
+                              <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Timer:</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={s.timer_minutes ?? ''}
+                                onChange={e => {
+                                  const v = e.target.value === '' ? null : Math.max(0, parseInt(e.target.value) || 0)
+                                  setSteps(prev => { const a = [...prev]; a[i] = { ...a[i], timer_minutes: v }; return a })
+                                }}
+                                placeholder="none"
+                                style={{
+                                  width: 60, padding: '3px 8px', fontFamily: MONO, fontSize: 11,
+                                  border: `1px solid ${C.ruleLight}`, borderRadius: 4,
+                                  background: C.cool, color: C.text, outline: 'none',
+                                }}
+                              />
+                              <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>min</span>
+                            </div>
+                          </div>
                           <button onClick={() => setSteps(prev => prev.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', color: C.text3, cursor: 'pointer', fontSize: 18, padding: '6px 0', lineHeight: 1 }}>×</button>
                         </div>
                       ))}

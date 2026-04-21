@@ -352,10 +352,10 @@ export default function ProfilePage() {
         <div style={{ marginTop: 24, marginBottom: 16, background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 12, overflow: 'hidden' }}>
 
           {/* Top section: avatar + name + bio + fav + dislikes */}
-          <div style={{ padding: isMobile ? '18px 16px 16px' : '22px 28px 18px' }}>
+          <div style={{ padding: isMobile ? '14px 12px 12px' : '22px 28px 18px' }}>
 
             {/* Avatar + name row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 10 }}>
               <div style={{
                 width: 48, height: 48, borderRadius: '50%', background: profile.displayName ? C.accent : C.ruleLight,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -393,7 +393,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Bio */}
-            <div style={{ marginBottom: 14, paddingLeft: 62 }}>
+            <div style={{ marginBottom: 14 }}>
               {editingBio ? (
                 <div>
                   <textarea ref={bioInputRef} value={bioInput}
@@ -419,7 +419,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Social Links */}
-            <div style={{ paddingLeft: 62, marginBottom: 14 }}>
+            <div style={{ marginBottom: 14 }}>
               {editingSocials ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 8, padding: 12 }}>
                   {([
@@ -476,7 +476,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Last Cooked */}
-            <div style={{ paddingLeft: 62, marginBottom: 14 }}>
+            <div style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>Last cooked:</span>
                 {lastCooked ? (
@@ -490,28 +490,28 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Stats grid — replaced Following with Saved */}
-            <div style={{ paddingLeft: 62, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px 24px' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: uniqueDishes > 0 ? C.text : C.text3 }}>{uniqueDishes}</span>
-                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Dishes Cooked</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: C.text3 }}>0</span>
-                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Contributed</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: weekStreak > 0 ? C.green : C.text3 }}>{weekStreak}</span>
-                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Week Streak</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: savedCount > 0 ? C.text : C.text3 }}>{savedCount}</span>
-                <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>Saved</span>
-              </div>
-            </div>
-
           </div>
 
+        </div>
+
+        {/* Stats row — own container below profile card */}
+        <div style={{ marginBottom: 16, background: C.cool, borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-around', alignItems: 'baseline', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: uniqueDishes > 0 ? C.text : C.text3 }}>{uniqueDishes}</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Cooked</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: C.text3 }}>0</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Contributed</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: weekStreak > 0 ? C.green : C.text3 }}>{weekStreak}</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Week Streak</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: savedCount > 0 ? C.text : C.text3 }}>{savedCount}</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Saved</span>
+          </div>
         </div>
 
         {/* ========== TAB BAR ========== */}
@@ -600,17 +600,14 @@ export default function ProfilePage() {
                               {/* Title overlaid on scrim */}
                               <span style={{
                                 position: 'relative', zIndex: 1,
-                                fontFamily: SERIF, fontSize: isMobile ? 11 : 13, fontWeight: 600,
+                                fontFamily: SERIF, fontSize: isMobile ? 10 : 13, fontWeight: 600,
                                 color: '#fff', lineHeight: 1.25, padding: isMobile ? '6px 6px 8px' : '8px 10px 10px',
                                 overflow: 'hidden', textOverflow: 'ellipsis',
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
                                 textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                                wordBreak: 'break-word' as const,
                               }}>
                                 {dish.title}
-                              </span>
-                              {/* Heart */}
-                              <span style={{ position: 'absolute', top: 5, right: 5, fontSize: 16, lineHeight: 1, zIndex: 2, textShadow: '0 1px 3px rgba(0,0,0,0.4)' }}>
-                                ❤️
                               </span>
                               {/* Remove button */}
                               <button
@@ -628,14 +625,12 @@ export default function ProfilePage() {
                             <>
                               {/* No image — styled background with title */}
                               <span style={{
-                                fontFamily: SERIF, fontSize: isMobile ? 12 : 14, fontWeight: 600, color: C.text, lineHeight: 1.3,
+                                fontFamily: SERIF, fontSize: isMobile ? 10 : 13, fontWeight: 600, color: C.text, lineHeight: 1.3,
                                 overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as const,
                                 padding: isMobile ? 8 : 12,
+                                wordBreak: 'break-word' as const,
                               }}>
                                 {dish.title}
-                              </span>
-                              <span style={{ position: 'absolute', top: 5, right: 5, fontSize: 16, lineHeight: 1 }}>
-                                ❤️
                               </span>
                               <button
                                 onClick={(ev) => {

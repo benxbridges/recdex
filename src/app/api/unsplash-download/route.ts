@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { triggerDownload } from '@/app/lib/unsplash'
+import { triggerDownload, triggerDownloadById } from '@/app/lib/unsplash'
 
 export async function GET(req: NextRequest) {
+  const url = req.nextUrl.searchParams.get('url')
   const id = req.nextUrl.searchParams.get('id')
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+  if (!url && !id) return NextResponse.json({ error: 'Missing url or id' }, { status: 400 })
   const key = process.env.UNSPLASH_ACCESS_KEY
   if (!key) return NextResponse.json({ error: 'No API key' }, { status: 500 })
-  await triggerDownload(id, key)
+  if (url) {
+    await triggerDownload(url, key)
+  } else {
+    await triggerDownloadById(id!, key)
+  }
   return NextResponse.json({ ok: true })
 }

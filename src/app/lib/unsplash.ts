@@ -18,6 +18,7 @@ export type UnsplashImageData = {
   creditUrl: string // user.links.html — photographer profile
   photoUrl: string  // links.html — photo page on Unsplash
   unsplashId: string // id — needed for download trigger
+  downloadLocation: string // links.download_location — correct URL for triggering downloads
 }
 
 export async function searchPhotos(query: string, accessKey: string, perPage = 6): Promise<UnsplashPhoto[]> {
@@ -30,7 +31,15 @@ export async function searchPhotos(query: string, accessKey: string, perPage = 6
   return data.results || []
 }
 
-export async function triggerDownload(unsplashId: string, accessKey: string): Promise<void> {
+export async function triggerDownload(downloadLocation: string, accessKey: string): Promise<void> {
+  try {
+    await fetch(downloadLocation, {
+      headers: { Authorization: `Client-ID ${accessKey}` },
+    })
+  } catch {} // fire-and-forget
+}
+
+export async function triggerDownloadById(unsplashId: string, accessKey: string): Promise<void> {
   try {
     await fetch(
       `https://api.unsplash.com/photos/${unsplashId}/download`,
@@ -47,8 +56,13 @@ export function toImageData(photo: UnsplashPhoto): UnsplashImageData {
     creditUrl: photo.user.links.html,
     photoUrl: photo.links.html,
     unsplashId: photo.id,
+    downloadLocation: photo.links.download_location,
   }
 }
+
+// Append Unsplash-required UTM referral params
+export const withUtm = (url: string) =>
+  url + (url.includes('?') ? '&' : '?') + 'utm_source=recipeindex&utm_medium=referral'
 
 // Smart query builder for recipe titles
 const JUNK = /\b(easy|simple|classic|best|perfect|ultimate|homemade|traditional|authentic|quick|one-pot|no-knead|slow|lazy)\b/gi

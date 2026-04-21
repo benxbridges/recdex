@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { withUtm } from '@/app/lib/unsplash'
 import ThemeToggle from '@/app/components/ThemeToggle'
 
 // ===== TYPES =====
@@ -24,11 +25,19 @@ type Recipe = {
   submitted_by?: string | null; source?: string | null; source_attribution?: string | null
   video_url?: string | null; creator_name?: string | null; creator_url?: string | null
   photo_credit?: string | null
+  unsplash_id?: string | null
+  photographer_url?: string | null
+  unsplash_photo_url?: string | null
+  download_location?: string | null
+  cookbook_title?: string | null
+  cookbook_author?: string | null
+  cookbook_purchase_url?: string | null
+  source_url?: string | null
 }
 
 type Comment = {
   id: string; recipe_id: string; display_name: string
-  body: string; rating: string | null
+  body: string; rating: string | null; rating_numeric: number | null
   created_at: string
 }
 
@@ -815,7 +824,14 @@ export default function RecipePage() {
                   textShadow: '0 1px 3px rgba(0,0,0,0.4)',
                   letterSpacing: '0.02em',
                 }}>
-                  Photo: {recipe.photo_credit}
+                  Photo by{' '}
+                  {recipe.photographer_url ? (
+                    <a href={withUtm(recipe.photographer_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{recipe.photo_credit}</a>
+                  ) : recipe.photo_credit}
+                  {' '}on{' '}
+                  {recipe.unsplash_photo_url ? (
+                    <a href={withUtm(recipe.unsplash_photo_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Unsplash</a>
+                  ) : 'Unsplash'}
                 </div>
               )}
             </>
@@ -826,10 +842,10 @@ export default function RecipePage() {
       </div>
 
       {/* CONTENT */}
-      <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
+      <div style={{ maxWidth: isMobile ? 680 : 960, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
 
         {/* Title section */}
-        <div style={{ paddingTop: 28, paddingBottom: 20, animation: 'fadeIn 0.3s ease' }}>
+        <div style={{ paddingTop: isMobile ? 28 : 20, paddingBottom: isMobile ? 20 : 14, animation: 'fadeIn 0.3s ease' }}>
           {/* Breadcrumb */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, fontSize: 11, fontFamily: SANS, color: C.text3 }}>
             <span style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>Home</span>
@@ -844,14 +860,116 @@ export default function RecipePage() {
             {recipe.cuisine && <span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span>}
           </div>
 
+          {/* Aggregate egg rating */}
+          {(() => {
+            const LEGACY_MAP: Record<string, number> = { amazing: 5, good: 4, ok: 3, 'just ok': 3, tricky: 2 }
+            const nums = comments
+              .map(c => c.rating_numeric ?? (c.rating ? LEGACY_MAP[c.rating.toLowerCase()] : null))
+              .filter((n): n is number => n != null)
+            if (nums.length === 0) return null
+            const avg = nums.reduce((a, b) => a + b, 0) / nums.length
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: C.text }}>{avg.toFixed(1)}</span>
+                <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map(n => {
+                    const fill = Math.min(1, Math.max(0, avg - (n - 1)))
+                    return (
+                      <div key={n} style={{ position: 'relative', width: 14, height: 18 }}>
+                        <div style={{
+                          width: 14, height: 18, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+                          background: C.ruleLight, position: 'absolute', top: 0, left: 0,
+                        }} />
+                        {fill > 0 && (
+                          <div style={{
+                            width: 14, height: 18, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+                            background: C.accent, position: 'absolute', top: 0, left: 0,
+                            clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)`,
+                          }} />
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>({nums.length} {nums.length === 1 ? 'rating' : 'ratings'})</span>
+              </div>
+            )
+          })()}
+
           {!recipe.image_url && (
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, color: C.text, lineHeight: 1.1, letterSpacing: -0.5, marginBottom: 10 }}>
               {recipe.title}
             </h1>
           )}
 
+          {/* Source attribution — two-line: author + original source */}
+          {(recipe.cookbook_title || recipe.creator_name || recipe.source_attribution) && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 12, fontFamily: SANS, fontSize: 12, color: C.text3 }}>
+              {recipe.cookbook_title ? (
+                <>
+                  <div>
+                    Adapted from{' '}
+                    {recipe.cookbook_author ? (
+                      <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.cookbook_author}</span>
+                    ) : (
+                      <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.cookbook_title}</span>
+                    )}
+                  </div>
+                  {recipe.cookbook_author && (
+                    <div>
+                      Original source:{' '}
+                      {recipe.cookbook_purchase_url ? (
+                        <a href={recipe.cookbook_purchase_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                          {recipe.cookbook_title}
+                        </a>
+                      ) : (
+                        <span>{recipe.cookbook_title}</span>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : recipe.creator_name ? (
+                <>
+                  <div>
+                    Inspired by{' '}
+                    {recipe.creator_url ? (
+                      <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {recipe.creator_name}
+                      </a>
+                    ) : (
+                      <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
+                    )}
+                  </div>
+                  {recipe.video_url && (
+                    <div>
+                      Original source:{' '}
+                      <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {(() => { try { return new URL(recipe.video_url.startsWith('http') ? recipe.video_url : `https://${recipe.video_url}`).hostname.replace('www.', '') } catch { return 'Watch original' } })()}
+                      </a>
+                    </div>
+                  )}
+                </>
+              ) : recipe.source_attribution ? (
+                <>
+                  <div>
+                    Adapted from{' '}
+                    <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.source_attribution}</span>
+                  </div>
+                  {recipe.source_url && (
+                    <div>
+                      Original source:{' '}
+                      <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {(() => { try { return new URL(recipe.source_url.startsWith('http') ? recipe.source_url : `https://${recipe.source_url}`).hostname.replace('www.', '') } catch { return recipe.source_url } })()}
+                      </a>
+                    </div>
+                  )}
+                </>
+              ) : null}
+            </div>
+          )}
+
           {recipe.description && (
-            <p style={{ fontFamily: SERIF, fontSize: 17, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
+            <p style={{ fontFamily: SERIF, fontSize: isMobile ? 13 : 15, color: C.text2, lineHeight: 1.65, fontStyle: 'italic', maxWidth: 520, marginBottom: 16 }}>
               &ldquo;{recipe.description}&rdquo;
             </p>
           )}
@@ -958,6 +1076,11 @@ export default function RecipePage() {
         {/* Video embed (video-sourced recipes) */}
         {recipe.video_url && <VideoEmbed url={recipe.video_url} />}
 
+        {/* Two-column layout: ingredients sidebar + steps/comments on desktop */}
+        <div style={!isMobile ? { display: 'flex', gap: 40 } : undefined}>
+          {/* Left column: Ingredients (sticky on desktop) */}
+          <div style={!isMobile ? { width: 320, flexShrink: 0, position: 'sticky' as const, top: 80, alignSelf: 'flex-start' } : undefined}>
+
         {/* Ingredients */}
         {hasIngredients ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.05s both' }}>
@@ -996,7 +1119,7 @@ export default function RecipePage() {
               </div>
             </div>
             <div style={{ border: `1.5px solid ${C.ruleLight}`, borderRadius: 10, padding: '16px 20px', background: C.cool }}>
-              <div style={{ columns: isMobile ? 1 : 2, columnGap: 32 }}>
+              <div style={{ columns: 1 }}>
                 {ingredientItems.map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 6, margin: '6px 0', breakInside: 'avoid' as const }}>
                     <button
@@ -1105,19 +1228,73 @@ export default function RecipePage() {
           </div>
         )}
 
+          </div>
+          {/* Right column: Steps, Kitchen Consensus, Comments, Notes */}
+          <div style={!isMobile ? { flex: 1, minWidth: 0 } : undefined}>
+
+        {isMobile && <div style={{ height: 1, background: C.rule }} />}
+
+        {/* Steps + Start Cooking CTA */}
+        {hasSteps ? (
+          <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Steps</h2>
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipe.steps.length} steps</span>
+            </div>
+
+            {/* Show all steps — no blur, let users scan freely */}
+            {recipe.steps.map((s, i) => (
+              <div key={i} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 4, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                  background: C.ruleLight, color: C.text3,
+                }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
+                </div>
+              </div>
+            ))}
+
+            {/* Start Cooking CTA */}
+            <a href={`/recipe/${slug}/cook`} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              width: '100%', marginTop: 8, padding: '15px 24px', borderRadius: 8, border: 'none',
+              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
+              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              transition: 'transform 0.15s',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Start Cooking
+              <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.6, marginLeft: 2 }}>
+                · {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
+              </span>
+            </a>
+          </div>
+        ) : (
+          <div style={{ paddingTop: 24, paddingBottom: 24 }}>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
+            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
+          </div>
+        )}
+
         <div style={{ height: 1, background: C.rule }} />
 
         {/* ===== COMMUNITY FEEDBACK (Kitchen Consensus) ===== */}
         {comments.length > 0 && (() => {
-          const RATING_LABELS = ['Amazing', 'Good', 'Just ok', 'Tricky'] as const
-          const ratingCounts: Record<string, number> = {}
+          const LEGACY_MAP_KC: Record<string, number> = { amazing: 5, good: 4, ok: 3, 'just ok': 3, tricky: 2 }
+          const ratingNums: number[] = []
           const substitutions: { text: string; author: string; date: string }[] = []
           const tips: { text: string; author: string; date: string }[] = []
 
           comments.forEach(c => {
-            if (c.rating) {
-              ratingCounts[c.rating] = (ratingCounts[c.rating] || 0) + 1
-            }
+            const num = c.rating_numeric ?? (c.rating ? LEGACY_MAP_KC[c.rating.toLowerCase()] : null)
+            if (num != null) ratingNums.push(num)
             const lines = c.body.split('\n')
             lines.forEach(line => {
               const subMatch = line.match(/🔄\s*Substitution:\s*(.+)/i)
@@ -1127,7 +1304,8 @@ export default function RecipePage() {
             })
           })
 
-          const hasRatings = Object.keys(ratingCounts).length > 0
+          const hasRatings = ratingNums.length > 0
+          const avgRating = hasRatings ? ratingNums.reduce((a, b) => a + b, 0) / ratingNums.length : 0
           const hasTips = substitutions.length > 0 || tips.length > 0
 
           if (!hasRatings && !hasTips) return null
@@ -1141,29 +1319,35 @@ export default function RecipePage() {
                   background: `linear-gradient(135deg, ${C.warm} 0%, ${C.cool} 100%)`,
                   border: `1.5px solid ${C.ruleLight}`,
                 }}>
-                  {/* Aggregated ratings */}
+                  {/* Aggregated egg ratings */}
                   {hasRatings && (
                     <div style={{ marginBottom: hasTips ? 20 : 0 }}>
                       <p style={{ fontSize: 9, fontFamily: MONO, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 10px' }}>
                         How it turned out
                       </p>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {RATING_LABELS.map(label => {
-                          const count = ratingCounts[label] || 0
-                          if (count === 0) return null
-                          const color = label === 'Amazing' ? C.green : label === 'Good' ? C.blue : label === 'Just ok' ? C.gold : C.accent
-                          const bg = label === 'Amazing' ? C.greenBg : label === 'Good' ? C.blueBg : label === 'Just ok' ? C.goldBg : C.accentBg
-                          return (
-                            <div key={label} style={{
-                              display: 'flex', alignItems: 'center', gap: 6,
-                              padding: '6px 12px', borderRadius: 6,
-                              background: bg, border: `1px solid ${color}20`,
-                            }}>
-                              <span style={{ fontSize: 13, fontFamily: MONO, fontWeight: 700, color }}>{count}</span>
-                              <span style={{ fontSize: 11, fontFamily: SANS, fontWeight: 500, color }}>{label}</span>
-                            </div>
-                          )
-                        })}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 700, color: C.text }}>{avgRating.toFixed(1)}</span>
+                        <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                          {[1, 2, 3, 4, 5].map(n => {
+                            const fill = Math.min(1, Math.max(0, avgRating - (n - 1)))
+                            return (
+                              <div key={n} style={{ position: 'relative', width: 16, height: 20 }}>
+                                <div style={{
+                                  width: 16, height: 20, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+                                  background: C.ruleLight, position: 'absolute', top: 0, left: 0,
+                                }} />
+                                {fill > 0 && (
+                                  <div style={{
+                                    width: 16, height: 20, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+                                    background: C.accent, position: 'absolute', top: 0, left: 0,
+                                    clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)`,
+                                  }} />
+                                )}
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>({ratingNums.length} {ratingNums.length === 1 ? 'rating' : 'ratings'})</span>
                       </div>
                     </div>
                   )}
@@ -1219,57 +1403,6 @@ export default function RecipePage() {
             </>
           )
         })()}
-
-        {/* Steps + Start Cooking CTA */}
-        {hasSteps ? (
-          <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Steps</h2>
-              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipe.steps.length} steps</span>
-            </div>
-
-            {/* Show all steps — no blur, let users scan freely */}
-            {recipe.steps.map((s, i) => (
-              <div key={i} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 4, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: MONO, fontSize: 12, fontWeight: 700,
-                  background: C.ruleLight, color: C.text3,
-                }}>
-                  {i + 1}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
-                </div>
-              </div>
-            ))}
-
-            {/* Start Cooking CTA */}
-            <a href={`/recipe/${slug}/cook`} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              width: '100%', marginTop: 8, padding: '15px 24px', borderRadius: 8, border: 'none',
-              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
-              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              transition: 'transform 0.15s',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              Start Cooking
-              <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.6, marginLeft: 2 }}>
-                · {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
-              </span>
-            </a>
-          </div>
-        ) : (
-          <div style={{ paddingTop: 24, paddingBottom: 24 }}>
-            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
-            <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
-          </div>
-        )}
-
-        <div style={{ height: 1, background: C.rule }} />
 
         <div style={{ height: 1, background: C.rule }} />
 
@@ -1521,6 +1654,9 @@ export default function RecipePage() {
                 <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, marginTop: 8, marginBottom: 0 }}>Click to edit</p>
               </div>
             )}
+          </div>
+        </div>
+
           </div>
         </div>
       </div>

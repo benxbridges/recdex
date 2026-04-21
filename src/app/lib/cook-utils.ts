@@ -246,6 +246,175 @@ export function highlightCoreSentence(text: string): TextSegment[] {
 }
 
 /**
+ * Parse a free-form ingredient string like "1 cup all-purpose flour"
+ * into structured { name, amount, unit, notes }. Tolerant of fractions,
+ * ranges, and unicode fractions. Used by the "add missing ingredient"
+ * feature in cook mode so users can quickly add what extraction missed.
+ */
+const INGREDIENT_UNITS = new Set([
+  'cup', 'cups', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons',
+  'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds',
+  'g', 'gram', 'grams', 'kg', 'kilogram', 'kilograms',
+  'ml', 'milliliter', 'milliliters', 'l', 'liter', 'liters', 'litre', 'litres',
+  'pinch', 'pinches', 'dash', 'dashes', 'handful', 'handfuls',
+  'clove', 'cloves', 'slice', 'slices', 'piece', 'pieces',
+  'head', 'heads', 'stalk', 'stalks', 'leaf', 'leaves', 'sprig', 'sprigs',
+  'bunch', 'bunches', 'can', 'cans', 'pkg', 'package', 'packages',
+  'stick', 'sticks', 'bottle', 'bottles', 'jar', 'jars',
+])
+
+const UNIT_CANONICAL: Record<string, string> = {
+  cup: 'cups', cups: 'cups',
+  tbsp: 'tbsp', tablespoon: 'tbsp', tablespoons: 'tbsp',
+  tsp: 'tsp', teaspoon: 'tsp', teaspoons: 'tsp',
+  oz: 'oz', ounce: 'oz', ounces: 'oz',
+  lb: 'lbs', lbs: 'lbs', pound: 'lbs', pounds: 'lbs',
+  g: 'g', gram: 'g', grams: 'g',
+  kg: 'kg', kilogram: 'kg', kilograms: 'kg',
+  ml: 'ml', milliliter: 'ml', milliliters: 'ml',
+  l: 'L', liter: 'L', liters: 'L', litre: 'L', litres: 'L',
+}
+
+export function parseIngredientString(raw: string): { name: string; amount: string; unit: string; notes: string } {
+  const input = raw.trim()
+  if (!input) return { name: '', amount: '', unit: '', notes: '' }
+
+  // Strip trailing "(optional)" / ", optional" etc. into notes
+  let notes = ''
+  const parenMatch = input.match(/\(([^)]+)\)\s*$/)
+  const stripped = parenMatch ? input.replace(parenMatch[0], '').trim() : input
+  if (parenMatch) notes = parenMatch[1].trim()
+
+  // Amount regex: unicode fraction, "1 1/2", "1/2", "1.5", "1-2", plain "1"
+  const amountRe = /^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:[\u00BC-\u00BE\u2150-\u215E])|(?:\d+(?:\.\d+)?(?:\s*[-–]\s*\d+(?:\.\d+)?)?))\b\s*/
+  const amountMatch = stripped.match(amountRe)
+  const amount = amountMatch ? amountMatch[1].replace(/\s+/g, ' ').trim() : ''
+  const afterAmount = amountMatch ? stripped.slice(amountMatch[0].length).trim() : stripped
+
+  // Unit is the first token if it's in the known list
+  const tokens = afterAmount.split(/\s+/)
+  let unit = ''
+  let nameStart = 0
+  if (tokens.length > 0) {
+    const firstLower = tokens[0].toLowerCase().replace(/[.,;]/g, '')
+    if (INGREDIENT_UNITS.has(firstLower)) {
+      unit = UNIT_CANONICAL[firstLower] || firstLower
+      nameStart = 1
+    }
+  }
+
+  // "of" filler after unit ("2 cups of flour") — skip
+  if (nameStart < tokens.length && tokens[nameStart]?.toLowerCase() === 'of') nameStart++
+
+  const name = tokens.slice(nameStart).join(' ').trim()
+
+  // If no amount and no unit, treat whole thing as name
+  if (!amount && !unit) return { name: input, amount: '', unit: '', notes }
+
+  return { name, amount, unit, notes }
+}
+
+/**
+ * Parse a timer duration from step text — safety net for when the LLM missed it.
+ *
+ * Handles:
+ *  - "bake 25 minutes", "25 min", "25-minute"
+ *  - "simmer 10-15 minutes" → 12 (middle of range)
+ *  - "about an hour" → 60, "a couple minutes" → 2
+ *  - "4 minutes per side" (assumes 2 sides unless specified) → 8
+ *  - "1 hr 30 min" → 90
+ *  - Multiple durations in one step → returns the LONGEST
+ *
+ * Returns null if no duration is mentioned, so callers can distinguish
+ * "no timer needed" from "timer was 0".
+ */
+const WORD_NUMBERS: Record<string, number> = {
+  'a': 1, 'an': 1, 'one': 1, 'two': 2, 'three': 3, 'four': 4,
+  'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+  'couple': 2, 'few': 3, 'several': 4, 'half': 0.5,
+}
+
+function numFromWord(word: string): number | null {
+  return WORD_NUMBERS[word.toLowerCase()] ?? null
+}
+
+export function parseTimerFromText(text: string): number | null {
+  if (!text) return null
+  // Strip constructs that would otherwise produce double-matches:
+  // "half an hour" and "half hour" → replace with "__HALF_HOUR__" sentinel so
+  // the word-number regex doesn't also catch the "an hour" inside.
+  let lower = text.toLowerCase()
+  let halfHourCount = 0
+  lower = lower.replace(/\bhalf\s+(?:an?\s+)?hour\b/g, () => { halfHourCount++; return '__HALF_HOUR__' })
+
+  const candidates: number[] = []
+  if (halfHourCount > 0) candidates.push(30)
+
+  // "X to Y minutes/hours", "X-Y min", "X–Y minutes"
+  const rangeRe = /(\d+(?:\.\d+)?)\s*(?:-|–|to)\s*(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|min|mins|minute|minutes|sec|secs|second|seconds)\b/g
+  for (const m of lower.matchAll(rangeRe)) {
+    const lo = parseFloat(m[1]), hi = parseFloat(m[2])
+    const unit = m[3]
+    const mid = (lo + hi) / 2
+    const mins = unit.startsWith('h') ? mid * 60 : unit.startsWith('s') ? mid / 60 : mid
+    candidates.push(mins)
+  }
+
+  // "X hr Y min" combined form
+  const combinedRe = /(\d+(?:\.\d+)?)\s*(?:hr|hrs|hour|hours)\s*(?:and\s*)?(\d+(?:\.\d+)?)\s*(?:min|mins|minute|minutes)/g
+  for (const m of lower.matchAll(combinedRe)) {
+    candidates.push(parseFloat(m[1]) * 60 + parseFloat(m[2]))
+  }
+
+  // "X hours", "X minutes", "X seconds" (plain)
+  const plainRe = /(?:^|[^\d.])(\d+(?:\.\d+)?)\s*(hr|hrs|hour|hours|min|mins|minute|minutes|sec|secs|second|seconds)\b/g
+  for (const m of lower.matchAll(plainRe)) {
+    const n = parseFloat(m[1])
+    const unit = m[2]
+    const mins = unit.startsWith('h') ? n * 60 : unit.startsWith('s') ? n / 60 : n
+    candidates.push(mins)
+  }
+
+  // Word-number forms: "an hour", "a couple minutes"
+  const wordRe = /\b(a|an|one|two|three|four|five|six|seven|eight|nine|ten|couple|few|several)\s+(?:of\s+)?(hour|hours|min|mins|minute|minutes)\b/g
+  for (const m of lower.matchAll(wordRe)) {
+    const n = numFromWord(m[1])
+    if (n === null) continue
+    const unit = m[2]
+    candidates.push(unit.startsWith('h') ? n * 60 : n)
+  }
+
+  // "a minute or two" → 2
+  if (/\ba\s+minute\s+or\s+two\b/.test(lower)) candidates.push(2)
+
+  // "per side" multiplier — if any time candidate exists AND "per side" in text
+  // assume 2 sides unless a count is given
+  if (/\bper\s+side\b/.test(lower) && candidates.length > 0) {
+    const sidesMatch = lower.match(/(\d+)\s+sides?/)
+    const sides = sidesMatch ? parseInt(sidesMatch[1], 10) : 2
+    // Apply multiplier only to the first time we find (the "per side" time)
+    const idx = candidates.length > 0 ? candidates.length - 1 : -1
+    if (idx >= 0) candidates[idx] = candidates[idx] * sides
+  }
+
+  if (candidates.length === 0) return null
+  // Return the longest candidate, rounded to nearest minute
+  const longest = Math.max(...candidates)
+  if (longest <= 0) return null
+  return Math.round(longest)
+}
+
+/**
+ * Given a step, return a timer value: prefer the recipe's declared timer,
+ * fall back to regex-parsing the step text. Returns null only if both
+ * sources agree there's no timer.
+ */
+export function resolveTimerMinutes(step: { text: string; timer_minutes?: number | null }): number | null {
+  if (step.timer_minutes != null && step.timer_minutes > 0) return step.timer_minutes
+  return parseTimerFromText(step.text)
+}
+
+/**
  * Phase labels and colors
  */
 export const PHASE_META: Record<string, { label: string; color: string; bg: string }> = {

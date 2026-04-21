@@ -1,5 +1,56 @@
-// RecDex Service Worker v1
-const CACHE_NAME = 'recdex-v1';
+// RecDex Service Worker v2 — adds timer notification scheduling
+const CACHE_NAME = 'recdex-v2';
+
+// ===== Timer notification scheduling =====
+// Cook mode posts { type: 'recdex-timer-schedule', fireAt, title, body } when
+// a timer starts. We setTimeout inside the SW to fire showNotification at the
+// target wall-clock time. This keeps firing even when the tab is backgrounded
+// or the screen is locked (PWA context). On iOS Safari this works when the
+// PWA is installed to the home screen.
+const scheduledTimers = new Map(); // key: fireAt -> { timeoutId }
+
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'recdex-timer-schedule') {
+    const { fireAt, title, body } = data;
+    if (typeof fireAt !== 'number' || !title) return;
+    const ms = Math.max(0, fireAt - Date.now());
+    // SWs can be evicted during long sleeps, but for most kitchen timers (< 1h)
+    // this is reliable on installed PWAs.
+    const timeoutId = setTimeout(() => {
+      self.registration.showNotification(title, {
+        body: body || '',
+        tag: 'recdex-timer',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        requireInteraction: true,
+        vibrate: [200, 100, 200, 100, 200],
+      });
+      scheduledTimers.delete(fireAt);
+    }, ms);
+    scheduledTimers.set(fireAt, { timeoutId });
+  } else if (data.type === 'recdex-timer-cancel') {
+    // Cancel all pending (cheap — rarely more than a few)
+    for (const [k, v] of scheduledTimers.entries()) {
+      clearTimeout(v.timeoutId);
+      scheduledTimers.delete(k);
+    }
+  }
+});
+
+// Clicking a timer notification focuses (or opens) cook mode
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = clients.find((c) => c.url.includes('/cook'));
+    if (existing) { existing.focus(); return; }
+    if (clients[0]) { clients[0].focus(); return; }
+    await self.clients.openWindow('/');
+  })());
+});
 
 const APP_SHELL = [
   '/',

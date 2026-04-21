@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { getTipsForStep } from '@/app/lib/cooking-tips'
-import { scaleAmount, classifyStep, findPhaseBreaks, PHASE_META } from '@/app/lib/cook-utils'
+import { scaleAmount, classifyStep, findPhaseBreaks, PHASE_META, resolveTimerMinutes, parseIngredientString } from '@/app/lib/cook-utils'
 import { toJpeg } from 'html-to-image'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
@@ -62,6 +62,12 @@ function formatTime(minutes: number | null): string {
 }
 
 function formatTimerDisplay(seconds: number): string {
+  if (seconds >= 3600) {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
   const m = Math.floor(seconds / 60), s = seconds % 60
   return `${m}:${s.toString().padStart(2, '0')}`
 }
@@ -73,25 +79,136 @@ function EggDot({ size = 9 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
 
-// ─── Timer alert sound ───────────────────────────────────────────────────
+// ─── Timer alert engine ─────────────────────────────────────────────────
+// Strategy:
+//   1. Web Audio: schedule beeps ahead of time via ctx.currentTime offsets.
+//      This survives tab backgrounding because Web Audio's scheduler runs
+//      independent of setInterval/setTimeout throttling.
+//   2. Notification API: request permission on first timer, fire a system
+//      notification at the target time (works when tab isn't focused).
+//   3. Service worker: when available (PWA installed), post the schedule to
+//      the SW so showNotification fires even on locked screens.
+//   4. Vibration as a haptic add-on.
+//
+// AudioContext creation is lazy and unlocked on first user gesture so iOS
+// Safari doesn't block the first alert.
 
-function playTimerAlert() {
+let sharedAudioCtx: AudioContext | null = null
+let audioUnlocked = false
+
+function getAudioCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  if (!sharedAudioCtx) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const Ctx: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext
+      if (!Ctx) return null
+      sharedAudioCtx = new Ctx()
+    } catch { return null }
+  }
+  return sharedAudioCtx
+}
+
+function unlockAudio() {
+  if (audioUnlocked) return
+  const ctx = getAudioCtx()
+  if (!ctx) return
   try {
-    const ctx = new AudioContext()
-    const beep = (delay: number) => {
+    // iOS requires resuming the context inside a user gesture
+    if (ctx.state === 'suspended') ctx.resume()
+    // Play a silent buffer to fully unlock
+    const buf = ctx.createBuffer(1, 1, 22050)
+    const src = ctx.createBufferSource()
+    src.buffer = buf
+    src.connect(ctx.destination)
+    src.start(0)
+    audioUnlocked = true
+  } catch { /* ignore */ }
+}
+
+// Schedule a 3-beep alert at a specific AudioContext time (seconds from now).
+// Survives tab backgrounding.
+function scheduleBeeps(offsetSeconds: number) {
+  const ctx = getAudioCtx()
+  if (!ctx) return
+  try {
+    if (ctx.state === 'suspended') ctx.resume().catch(() => { /* ignore */ })
+    const startAt = Math.max(ctx.currentTime, ctx.currentTime + offsetSeconds)
+    for (let i = 0; i < 3; i++) {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain)
       gain.connect(ctx.destination)
-      osc.frequency.value = 800
-      gain.gain.value = 0.15
-      osc.start(ctx.currentTime + delay)
-      osc.stop(ctx.currentTime + delay + 0.12)
+      osc.frequency.value = 880
+      const t = startAt + i * 0.25
+      gain.gain.setValueAtTime(0.0001, t)
+      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18)
+      osc.start(t)
+      osc.stop(t + 0.2)
     }
-    beep(0); beep(0.2); beep(0.4)
-    setTimeout(() => ctx.close(), 1000)
-  } catch { /* AudioContext may not be available */ }
-  try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch { /* vibrate may not exist */ }
+  } catch { /* ignore */ }
+}
+
+function playBeepsNow() {
+  scheduleBeeps(0)
+  try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch { /* ignore */ }
+}
+
+// System notification — works across tab-switch, backgrounded tabs, and
+// (with service worker) locked screens.
+let notifPermissionRequested = false
+async function ensureNotifPermission(): Promise<NotificationPermission> {
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'denied'
+  if (Notification.permission === 'granted') return 'granted'
+  if (Notification.permission === 'denied') return 'denied'
+  if (notifPermissionRequested) return Notification.permission
+  notifPermissionRequested = true
+  try { return await Notification.requestPermission() } catch { return 'denied' }
+}
+
+async function fireNotification(title: string, body: string) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return
+  if (Notification.permission !== 'granted') return
+  try {
+    // Prefer service worker notifications (work on locked screens when
+    // installed as PWA). Fall back to direct Notification constructor.
+    const reg = await navigator.serviceWorker?.getRegistration()
+    if (reg) {
+      await reg.showNotification(title, {
+        body,
+        tag: 'recdex-timer',
+        icon: '/icons/icon-192.png',
+        badge: '/icons/icon-192.png',
+        requireInteraction: true,
+      })
+      return
+    }
+    // eslint-disable-next-line no-new
+    new Notification(title, { body, tag: 'recdex-timer' })
+  } catch { /* ignore */ }
+}
+
+// Post a message to the service worker to schedule a notification at a wall-
+// clock timestamp. Survives page close / screen lock when PWA is installed.
+function scheduleSwNotification(fireAt: number, title: string, body: string) {
+  if (typeof window === 'undefined') return
+  try {
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.active?.postMessage({
+        type: 'recdex-timer-schedule',
+        fireAt, title, body,
+      })
+    }).catch(() => { /* ignore */ })
+  } catch { /* ignore */ }
+}
+
+function cancelSwNotification(key: string) {
+  try {
+    navigator.serviceWorker?.ready.then(reg => {
+      reg.active?.postMessage({ type: 'recdex-timer-cancel', key })
+    }).catch(() => { /* ignore */ })
+  } catch { /* ignore */ }
 }
 
 // ─── Inline timer component ─────────────────────────────────────────────
@@ -176,44 +293,155 @@ function EggConfetti() {
   )
 }
 
+// ─── Custom timer dialog ────────────────────────────────────────────────
+// "Oh, I want to brown this 3 min" — users need a way to start an ad-hoc
+// timer mid-cook that isn't tied to a specific recipe step.
+
+function CustomTimerDialog({ onClose, onStart }: {
+  onClose: () => void
+  onStart: (seconds: number, label: string) => void
+}) {
+  const [minutes, setMinutes] = useState('5')
+  const [seconds, setSeconds] = useState('0')
+  const [label, setLabel] = useState('')
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => { setTimeout(() => inputRef.current?.focus(), 50) }, [])
+
+  const submit = () => {
+    const m = parseInt(minutes) || 0
+    const s = parseInt(seconds) || 0
+    const total = m * 60 + s
+    if (total <= 0) return
+    onStart(total, label.trim() || `${m > 0 ? `${m}m` : ''}${s > 0 ? ` ${s}s` : ''}`.trim())
+    onClose()
+  }
+
+  return (
+    <>
+      <div onClick={onClose} style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 990, animation: 'fadeIn 0.15s ease',
+      }} />
+      <div style={{
+        position: 'fixed', left: '50%', top: '50%', transform: 'translate(-50%, -50%)',
+        zIndex: 991, width: 'min(340px, 92vw)', borderRadius: 14,
+        background: C.bg, border: `1.5px solid ${C.rule}`,
+        boxShadow: '0 12px 40px rgba(0,0,0,0.3)', padding: 20, animation: 'slideUp 0.2s ease',
+      }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS, margin: '0 0 14px' }}>
+          Start a timer
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 10, color: C.text3, fontFamily: SANS }}>Minutes</label>
+            <input
+              ref={inputRef}
+              type="number" inputMode="numeric" min="0" value={minutes}
+              onChange={e => setMinutes(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submit() }}
+              style={{ width: '100%', padding: '8px 10px', fontFamily: MONO, fontSize: 16, border: `1.5px solid ${C.ruleLight}`, borderRadius: 6, background: C.cool, color: C.text, outline: 'none', marginTop: 4 }}
+            />
+          </div>
+          <span style={{ fontFamily: MONO, fontSize: 20, color: C.text3, paddingBottom: 8 }}>:</span>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: 10, color: C.text3, fontFamily: SANS }}>Seconds</label>
+            <input
+              type="number" inputMode="numeric" min="0" max="59" value={seconds}
+              onChange={e => setSeconds(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') submit() }}
+              style={{ width: '100%', padding: '8px 10px', fontFamily: MONO, fontSize: 16, border: `1.5px solid ${C.ruleLight}`, borderRadius: 6, background: C.cool, color: C.text, outline: 'none', marginTop: 4 }}
+            />
+          </div>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 10, color: C.text3, fontFamily: SANS }}>Label (optional)</label>
+          <input
+            type="text" value={label}
+            onChange={e => setLabel(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') submit() }}
+            placeholder="e.g. Rest steak, Brown butter"
+            style={{ width: '100%', padding: '8px 10px', fontFamily: SANS, fontSize: 13, border: `1.5px solid ${C.ruleLight}`, borderRadius: 6, background: C.cool, color: C.text, outline: 'none', marginTop: 4, boxSizing: 'border-box' }}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{
+            flex: 1, padding: '9px', borderRadius: 6, border: `1.5px solid ${C.ruleLight}`,
+            background: 'transparent', color: C.text2, fontSize: 13, fontWeight: 600, fontFamily: SANS, cursor: 'pointer',
+          }}>Cancel</button>
+          <button onClick={submit} style={{
+            flex: 2, padding: '9px', borderRadius: 6, border: 'none',
+            background: C.accent, color: '#fff', fontSize: 13, fontWeight: 700, fontFamily: SANS, cursor: 'pointer',
+          }}>Start →</button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── Floating timer panel ────────────────────────────────────────────────
 
-function FloatingTimerPanel({ timers, onGoToStep }: {
+function FloatingTimerPanel({ timers, onGoToStep, onStartCustom }: {
   timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
   onGoToStep: (step: number) => void
+  onStartCustom: (seconds: number, label: string) => void
 }) {
   const activeTimers = Object.entries(timers).filter(([, t]) => t.active)
   const [minimized, setMinimized] = useState(false)
+  const [showCustom, setShowCustom] = useState(false)
 
-  if (activeTimers.length === 0) return null
+  // Always-visible FAB when no timers are running — lets users start an ad-hoc timer
+  if (activeTimers.length === 0) {
+    return (
+      <>
+        <button
+          onClick={() => setShowCustom(true)}
+          title="Start a timer"
+          aria-label="Start a timer"
+          style={{
+            position: 'fixed', bottom: 20, right: 20, zIndex: 900,
+            width: 48, height: 48, borderRadius: 24,
+            background: C.text, color: '#fff', border: 'none',
+            cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.22)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /><path d="M12 2v2" /></svg>
+        </button>
+        {showCustom && <CustomTimerDialog onClose={() => setShowCustom(false)} onStart={onStartCustom} />}
+      </>
+    )
+  }
 
   if (minimized) {
     // Show a small floating pill with timer count
     const urgentCount = activeTimers.filter(([, t]) => t.remaining > 0 && t.remaining <= 10).length
     return (
-      <button
-        onClick={() => setMinimized(false)}
-        style={{
-          position: 'fixed', bottom: 20, right: 20, zIndex: 900,
-          padding: '10px 16px', borderRadius: 24,
-          background: urgentCount > 0 ? C.accent : C.text,
-          color: '#fff', border: 'none',
-          fontSize: 12, fontWeight: 700, fontFamily: SANS,
-          cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-          display: 'flex', alignItems: 'center', gap: 8,
-          animation: urgentCount > 0 ? 'pulse 0.6s ease infinite' : 'none',
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /></svg>
-        {activeTimers.length} timer{activeTimers.length > 1 ? 's' : ''}
-      </button>
+      <>
+        <button
+          onClick={() => setMinimized(false)}
+          style={{
+            position: 'fixed', bottom: 20, right: 20, zIndex: 900,
+            padding: '10px 16px', borderRadius: 24,
+            background: urgentCount > 0 ? C.accent : C.text,
+            color: '#fff', border: 'none',
+            fontSize: 12, fontWeight: 700, fontFamily: SANS,
+            cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            display: 'flex', alignItems: 'center', gap: 8,
+            animation: urgentCount > 0 ? 'pulse 0.6s ease infinite' : 'none',
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /></svg>
+          {activeTimers.length} timer{activeTimers.length > 1 ? 's' : ''}
+        </button>
+        {showCustom && <CustomTimerDialog onClose={() => setShowCustom(false)} onStart={onStartCustom} />}
+      </>
     )
   }
 
   return (
+    <>
     <div style={{
       position: 'fixed', bottom: 20, right: 20, zIndex: 900,
-      width: 220, borderRadius: 14,
+      width: 240, borderRadius: 14,
       background: C.bg, border: `1.5px solid ${C.rule}`,
       boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
       overflow: 'hidden',
@@ -227,14 +455,19 @@ function FloatingTimerPanel({ timers, onGoToStep }: {
         <span style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, fontFamily: SANS }}>
           Timers
         </span>
-        <button onClick={() => setMinimized(true)} style={{
-          background: 'none', border: 'none', color: C.text3, cursor: 'pointer', fontSize: 12, padding: '0 2px',
-        }}>—</button>
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          <button onClick={() => setShowCustom(true)} title="Start a custom timer" style={{
+            background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: SANS, padding: '0 4px',
+          }}>+ New</button>
+          <button onClick={() => setMinimized(true)} style={{
+            background: 'none', border: 'none', color: C.text3, cursor: 'pointer', fontSize: 12, padding: '0 2px',
+          }}>—</button>
+        </div>
       </div>
       {/* Timer list */}
       <div style={{ padding: '8px 12px', maxHeight: 200, overflowY: 'auto' }}>
         {activeTimers.map(([key, timer]) => {
-          const stepIndex = parseInt(key.split('-').pop() || '0')
+          const stepIndex = key.startsWith('custom-') ? -1 : parseInt(key.split('-').pop() || '0')
           const isFinished = timer.remaining <= 0
           const isUrgent = timer.remaining > 0 && timer.remaining <= 10
           const pct = timer.total > 0 ? ((timer.total - timer.remaining) / timer.total) * 100 : 0
@@ -263,6 +496,70 @@ function FloatingTimerPanel({ timers, onGoToStep }: {
           )
         })}
       </div>
+    </div>
+    {showCustom && <CustomTimerDialog onClose={() => setShowCustom(false)} onStart={onStartCustom} />}
+    </>
+  )
+}
+
+// ─── Add-missing-ingredient row ─────────────────────────────────────────
+// Closes the loop when extraction dropped something: users can type an
+// ingredient like "1 cup flour" and we'll parse + persist it.
+
+function AddIngredientRow({ onAdd }: { onAdd: (raw: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [value, setValue] = useState('')
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 30) }, [open])
+
+  const submit = () => {
+    const v = value.trim()
+    if (!v) { setOpen(false); return }
+    onAdd(v)
+    setValue('')
+    // Keep open so users can add several in a row
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{
+        marginTop: 6, padding: '5px 10px', borderRadius: 4,
+        border: `1px dashed ${C.ruleLight}`, background: 'transparent',
+        color: C.text3, fontSize: 11, cursor: 'pointer', fontFamily: SANS,
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+      }}>+ Add missing ingredient</button>
+    )
+  }
+
+  return (
+    <div style={{ marginTop: 6, display: 'flex', gap: 6, alignItems: 'center' }}>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={e => setValue(e.target.value)}
+        onKeyDown={e => {
+          if (e.key === 'Enter') submit()
+          if (e.key === 'Escape') { setOpen(false); setValue('') }
+        }}
+        placeholder='e.g. "1 cup flour" or "salt to taste"'
+        style={{
+          flex: 1, padding: '6px 10px', fontFamily: SANS, fontSize: 12,
+          border: `1.5px solid ${C.accent}`, borderRadius: 4,
+          background: C.cool, color: C.text, outline: 'none',
+        }}
+      />
+      <button onClick={submit} style={{
+        padding: '6px 10px', borderRadius: 4, border: 'none',
+        background: C.accent, color: '#fff', fontSize: 11, fontWeight: 700,
+        fontFamily: SANS, cursor: 'pointer',
+      }}>Add</button>
+      <button onClick={() => { setOpen(false); setValue('') }} style={{
+        padding: '6px 8px', borderRadius: 4, border: 'none',
+        background: 'transparent', color: C.text3, fontSize: 14,
+        cursor: 'pointer',
+      }}>×</button>
     </div>
   )
 }
@@ -840,7 +1137,8 @@ export default function CookModePage() {
   const [isMobile, setIsMobile] = useState(false)
   const [showIngredientsMobile, setShowIngredientsMobile] = useState(false)
   const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>>({})
-  const [cookRating, setCookRating] = useState<string | null>(null)
+  const [cookRating, setCookRating] = useState<number | null>(null)
+  const [hoverRating, setHoverRating] = useState<number>(0)
   const [substitutions, setSubstitutions] = useState('')
   const [tip, setTip] = useState('')
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
@@ -946,13 +1244,24 @@ export default function CookModePage() {
     async function fetchRecipe() {
       setLoading(true)
 
+      // Backfill timer_minutes from step text for any step where it's missing.
+      // This is the safety net that catches recipes saved before timer_rules
+      // were hardened, or recipes where the LLM missed a timer.
+      const enrichSteps = (r: Recipe): Recipe => ({
+        ...r,
+        steps: r.steps.map(s => ({
+          ...s,
+          timer_minutes: s.timer_minutes ?? resolveTimerMinutes(s),
+        })),
+      })
+
       // Check sessionStorage for temporary scanned recipes (e.g. from /scan)
       if (slug === 'temp-scan') {
         try {
           const stored = sessionStorage.getItem('recdex-temp-recipe')
           if (stored) {
             const parsed = JSON.parse(stored)
-            setRecipe(parsed)
+            setRecipe(enrichSteps(parsed))
             setLoading(false)
             return
           }
@@ -964,7 +1273,7 @@ export default function CookModePage() {
       try {
         const { data, error } = await supabase.from('recipes').select('*').eq('slug', slug).eq('status', 'published').single()
         if (error) throw error
-        if (data) setRecipe(data)
+        if (data) setRecipe(enrichSteps(data))
       } catch (err) {
         console.error('[cook] Failed to load recipe:', err)
       }
@@ -1014,7 +1323,10 @@ export default function CookModePage() {
               next[k] = { ...next[k], remaining: newRemaining }
               if (newRemaining === 0) {
                 setTimerAlerts(alerts => [...alerts, { key: k, label: next[k].label }])
-                playTimerAlert()
+                // Beeps were already scheduled at timer start via Web Audio.
+                // Play again now for foreground reinforcement + vibration.
+                playBeepsNow()
+                fireNotification('Timer done!', `${next[k].label} is ready.`)
               }
             }
           }
@@ -1047,10 +1359,80 @@ export default function CookModePage() {
   }, [activeStep, recipe, autoShownTips])
 
   const startTimer = useCallback((key: string, seconds: number, label: string) => {
+    // Unlock audio on this user gesture (idempotent)
+    unlockAudio()
+    // Schedule beeps to fire at T+seconds via Web Audio — this survives
+    // tab backgrounding because Web Audio runs independent of setInterval.
+    scheduleBeeps(seconds)
+    // Kick off notification permission (first time only) then schedule a
+    // system notification via setTimeout — works while tab is backgrounded.
+    const fireAt = Date.now() + seconds * 1000
+    ensureNotifPermission().then(p => {
+      if (p === 'granted') {
+        // Direct page setTimeout (used while tab is active / backgrounded)
+        window.setTimeout(() => fireNotification('Timer done!', `${label} is ready.`), seconds * 1000)
+        // And offload to the service worker (fires on locked screen when PWA installed)
+        scheduleSwNotification(fireAt, 'Timer done!', `${label} is ready.`)
+      }
+    })
     setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, startedAt: Date.now(), label } }))
   }, [])
 
+  const replayAlert = useCallback(() => {
+    unlockAudio()
+    playBeepsNow()
+  }, [])
+
+  // Append an ingredient the user typed in to the recipe, locally and in DB.
+  // Handles both grouped and flat ingredient shapes.
+  const addIngredient = useCallback((raw: string) => {
+    if (!recipe || !raw.trim()) return
+    const parsed = parseIngredientString(raw)
+    if (!parsed.name) return
+    const newIng: IngredientItem = parsed
+    let updated: RawIngredients
+    if (Array.isArray(recipe.ingredients) && recipe.ingredients.length > 0 && recipe.ingredients[0]?.group) {
+      // Grouped shape — append to an "Additional" group (or create one)
+      const hasAdditional = recipe.ingredients.some((g: { group: string }) => g.group === 'Additional')
+      updated = hasAdditional
+        ? recipe.ingredients.map((g: { group: string; items: IngredientItem[] }) =>
+            g.group === 'Additional' ? { ...g, items: [...g.items, newIng] } : g)
+        : [...recipe.ingredients, { group: 'Additional', items: [newIng] }]
+    } else {
+      updated = [...(recipe.ingredients as IngredientItem[] || []), newIng]
+    }
+    const next = { ...recipe, ingredients: updated }
+    setRecipe(next)
+    // Persist
+    if (slug === 'temp-scan') {
+      try { sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(next)) } catch { /* storage full */ }
+    } else if (recipe.id && recipe.id !== 'temp-cook') {
+      supabase.from('recipes').update({ ingredients: updated }).eq('slug', slug)
+        .then(({ error }) => { if (error) console.error('[cook] ingredient save failed:', error) })
+    }
+  }, [recipe, slug])
+
+  const dismissAlert = useCallback((key: string, index: number) => {
+    cancelSwNotification(key)
+    setTimerAlerts(a => a.filter((_, j) => j !== index))
+  }, [])
+
+  // Unlock AudioContext on first user gesture anywhere on the page —
+  // iOS Safari otherwise blocks the first timer beep
+  useEffect(() => {
+    const handler = () => unlockAudio()
+    window.addEventListener('pointerdown', handler, { once: true, passive: true })
+    window.addEventListener('keydown', handler, { once: true, passive: true })
+    return () => {
+      window.removeEventListener('pointerdown', handler)
+      window.removeEventListener('keydown', handler)
+    }
+  }, [])
+
   const goToStep = useCallback((step: number) => {
+    // Guard: stepRefs access is optional-chained, but activeStep going
+    // out-of-range still breaks UI. Callers pass -1 for custom timers.
+    if (step < 0) return
     setActiveStep(step)
     setOpenTip(null)
     isScrollingRef.current = true
@@ -1422,7 +1804,12 @@ export default function CookModePage() {
 
             <div style={{ textAlign: 'center', flex: 1, minWidth: 0 }}>
               {!isMobile && <p style={{ fontSize: 9, fontWeight: 600, color: C.accent, textTransform: 'uppercase', letterSpacing: 2, margin: 0, fontFamily: SANS }}>Cook Mode</p>}
-              <h2 style={{ fontFamily: SERIF, fontSize: isMobile ? 15 : 17, fontWeight: 600, color: C.text, margin: '1px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+              <h2 style={{
+                fontFamily: SERIF, fontSize: isMobile ? 14 : 17, fontWeight: 600, color: C.text,
+                margin: '1px 0 0', lineHeight: 1.15,
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+              }}>
                 {recipe.title}<EggDot size={5} />
               </h2>
             </div>
@@ -1493,13 +1880,14 @@ export default function CookModePage() {
           <div style={{ padding: '6px 24px', background: C.warm, borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0, animation: 'fadeIn 0.15s ease' }}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 4 }}><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2 2" /></svg>
             {activeTimers.map(([key, timer]) => {
-              const stepIndex = parseInt(key.split('-').pop() || '0')
+              const isCustom = key.startsWith('custom-')
+              const stepIndex = isCustom ? -1 : parseInt(key.split('-').pop() || '0')
               return (
                 <button key={key} onClick={() => goToStep(stepIndex)} style={{
                   display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 4,
-                  border: `1px solid ${C.accentMed}`, background: C.accentBg, cursor: 'pointer', whiteSpace: 'nowrap' as const, fontFamily: MONO,
+                  border: `1px solid ${C.accentMed}`, background: C.accentBg, cursor: isCustom ? 'default' : 'pointer', whiteSpace: 'nowrap' as const, fontFamily: MONO,
                 }}>
-                  <span style={{ fontSize: 9, color: C.accent }}>Step {stepIndex + 1}</span>
+                  <span style={{ fontSize: 9, color: C.accent }}>{isCustom ? timer.label : `Step ${stepIndex + 1}`}</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>{formatTimerDisplay(timer.remaining)}</span>
                 </button>
               )
@@ -1515,7 +1903,8 @@ export default function CookModePage() {
       {timerAlerts.length > 0 && (
         <div style={{ padding: '0 24px', flexShrink: 0 }}>
           {timerAlerts.map((alert, i) => {
-            const stepIndex = parseInt(alert.key.split('-').pop() || '0')
+            const isCustom = alert.key.startsWith('custom-')
+            const stepIndex = isCustom ? -1 : parseInt(alert.key.split('-').pop() || '0')
             return (
               <div key={`${alert.key}-${i}`} style={{
                 padding: '8px 14px', marginTop: 6, background: C.accentBg, border: `1.5px solid ${C.accent}`,
@@ -1523,11 +1912,21 @@ export default function CookModePage() {
               }}>
                 <span style={{ fontSize: 14 }}>✓</span>
                 <span style={{ flex: 1, fontSize: 12, fontFamily: SANS, color: C.text }}>{alert.label} timer is done!</span>
-                <button onClick={() => { goToStep(stepIndex); setTimerAlerts(a => a.filter((_, j) => j !== i)) }} style={{
-                  padding: '4px 10px', borderRadius: 4, border: `1px solid ${C.accent}`, background: 'transparent',
+                <button onClick={replayAlert} title="Replay alert" style={{
+                  padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.accent}`, background: 'transparent',
                   color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
-                }}>Go to step</button>
-                <button onClick={() => setTimerAlerts(a => a.filter((_, j) => j !== i))} style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+                  Replay
+                </button>
+                {!isCustom && (
+                  <button onClick={() => { goToStep(stepIndex); dismissAlert(alert.key, i) }} style={{
+                    padding: '4px 10px', borderRadius: 4, border: `1px solid ${C.accent}`, background: 'transparent',
+                    color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
+                  }}>Go to step</button>
+                )}
+                <button onClick={() => dismissAlert(alert.key, i)} style={{
                   padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent',
                   color: C.text3, fontSize: 14, cursor: 'pointer',
                 }}>×</button>
@@ -1570,6 +1969,7 @@ export default function CookModePage() {
             </div>
             <div>
               {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: false }))}
+              <AddIngredientRow onAdd={addIngredient} />
             </div>
           </div>
         </>
@@ -1844,28 +2244,34 @@ export default function CookModePage() {
                       <PhotoCapture recipeSlug={slug} recipeTitle={recipe.title} />
                     </div>
 
-                    {/* How did it turn out? */}
+                    {/* How did it turn out? — Egg rating */}
                     <div style={{ padding: '20px 28px', borderBottom: `1px solid ${C.ruleLight}` }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', fontFamily: SANS }}>How did it turn out?</p>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {[
-                          { key: 'amazing', emoji: '🤩', label: 'Amazing' },
-                          { key: 'good', emoji: '😊', label: 'Good' },
-                          { key: 'ok', emoji: '😐', label: 'Just ok' },
-                          { key: 'tricky', emoji: '😅', label: 'Tricky' },
-                        ].map(r => (
-                          <button key={r.key} onClick={() => setCookRating(r.key)} style={{
-                            padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontFamily: SANS,
-                            fontSize: 13, fontWeight: 500,
-                            border: `1.5px solid ${cookRating === r.key ? C.green : C.ruleLight}`,
-                            background: cookRating === r.key ? C.greenBg : 'transparent',
-                            color: cookRating === r.key ? C.green : C.text2,
-                            transition: 'all 0.15s',
-                            display: 'flex', alignItems: 'center', gap: 6,
-                          }}>
-                            <span style={{ fontSize: 16 }}>{r.emoji}</span> {r.label}
-                          </button>
-                        ))}
+                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', fontFamily: SANS }}>How would you rate this recipe?</p>
+                      <div
+                        style={{ display: 'flex', gap: 6, alignItems: 'center' }}
+                        onMouseLeave={() => setHoverRating(0)}
+                      >
+                        {[1, 2, 3, 4, 5].map(n => {
+                          const filled = hoverRating ? n <= hoverRating : cookRating ? n <= cookRating : false
+                          return (
+                            <button
+                              key={n}
+                              onClick={() => setCookRating(n)}
+                              onMouseEnter={() => setHoverRating(n)}
+                              style={{
+                                width: 24, height: 30, border: 'none', cursor: 'pointer', padding: 0,
+                                borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
+                                background: filled ? C.accent : C.ruleLight,
+                                transition: 'background 0.15s, transform 0.1s',
+                                transform: filled ? 'scale(1.1)' : 'scale(1)',
+                              }}
+                              aria-label={`Rate ${n} out of 5`}
+                            />
+                          )
+                        })}
+                        {cookRating && (
+                          <span style={{ fontSize: 12, fontFamily: MONO, color: C.text3, marginLeft: 4 }}>{cookRating}/5</span>
+                        )}
                       </div>
                     </div>
 
@@ -1910,6 +2316,7 @@ export default function CookModePage() {
                     <div style={{ padding: '20px 28px', textAlign: 'center' }}>
                       <p style={{ fontSize: 11, color: C.text3, margin: '0 0 12px', fontFamily: SANS, fontStyle: 'italic' }}>Community tips help other cooks nail this recipe.</p>
                       <button onClick={async () => {
+                        const NUMERIC_TO_LEGACY: Record<number, string> = { 5: 'amazing', 4: 'good', 3: 'ok', 2: 'tricky', 1: 'tricky' }
                         const cookEvent = {
                           recipeId: recipe.id, recipeSlug: recipe.slug, recipeTitle: recipe.title,
                           cookedAt: Date.now(),
@@ -1923,7 +2330,7 @@ export default function CookModePage() {
 
                         const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
                         const displayName = profile.displayName
-                        if (displayName && (tip || substitutions)) {
+                        if (displayName && (tip || substitutions || cookRating)) {
                           const parts: string[] = []
                           if (substitutions) parts.push(`🔄 Substitution: ${substitutions}`)
                           if (tip) parts.push(`💡 Tip: ${tip}`)
@@ -1931,8 +2338,9 @@ export default function CookModePage() {
                           await supabase.from('comments').insert({
                             recipe_id: recipe.id,
                             display_name: displayName,
-                            body,
-                            rating: cookRating || null,
+                            body: body || '(rated)',
+                            rating: cookRating ? NUMERIC_TO_LEGACY[cookRating] : null,
+                            rating_numeric: cookRating || null,
                           })
                         }
 
@@ -2072,12 +2480,17 @@ export default function CookModePage() {
 
             <div style={{ height: 1, background: C.rule, marginBottom: 14 }} />
             {ingredientItems.map((item, i) => renderIngredient(item, i, { fontSize: 13, showHighlight: true }))}
+            <AddIngredientRow onAdd={addIngredient} />
           </div>
         )}
       </div>
 
       {/* Floating timer panel */}
-      <FloatingTimerPanel timers={timers} onGoToStep={goToStep} />
+      <FloatingTimerPanel
+        timers={timers}
+        onGoToStep={goToStep}
+        onStartCustom={(secs, label) => startTimer(`custom-${Date.now()}`, secs, label || 'Timer')}
+      />
     </div>
   )
 }

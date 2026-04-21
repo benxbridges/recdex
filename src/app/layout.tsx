@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Young_Serif, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegistrar from "./components/ServiceWorkerRegistrar";
 
 const youngSerif = Young_Serif({
   weight: "400",
@@ -25,6 +26,15 @@ export const metadata: Metadata = {
   },
   description: "A free, ad-free, community-driven recipe index. Structured recipes with cook mode, servings adjuster, and AI-powered recipe extraction from cooking videos.",
   metadataBase: new URL("https://www.recipeindex.org"),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Recipe Index",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: [{ url: "/icons/icon-192.png", sizes: "192x192" }],
+  },
   openGraph: {
     type: "website",
     siteName: "Recipe Index",
@@ -36,6 +46,10 @@ export const metadata: Metadata = {
     title: "Recipe Index",
     description: "A free, ad-free, community-driven recipe index. No paywalls, no life stories. Just food.",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1C1917",
 };
 
 export default function RootLayout({
@@ -55,6 +69,7 @@ export default function RootLayout({
       <body
         className={`${youngSerif.variable} ${plusJakarta.variable} ${jetbrainsMono.variable} antialiased`}
       >
+        <ServiceWorkerRegistrar />
         {children}
       </body>
     </html>

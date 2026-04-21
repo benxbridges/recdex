@@ -10,7 +10,7 @@ function getSupabaseAdmin() {
   )
 }
 
-async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string; creditUrl: string; photoUrl: string; unsplashId: string } | null> {
+async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string; creditUrl: string; photoUrl: string; unsplashId: string; downloadLocation: string } | null> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY
   if (!accessKey) return null
 
@@ -19,7 +19,7 @@ async function fetchUnsplashImage(query: string): Promise<{ url: string; credit:
     const photo = photos[0]
     if (!photo?.urls?.regular) return null
     const data = toImageData(photo)
-    return { url: data.url, credit: data.credit, creditUrl: data.creditUrl, photoUrl: data.photoUrl, unsplashId: data.unsplashId }
+    return { url: data.url, credit: data.credit, creditUrl: data.creditUrl, photoUrl: data.photoUrl, unsplashId: data.unsplashId, downloadLocation: data.downloadLocation }
   } catch {
     return null
   }
@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
   let photographerUrl = recipe.photographer_url || null
   let unsplashPhotoUrl = recipe.unsplash_photo_url || null
   let unsplashId = recipe.unsplash_id || null
+  let downloadLocation = recipe.download_location || null
   if (!imageUrl) {
     const unsplash = await fetchUnsplashImage(recipe.title)
     if (unsplash) {
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       photographerUrl = unsplash.creditUrl
       unsplashPhotoUrl = unsplash.photoUrl
       unsplashId = unsplash.unsplashId
+      downloadLocation = unsplash.downloadLocation
     }
   }
 
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
     photographer_url: photographerUrl,
     unsplash_photo_url: unsplashPhotoUrl,
     unsplash_id: unsplashId,
+    download_location: downloadLocation,
   })
 
   if (insertError) {
@@ -100,9 +103,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Trigger Unsplash download event (required by API guidelines)
-  if (unsplashId) {
+  if (downloadLocation) {
     const accessKey = process.env.UNSPLASH_ACCESS_KEY
-    if (accessKey) triggerDownload(unsplashId, accessKey)
+    if (accessKey) triggerDownload(downloadLocation, accessKey)
   }
 
   // Insert community submission record if provided

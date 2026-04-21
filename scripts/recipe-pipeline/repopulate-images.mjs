@@ -88,10 +88,9 @@ async function searchUnsplash(query, perPage = 15) {
   return data.results || []
 }
 
-async function triggerDownload(photoId) {
+async function triggerDownload(downloadLocation) {
   try {
-    const url = `${UNSPLASH_API}/photos/${photoId}/download`
-    const res = await fetch(url, {
+    const res = await fetch(downloadLocation, {
       headers: { Authorization: `Client-ID ${UNSPLASH_ACCESS_KEY}` },
     })
     const remaining = res.headers.get('x-ratelimit-remaining')
@@ -99,10 +98,10 @@ async function triggerDownload(photoId) {
       rateLimitRemaining = parseInt(remaining, 10)
     }
     if (!res.ok) {
-      console.log(`  ⚠ Download trigger failed for ${photoId}: ${res.status}`)
+      console.log(`  ⚠ Download trigger failed for ${downloadLocation}: ${res.status}`)
     }
   } catch (err) {
-    console.log(`  ⚠ Download trigger error for ${photoId}: ${err.message}`)
+    console.log(`  ⚠ Download trigger error: ${err.message}`)
   }
 }
 
@@ -157,6 +156,7 @@ function pickBestPhoto(allResults) {
     photographer_url: best.photo.user.links?.html || null,
     unsplash_photo_url: best.photo.links.html,
     unsplash_id: best.photo.id,
+    download_location: best.photo.links.download_location,
     _meta: {
       likes: best.photo.likes,
       width: best.photo.width,
@@ -300,7 +300,7 @@ async function main() {
 
         if (!dryRun) {
           // Trigger Unsplash download endpoint (API compliance)
-          await triggerDownload(result.unsplash_id)
+          await triggerDownload(result.download_location)
           await sleep(UNSPLASH_RATE_LIMIT_MS)
 
           // Update all 5 image fields in Supabase
@@ -312,6 +312,7 @@ async function main() {
               photographer_url: result.photographer_url,
               unsplash_photo_url: result.unsplash_photo_url,
               unsplash_id: result.unsplash_id,
+              download_location: result.download_location,
             })
             .eq('id', recipe.id)
 
