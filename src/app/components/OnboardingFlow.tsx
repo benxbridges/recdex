@@ -105,7 +105,7 @@ function StepDone({ profile }: { profile: OnboardingProfile }) {
       <p style={{ fontFamily: SANS, fontSize: 15, color: C.text3, margin: '0 0 24px', lineHeight: 1.5 }}>
         {profile.cuisines.length > 0
           ? `We'll surface great ${profile.cuisines.slice(0, 2).join(' and ')} recipes for you. Time to cook.`
-          : 'Your kitchen is ready. Paste a recipe, browse the index, or scan a cookbook.'}
+          : 'Your kitchen is ready. Paste a recipe, browse the index, or scan a recipe.'}
       </p>
     </div>
   )

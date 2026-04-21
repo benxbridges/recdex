@@ -193,7 +193,7 @@ Return a single JSON object with exactly these fields:
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
   "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook", "tip": string | null }],
-  "summary": string (1-2 sentence high-level cooking arc — the actions in order, no measurements, no technique explanations. Think of it as telling a friend "here's what cooking this feels like" in under 35 words. Example: "Season the chops, sear them in hot butter, build a pan sauce with apple cider and sage, then plate with shaved apple and a drizzle of vinegar."),
+  "summary": string (SKELETAL cooking arc — 3-5 short phrases, comma-separated, under 20 words total. Collapse related actions into a single phase and use broad ingredient labels ("aromatics", "the meat", "sauce base"). No measurements, no technique explanations, no specific times. Think: if you were sketching the recipe on a napkin. Examples: "Season and sear chicken, add lemon and dates, braise until tender." / "Bloom aromatics, simmer tomatoes and sauces, add beans, finish with poached eggs." / "Whip cream and sugar, fold in yolks, freeze overnight."),
   "confidence": "high" | "medium" | "low"
 }
 
@@ -257,7 +257,7 @@ Return a single JSON object with exactly these fields:
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
   "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook", "tip": string | null }],
-  "summary": string (1-2 sentence high-level cooking arc — actions in order, no measurements, under 35 words),
+  "summary": string (SKELETAL cooking arc — 3-5 comma-separated phrases, under 20 words, broad ingredient labels, no measurements or technique. e.g. "Season and sear chicken, add lemon and dates, braise until tender."),
   "confidence": "high"
 }
 

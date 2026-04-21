@@ -5,10 +5,18 @@
 // Usage:
 //   npx tsx scripts/backfill-summaries.ts [--limit=N] [--dry-run]
 
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
-import { config } from 'dotenv'
 
-config({ path: '.env.local' })
+// Load .env.local manually — same pattern other scripts use, no dotenv dep
+const envPath = resolve(__dirname, '..', '.env.local')
+try {
+  for (const line of readFileSync(envPath, 'utf-8').split('\n')) {
+    const m = line.match(/^([^#=]+)=(.*)$/)
+    if (m && !process.env[m[1].trim()]) process.env[m[1].trim()] = m[2].trim()
+  }
+} catch (e) { console.error(`Failed to load ${envPath}:`, e); process.exit(1) }
 
 const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY
@@ -37,16 +45,26 @@ async function summarize(recipe: RecipeRow): Promise<string | null> {
     .join('\n')
   if (!stepsText) return null
 
-  const prompt = `You are writing a high-level 1-2 sentence cooking-arc summary for a recipe. The summary describes the actions in order, without measurements or technique explanations — like telling a friend "here's what cooking this involves." Under 35 words.
+  const prompt = `Write a SKELETAL cooking arc for this recipe — 3-5 short comma-separated phrases that capture the PHASES of cooking, not the specific steps. Under 20 words total.
 
-Good example: "Season the chops, sear them in hot butter, build a pan sauce with apple cider and sage, then plate with shaved apple and a drizzle of vinegar."
+Rules:
+- Collapse related actions into one phase: "season and sear chicken" not "pat dry, salt, sear in a hot pan until golden"
+- Use broad ingredient labels: "aromatics" not "garlic, shallots, ginger"; "the meat" not "bone-in chicken thighs"
+- No measurements, no temperatures, no specific times, no technique explanations
+- Think: how you'd sketch this recipe for a friend on a napkin
+
+Good examples:
+- "Season and sear chicken, add lemon and dates, braise until tender."
+- "Bloom aromatics, simmer tomatoes and sauce, add beans, finish with poached eggs."
+- "Toast spices, build curry base, simmer meat, garnish with fresh herbs."
+- "Whip cream and sugar, fold in yolks, freeze overnight."
 
 Recipe: ${recipe.title}${recipe.cuisine ? ` (${recipe.cuisine})` : ''}
 ${recipe.description ? `Description: ${recipe.description}\n` : ''}
 Steps:
 ${stepsText}
 
-Return ONLY the summary text — no quotes, no preamble, no markdown.`
+Return ONLY the summary — no quotes, no preamble, no markdown.`
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',

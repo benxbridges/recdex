@@ -639,7 +639,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Scan a cookbook — second primary tool, equal weight to paste */}
+          {/* Scan a recipe — second primary tool, equal weight to paste */}
           {extractState === 'idle' && (
             <Link href="/scan" style={{
               marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -654,7 +654,7 @@ export default function Home() {
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              Scan a cookbook
+              Scan a recipe
             </Link>
           )}
         </div>
