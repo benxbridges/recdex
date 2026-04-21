@@ -432,8 +432,8 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
       <style>{`@keyframes cardIn{from{opacity:0;transform:scale(0.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.55)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
       <div onClick={e => e.stopPropagation()} style={{ width: 'min(380px, 90vw)', animation: 'cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
-        {/* The card */}
-        <div style={{ background: '#FFFEFA', border: `1.5px solid ${C.text}`, borderRadius: 10, padding: '28px 26px 24px', overflow: 'hidden' }}>
+        {/* The card — uses theme bg so it renders correctly in dark + light mode */}
+        <div style={{ background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 10, padding: '28px 26px 24px', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 600, letterSpacing: 2, color: C.text3, textTransform: 'uppercase' }}>Recipe Index</span>
@@ -1034,61 +1034,51 @@ export default function RecipePage() {
 
           <RecipeEditorNote slug={slug} />
 
-          {/* Action row: Cook (primary) · Grocery list · Share · Save */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Link href={`/recipe/${slug}/cook`} aria-label="Cook this recipe" style={{
-              flex: 2, padding: isMobile ? '12px 12px' : '12px 20px', borderRadius: 6,
-              border: 'none', background: C.accent, color: '#fff',
-              fontSize: isMobile ? 14 : 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              textDecoration: 'none', letterSpacing: 0.3,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              boxShadow: '0 2px 8px rgba(232,123,90,0.25)',
-              transition: 'transform 0.1s, box-shadow 0.15s',
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2v2M10 2v2M14 2v2M4 6h16v2a8 8 0 0 1-16 0z" />
-                <path d="M4 22h16" />
-              </svg>
-              COOK
-            </Link>
+          {/* Secondary actions — quieter row so COOK at the bottom of
+              "How it cooks" stays the visual anchor */}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
             {hasIngredients && (
               <button onClick={() => setShowGroceryList(true)} aria-label="Grocery list" style={{
-                flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
-                border: `1.5px solid ${C.rule}`, background: 'transparent',
-                color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}>
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 2px', border: 'none', background: 'transparent',
+                color: C.text3, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+                transition: 'color 0.15s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = C.text }}
+              onMouseLeave={e => { e.currentTarget.style.color = C.text3 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
                   <rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" />
                 </svg>
-                {!isMobile && 'Grocery'}
+                Grocery list
               </button>
             )}
             <button onClick={handleShare} aria-label="Share" style={{
-              flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
-              border: `1.5px solid ${C.rule}`, background: 'transparent',
-              color: C.text2, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-            }}>
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 2px', border: 'none', background: 'transparent',
+              color: C.text3, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = C.text }}
+            onMouseLeave={e => { e.currentTarget.style.color = C.text3 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              {!isMobile && 'Share'}
+              Share
             </button>
             <button onClick={toggleSave} aria-label={saved ? 'Saved' : 'Save'} style={{
-              flex: 1, padding: isMobile ? '12px 8px' : '12px 16px', borderRadius: 6,
-              border: `1.5px solid ${saved ? C.accent : C.rule}`,
-              background: saved ? C.accentBg : 'transparent',
-              color: saved ? C.accent : C.text2,
-              fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: SANS,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all 0.15s',
-            }}>
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 2px', border: 'none', background: 'transparent',
+              color: saved ? C.accent : C.text3, fontSize: 12, fontWeight: saved ? 600 : 500, cursor: 'pointer', fontFamily: SANS,
+              transition: 'color 0.15s',
+            }}
+            onMouseEnter={e => { if (!saved) e.currentTarget.style.color = C.text }}
+            onMouseLeave={e => { if (!saved) e.currentTarget.style.color = C.text3 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill={saved ? C.accent : 'none'} stroke={saved ? C.accent : 'currentColor'} strokeWidth="2" strokeLinecap="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
               </svg>
-              {!isMobile && (saved ? 'Saved' : 'Save')}
+              {saved ? 'Saved' : 'Save'}
             </button>
           </div>
         </div>
@@ -1293,16 +1283,17 @@ export default function RecipePage() {
               </div>
             )}
 
-            {/* Prominent COOK CTA — the action that unlocks the full procedure */}
+            {/* The one COOK CTA — this is the action the whole recipe page
+                funnels toward. Keep it alone at the bottom of the arc. */}
             <a href={`/recipe/${slug}/cook`} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              width: '100%', padding: '16px 24px', borderRadius: 10, border: 'none',
+              width: '100%', marginTop: 8, padding: '18px 24px', borderRadius: 12, border: 'none',
               background: C.accent, color: '#fff', textAlign: 'center', textDecoration: 'none',
-              fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              letterSpacing: 0.5, boxShadow: '0 4px 16px rgba(232,123,90,0.28)',
+              fontSize: 17, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              letterSpacing: 0.5, boxShadow: '0 6px 20px rgba(232,123,90,0.32)',
               transition: 'transform 0.1s, box-shadow 0.15s',
             }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 2v2M10 2v2M14 2v2M4 6h16v2a8 8 0 0 1-16 0z" />
                 <path d="M4 22h16" />
               </svg>

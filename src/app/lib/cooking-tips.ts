@@ -53,10 +53,18 @@ const TIPS: CookingTip[] = [
     tip: 'Pull your pasta about a minute before the package time. It\'ll finish cooking in the sauce, absorbing more flavor along the way.',
   },
   {
-    id: 'room-temp',
-    trigger: /\broom temperature\b/i,
-    title: 'Room temperature matters',
-    tip: 'Cold butter or eggs can break emulsions and create uneven textures. About 30–60 minutes on the counter is usually enough.',
+    // Meat-specific tempering — higher priority than the dairy variant so
+    // meat recipes don't get the butter/eggs advice by accident.
+    id: 'room-temp-meat',
+    trigger: /\broom\s+temperature\b[\s\S]{0,200}\b(meat|steak|steaks?|chop|chops?|pork|chicken|lamb|beef|roast|turkey|duck|ribs?)\b|\b(meat|steak|steaks?|chop|chops?|pork|chicken|lamb|beef|roast|turkey|duck|ribs?)\b[\s\S]{0,200}\broom\s+temperature\b/i,
+    title: 'Tempering the meat',
+    tip: 'Letting meat come up from the fridge helps it brown evenly and keeps the outside from overcooking while the center catches up. 15–30 minutes on the counter is usually enough for chops and steaks; an hour for larger roasts.',
+  },
+  {
+    id: 'room-temp-bake',
+    trigger: /\broom\s+temperature\b[\s\S]{0,200}\b(butter|eggs?|dairy|cream\s+cheese|milk|cheese|yogurt|buttermilk|sour\s+cream|cheesecake|batter|dough)\b|\b(butter|eggs?|dairy|cream\s+cheese|cheesecake|batter|dough)\b[\s\S]{0,200}\broom\s+temperature\b/i,
+    title: 'Room-temp matters',
+    tip: 'Cold butter or eggs can break emulsions and create uneven textures. About 30–60 minutes on the counter is usually enough. In a rush: microwave butter in 5-second pulses, or warm eggs in a bowl of lukewarm water.',
   },
   {
     id: 'folding',
