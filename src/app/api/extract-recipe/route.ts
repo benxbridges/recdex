@@ -193,6 +193,7 @@ Return a single JSON object with exactly these fields:
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
   "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook", "tip": string | null }],
+  "summary": string (1-2 sentence high-level cooking arc — the actions in order, no measurements, no technique explanations. Think of it as telling a friend "here's what cooking this feels like" in under 35 words. Example: "Season the chops, sear them in hot butter, build a pan sauce with apple cider and sage, then plate with shaved apple and a drizzle of vinegar."),
   "confidence": "high" | "medium" | "low"
 }
 
@@ -256,6 +257,7 @@ Return a single JSON object with exactly these fields:
   "servings": number | null,
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
   "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook", "tip": string | null }],
+  "summary": string (1-2 sentence high-level cooking arc — actions in order, no measurements, under 35 words),
   "confidence": "high"
 }
 

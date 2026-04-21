@@ -37,6 +37,7 @@ Return a single JSON object with exactly these fields:
   "source_book": string | null (book title if visible),
   "ingredients": [{ "name": string, "amount": string, "unit": string, "notes": string }],
   "steps": [{ "step": number, "text": string, "timer_minutes": number | null, "phase": "prep" | "cook" }],
+  "summary": string (1-2 sentence cooking-arc summary — the actions in order, no measurements, under 35 words. e.g. "Season the chops, sear them in hot butter, build a pan sauce with apple cider and sage, plate and serve."),
   "raw_text": string (the full recipe text as read from the image(s), preserving original wording)
 }
 

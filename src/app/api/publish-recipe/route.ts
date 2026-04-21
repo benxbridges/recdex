@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
     slug: recipe.slug,
     title: recipe.title,
     description: recipe.description || null,
+    summary: recipe.summary || null,
     cuisine: recipe.cuisine || null,
     difficulty: recipe.difficulty || 'easy',
     time_total: recipe.time_total || null,

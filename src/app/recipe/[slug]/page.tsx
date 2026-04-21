@@ -16,6 +16,7 @@ type RawIngredients = any[]
 
 type Recipe = {
   id: string; slug: string; title: string; description: string | null
+  summary: string | null
   cuisine: string | null; category_id: string | null; difficulty: string
   time_total: number | null; time_active: number | null
   time_passive: number | null; time_passive_label: string | null
@@ -1255,51 +1256,63 @@ export default function RecipePage() {
 
         {isMobile && <div style={{ height: 1, background: C.rule }} />}
 
-        {/* Steps + Start Cooking CTA */}
+        {/* How it cooks — a short prose arc that doesn't compete with cook mode */}
         {hasSteps ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Steps</h2>
-              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{recipe.steps.length} steps</span>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>How it cooks</h2>
+              <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+                {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
+              </span>
             </div>
 
-            {/* Show all steps — no blur, let users scan freely */}
-            {recipe.steps.map((s, i) => (
-              <div key={i} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 4, flexShrink: 0,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: MONO, fontSize: 12, fontWeight: 700,
-                  background: C.ruleLight, color: C.text3,
-                }}>
-                  {i + 1}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
-                </div>
+            {recipe.summary ? (
+              <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.65, color: C.text2, margin: '0 0 24px' }}>
+                {recipe.summary}
+              </p>
+            ) : (
+              // Fallback for recipes that don't have a summary yet — show the
+              // full step list. Backfill via scripts/backfill-summaries.ts will
+              // remove this path once all recipes have summaries.
+              <div style={{ marginBottom: 24 }}>
+                {recipe.steps.map((s, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: 4, flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                      background: C.ruleLight, color: C.text3,
+                    }}>
+                      {i + 1}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontFamily: SANS, fontSize: 14, lineHeight: 1.6, color: C.text, margin: 0 }}>{s.text}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
 
-            {/* Start Cooking CTA */}
+            {/* Prominent COOK CTA — the action that unlocks the full procedure */}
             <a href={`/recipe/${slug}/cook`} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              width: '100%', marginTop: 8, padding: '15px 24px', borderRadius: 8, border: 'none',
-              background: C.text, color: C.bg, textAlign: 'center', textDecoration: 'none',
-              fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
-              transition: 'transform 0.15s',
+              width: '100%', padding: '16px 24px', borderRadius: 10, border: 'none',
+              background: C.accent, color: '#fff', textAlign: 'center', textDecoration: 'none',
+              fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+              letterSpacing: 0.5, boxShadow: '0 4px 16px rgba(232,123,90,0.28)',
+              transition: 'transform 0.1s, box-shadow 0.15s',
             }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2v2M10 2v2M14 2v2M4 6h16v2a8 8 0 0 1-16 0z" />
+                <path d="M4 22h16" />
               </svg>
-              Start Cooking
-              <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.6, marginLeft: 2 }}>
-                · {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
-              </span>
+              COOK with step-by-step
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
             </a>
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
-            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Steps</h2>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>How it cooks</h2>
             <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
           </div>
         )}
