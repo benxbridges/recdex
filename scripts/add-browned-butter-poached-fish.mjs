@@ -23,6 +23,7 @@ const recipe = {
   servings: 4,
   servings_label: 'servings',
   source_attribution: 'Adapted from Alison Roman',
+  summary: 'Brown butter with garlic and lemon, reduce wine, poach fish and mussels, finish with herbs.',
   ingredients: [
     { name: 'Lemon, halved crosswise, seeds removed', amount: '1', unit: '' },
     { name: 'Unsalted butter', amount: '6', unit: 'tbsp' },
@@ -53,19 +54,15 @@ const recipe = {
 }
 
 async function main() {
-  const { data: existing } = await sb.from('recipes').select('slug').eq('slug', recipe.slug).maybeSingle()
-  if (existing) {
-    console.log(`⏭ Already exists: "${recipe.title}"`)
-  } else {
-    const { error } = await sb.from('recipes').insert(recipe)
-    if (error) {
-      console.error(`✗ Insert failed:`, error.message)
-      process.exit(1)
-    }
-    console.log(`✓ Published: "${recipe.title}"`)
-    console.log(`  → /recipe/${recipe.slug}`)
-    console.log(`  → /recipe/${recipe.slug}/cook`)
+  // Upsert: inserts on first run, updates (including summary) on re-runs.
+  const { error } = await sb.from('recipes').upsert(recipe, { onConflict: 'slug' })
+  if (error) {
+    console.error(`✗ Upsert failed:`, error.message)
+    process.exit(1)
   }
+  console.log(`✓ Upserted: "${recipe.title}"`)
+  console.log(`  → /recipe/${recipe.slug}`)
+  console.log(`  → /recipe/${recipe.slug}/cook`)
 
   // Set as Tonight's Pick: clear all existing featured flags, then set this one.
   const { error: clearErr } = await sb.from('recipes').update({ featured: false }).eq('featured', true)
