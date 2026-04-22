@@ -44,6 +44,7 @@ function prepareForPublish(recipe) {
     slug: recipeData.slug,
     title: recipeData.title,
     description: recipeData.description || null,
+    summary: recipeData.summary || existing.summary || null,
     cuisine: recipeData.cuisine || null,
     difficulty: recipeData.difficulty || 'medium',
     time_total: recipeData.time_total || null,

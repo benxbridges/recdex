@@ -142,6 +142,7 @@ Write a complete recipe in the Recdex voice. Return ONLY valid JSON matching thi
   "title": "string — the recipe title, properly capitalized",
   "slug": "string — lowercase-hyphenated URL slug",
   "description": "string — 1-2 sentences: what the dish is and what makes this version good",
+  "summary": "string — skeletal cooking arc: 3-5 comma-separated phrases capturing the PHASES of cooking, under 20 words total. Collapse related actions into one phase ('season and sear chicken' not 'pat dry, salt, sear'). Use broad labels ('aromatics' not 'garlic and shallots'; 'the meat' not 'bone-in thighs'). No measurements, temperatures, or times. Examples: 'Season and sear chicken, add lemon and dates, braise until tender.' / 'Bloom aromatics, simmer tomatoes and sauce, add beans, finish with poached eggs.' / 'Whip cream and sugar, fold in yolks, freeze overnight.'",
   "cuisine": "string — primary cuisine (e.g., 'Italian', 'Thai', 'American')",
   "difficulty": "easy | medium | hard",
   "time_total": number — total minutes,
@@ -180,7 +181,7 @@ function parseRecipeJSON(text) {
   const recipe = JSON.parse(cleaned)
 
   // Validate required fields
-  const required = ['title', 'slug', 'description', 'cuisine', 'difficulty',
+  const required = ['title', 'slug', 'description', 'summary', 'cuisine', 'difficulty',
     'time_total', 'servings', 'ingredients', 'steps']
   const missing = required.filter(f => recipe[f] === undefined || recipe[f] === null)
   if (missing.length > 0) {
