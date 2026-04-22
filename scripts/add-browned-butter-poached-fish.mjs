@@ -2,13 +2,11 @@
 /**
  * Add Alison Roman's Browned Butter Poached Fish with Mussels to RecDex,
  * and set it as Tonight's Pick (featured).
- * Run: node scripts/add-browned-butter-poached-fish.mjs
+ * Run: node --env-file=.env.local scripts/add-browned-butter-poached-fish.mjs
  * Requires: SUPABASE_SERVICE_KEY in .env.local or environment
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { config } from 'dotenv'
-config({ path: '.env.local' })
 
 const sb = createClient(
   'https://zacwsrcdvpglrcvirlng.supabase.co',
