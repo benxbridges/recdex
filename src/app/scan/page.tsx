@@ -160,6 +160,8 @@ export default function ScanPage() {
       if (data.recipe) {
         setRecipe(data.recipe)
         setRawText(data.raw_text || '')
+        // Bring the freshly-extracted recipe into view
+        window.scrollTo({ top: 0, behavior: 'smooth' })
       }
     } catch {
       setError('Something went wrong. Please try again.')
@@ -271,7 +273,7 @@ export default function ScanPage() {
               fontFamily: SANS, fontSize: 13, color: C.text3,
               margin: '0 0 28px',
             }}>
-              Snap each page — up to {MAX_PAGES}. Recipes can span a spread.
+              Snap each page — up to {MAX_PAGES}. Great for recipes that span two pages.
             </p>
 
             {/* Gallery upload option */}

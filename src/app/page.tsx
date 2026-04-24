@@ -534,12 +534,10 @@ export default function Home() {
                 display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
                 minHeight: 28,
               }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.text3}
-                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                  <path d="M6 13h12a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2z" />
-                  <path d="M20 13V9a2 2 0 0 0-2-2h-1" />
-                  <path d="M10 7V5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2" />
-                </svg>
+                <span style={{
+                  fontSize: 16, lineHeight: 1, flexShrink: 0,
+                  filter: 'saturate(0.85)',
+                }} aria-hidden>🍳</span>
                 {kitchenTags.map(tag => (
                   <span key={tag} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -568,7 +566,7 @@ export default function Home() {
           </div>
 
           {/* Full pantry shortcut — sits below toolbox, not inside */}
-          <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', maxWidth: 480, margin: '10px auto 0' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', maxWidth: 480, margin: '10px auto 0' }}>
             <Link href="/pantry" style={{
               fontSize: 11, fontFamily: MONO, color: C.text3,
               textDecoration: 'none', letterSpacing: 0.3,
@@ -660,7 +658,7 @@ export default function Home() {
                   Extract from text
                 </button>
                 <button
-                  onClick={() => { setExtractState('idle'); setInput(''); setExtractError('') }}
+                  onClick={() => { setExtractState('idle'); setInput(''); setExtractError(''); setPasteText('') }}
                   style={{ padding: '10px 16px', borderRadius: 8, border: `1px solid ${C.rule}`, background: 'transparent', color: C.text3, fontSize: 13, fontFamily: SANS, cursor: 'pointer' }}
                 >
                   Cancel
