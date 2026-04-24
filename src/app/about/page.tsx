@@ -66,32 +66,16 @@ export default function AboutPage() {
         </p>
 
         <div style={sectionStyle}>
-          <h3 style={headingStyle}>What is this?</h3>
-          <p style={bodyStyle}>
-            RecDex is a free, ad-free, community-driven recipe index. No paywalls, no life stories before the recipe, no tracking cookies. Just food.
-          </p>
-          <p style={bodyStyle}>
-            Every recipe on RecDex is structured and searchable — with ingredients you can check off, steps you can follow in cook mode, and a servings adjuster that does the math for you.
-          </p>
-        </div>
-
-        <div style={sectionStyle}>
           <h3 style={headingStyle}>How it works</h3>
           <p style={bodyStyle}>
-            Recipes come from three places: our curated collection, community contributions, and AI-assisted extraction from cooking videos. When a recipe is extracted from a video, the original creator is always credited and the source video is embedded on the recipe page.
-          </p>
-          <p style={bodyStyle}>
-            Anyone can contribute a recipe — either by writing it from scratch or by pasting a link to a cooking video. Our AI reads the video transcript and structures it into a full recipe, which you review and edit before it goes live.
+            Import recipes by link or photo, and Recipe Index will turn them into dedicated cook pages with clear, step-by-step instructions. Browse our curated library, discover recipes from the community, or contribute your own from scratch. When you paste a link, Recipe Index reads and structures the recipe for you, then lets you edit and approve it before publishing. Sources are credited wherever possible.
           </p>
         </div>
 
         <div style={sectionStyle}>
           <h3 style={headingStyle}>Community</h3>
           <p style={bodyStyle}>
-            RecDex has community notes on every recipe — tips, substitutions, and tweaks from people who have actually cooked it. There are also community discussion threads for kitchen talk, gear recommendations, and cooking questions.
-          </p>
-          <p style={bodyStyle}>
-            No accounts required. Just pick a display name and start contributing.
+            Recipe Index has community notes on every recipe: tips, substitutions, and tweaks from people who have actually cooked it. We&apos;d like to become a definitive place for culinary conversation.
           </p>
         </div>
 

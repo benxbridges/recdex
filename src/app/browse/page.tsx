@@ -281,8 +281,15 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
             </div>
         }
       </div>
-      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
-        {recipe.title}
+      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+        <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, transition: 'color 0.1s' }}>
+          {recipe.title}
+        </span>
+        {recipe.description && (
+          <span style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, marginLeft: 8 }}>
+            {recipe.description}
+          </span>
+        )}
       </span>
       {recipe.cuisine && (
         <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
