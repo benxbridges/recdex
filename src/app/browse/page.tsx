@@ -262,8 +262,8 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '6px 4px',
+        display: 'flex', alignItems: 'flex-start', gap: 12,
+        padding: '10px 4px',
         cursor: 'pointer',
         borderBottom: `1px solid ${C.ruleLight}`,
         background: hovered ? C.warm : 'transparent',
@@ -271,32 +271,40 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
       }}
     >
       {/* Tiny thumbnail */}
-      <div style={{ width: 36, height: 36, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}` }}>
+      <div style={{ width: 44, height: 44, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}`, marginTop: 1 }}>
         {recipe.image_url
           ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="10" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.25 }}>
+              <svg width="16" height="12" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.25 }}>
                 <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="4"/></g>
               </svg>
             </div>
         }
       </div>
-      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
-        {recipe.title}
-      </span>
-      {recipe.time_total && (
-        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>
-      )}
-      {recipe.cuisine && (
-        <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
-          {normalizeCuisine(recipe.cuisine)}
-        </span>
-      )}
-      {recipe.description && (
-        <span style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {recipe.description}
-        </span>
-      )}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Row 1: title + time prominent + cuisine */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+          <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
+            {recipe.title}
+          </span>
+          {recipe.time_total && (
+            <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 700, color: C.accent, flexShrink: 0, letterSpacing: '0.03em' }}>
+              {formatTime(recipe.time_total)}
+            </span>
+          )}
+          {recipe.cuisine && (
+            <span style={{ fontSize: 10, fontFamily: SANS, color: C.text3, flexShrink: 0 }}>
+              {normalizeCuisine(recipe.cuisine)}
+            </span>
+          )}
+        </div>
+        {/* Row 2: description italic */}
+        {recipe.description && (
+          <span style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {recipe.description}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

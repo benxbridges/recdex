@@ -7,6 +7,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { withUtm } from '@/app/lib/unsplash'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import { recipeRequiresOvernight } from '@/app/lib/cook-utils'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -622,6 +623,29 @@ export default function RecipePage() {
   const [isMobile, setIsMobile] = useState(false)
   const [servingsMultiplier, setServingsMultiplier] = useState(1)
 
+  // Restore servings selection from sessionStorage so it persists into cook mode
+  // and survives page refreshes within the tab.
+  useEffect(() => {
+    if (!recipe?.servings) return
+    try {
+      const stored = sessionStorage.getItem(`recdex-servings-${slug}`)
+      if (!stored) return
+      const target = parseInt(stored, 10)
+      if (!Number.isFinite(target) || target <= 0) return
+      const mult = target / recipe.servings
+      if (mult > 0 && mult !== servingsMultiplier) setServingsMultiplier(mult)
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.servings, slug])
+
+  useEffect(() => {
+    if (!recipe?.servings) return
+    try {
+      const target = Math.max(1, Math.round(recipe.servings * servingsMultiplier))
+      sessionStorage.setItem(`recdex-servings-${slug}`, String(target))
+    } catch { /* ignore */ }
+  }, [servingsMultiplier, recipe?.servings, slug])
+
   // Comments state
   const [comments, setComments] = useState<Comment[]>([])
   const [commentsLoading, setCommentsLoading] = useState(true)
@@ -883,6 +907,25 @@ export default function RecipePage() {
             {recipe.time_active && <span style={{ fontSize: 11, fontFamily: MONO, fontWeight: 600, color: C.accent, background: C.accentBg, padding: '3px 10px', borderRadius: 12, letterSpacing: 0.3 }}>{formatTime(recipe.time_active)} active</span>}
             {recipe.cuisine && <span style={{ fontSize: 12, fontFamily: SANS, color: C.text3 }}>{recipe.cuisine}</span>}
           </div>
+
+          {/* Overnight marinating banner — surfaces multi-hour rest steps so the
+              cook plans ahead and we don't pretend an 8 hr countdown is useful. */}
+          {recipeRequiresOvernight(recipe.steps) && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              padding: '10px 14px', borderRadius: 10,
+              background: C.accentBg, border: `1px solid ${C.accent}40`,
+              margin: '0 0 14px',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+              <span style={{ fontFamily: SANS, fontSize: 12, color: C.text2, lineHeight: 1.45 }}>
+                <span style={{ fontWeight: 700, color: C.accent }}>Plan ahead — </span>
+                this recipe is best when marinated overnight.
+              </span>
+            </div>
+          )}
 
           {/* Aggregate egg rating */}
           {(() => {
@@ -1186,7 +1229,7 @@ export default function RecipePage() {
                           {scaleAmount(item.amount, servingsMultiplier)}{item.unit ? ` ${item.unit}` : ''}{' '}
                         </span>
                       )}
-                      {item.name}
+                      <span style={{ fontWeight: 600 }}>{item.name}</span>
                       {item.notes && <span style={{ color: C.text3, fontSize: 13 }}> ({item.notes})</span>}
                     </p>
                   </div>
@@ -1194,47 +1237,47 @@ export default function RecipePage() {
               </div>
               <ConsensusAnnotations slug={slug} />
             </div>
-            {/* Add to shopping list button */}
+            {/* Copy ingredients to clipboard — keeps the list portable without
+                forcing users into a separate shopping-list flow. */}
             <button
-              onClick={() => {
-                const stored = localStorage.getItem('recdex-grocery')
-                let existing: { name: string; amount: string; unit: string; recipeId: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
-                if (stored) {
-                  try { existing = JSON.parse(stored) } catch { /* */ }
+              onClick={async () => {
+                const lines = ingredientItems.map(item => {
+                  const amount = scaleAmount(item.amount, servingsMultiplier)
+                  const head = [amount, item.unit].filter(Boolean).join(' ')
+                  return `${head ? head + ' ' : ''}${item.name}${item.notes ? ` (${item.notes})` : ''}`
+                })
+                const payload = `${recipe.title}\n${lines.join('\n')}`
+                try {
+                  await navigator.clipboard.writeText(payload)
+                  setShoppingToast(true)
+                  setTimeout(() => setShoppingToast(false), 2000)
+                } catch {
+                  // Clipboard API unavailable — fall back to a textarea select-and-copy
+                  const ta = document.createElement('textarea')
+                  ta.value = payload
+                  document.body.appendChild(ta)
+                  ta.select()
+                  try { document.execCommand('copy') } catch { /* ignore */ }
+                  document.body.removeChild(ta)
+                  setShoppingToast(true)
+                  setTimeout(() => setShoppingToast(false), 2000)
                 }
-                const newItems = ingredientItems
-                  .filter(item => !existing.some(e => e.recipeTitle === recipe.title && e.name === item.name))
-                  .map(item => ({
-                    name: item.name,
-                    amount: scaleAmount(item.amount, servingsMultiplier),
-                    unit: item.unit,
-                    recipeId: recipe.id,
-                    recipeTitle: recipe.title,
-                    recipeSlug: slug,
-                    checked: false,
-                  }))
-                if (newItems.length > 0) {
-                  localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
-                }
-                setShoppingToast(true)
-                setTimeout(() => setShoppingToast(false), 2500)
               }}
               style={{
                 marginTop: 12, padding: '10px 18px', borderRadius: 6,
-                border: `1.5px solid ${C.green}`, background: C.greenBg,
-                color: C.green, fontSize: 12, fontWeight: 600,
+                border: `1.5px solid ${C.accent}`, background: C.accentBg,
+                color: C.accent, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', fontFamily: SANS,
                 display: 'flex', alignItems: 'center', gap: 7,
                 transition: 'all 0.15s',
               }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2" strokeLinecap="round">
-                <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
               </svg>
-              Add to shopping list
+              Copy to clipboard
             </button>
-            {/* Shopping list toast */}
             {shoppingToast && (
               <div style={{
                 position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -1246,7 +1289,7 @@ export default function RecipePage() {
                 display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                Added to shopping list
+                Copied to clipboard
               </div>
             )}
           </div>

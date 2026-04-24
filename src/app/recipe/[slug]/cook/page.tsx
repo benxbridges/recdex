@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { getTipsForStep } from '@/app/lib/cooking-tips'
-import { scaleAmount, classifyStep, findPhaseBreaks, PHASE_META, resolveTimerMinutes, parseIngredientString } from '@/app/lib/cook-utils'
+import { scaleAmount, scaleStepProse, hasMeasurementBefore, classifyStep, findPhaseBreaks, PHASE_META, resolveTimerMinutes, parseIngredientString, isOvernightStep, recipeRequiresOvernight } from '@/app/lib/cook-utils'
 import { toJpeg } from 'html-to-image'
 import { findSubstitutions, type SubOption } from '@/app/lib/substitutions'
 import ThemeToggle from '@/app/components/ThemeToggle'
@@ -1173,7 +1173,7 @@ export default function CookModePage() {
   const [suggestions, setSuggestions] = useState<SuggestedRecipe[]>([])
   const [activeSwaps, setActiveSwaps] = useState<Record<number, { original: string; replacement: string; ratio: string }>>({})
   const [openSwapIndex, setOpenSwapIndex] = useState<number | null>(null)
-  const [showAmounts, setShowAmounts] = useState(false)
+  const [showAmounts, setShowAmounts] = useState(true)
   const [servings, setServings] = useState<number>(4)
   const [tutorialDone, setTutorialDone] = useState(false)
   const stepRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -1184,10 +1184,25 @@ export default function CookModePage() {
   const originalServings = recipe?.servings || 4
   const scaleFactor = servings / originalServings
 
-  // Initialize servings from recipe
+  // Initialize servings — prefer the value the user set on the recipe page
+  // (carried via sessionStorage), fall back to the recipe's default.
   useEffect(() => {
-    if (recipe?.servings) setServings(recipe.servings)
-  }, [recipe?.servings])
+    if (!recipe?.servings) return
+    let target = recipe.servings
+    try {
+      const stored = sessionStorage.getItem(`recdex-servings-${slug}`)
+      const parsed = stored ? parseInt(stored, 10) : NaN
+      if (Number.isFinite(parsed) && parsed > 0) target = parsed
+    } catch { /* ignore */ }
+    setServings(target)
+  }, [recipe?.servings, slug])
+
+  // Mirror local servings changes back to sessionStorage so the recipe page
+  // and cook mode stay in sync if the user toggles back and forth.
+  useEffect(() => {
+    if (!recipe?.servings || !servings) return
+    try { sessionStorage.setItem(`recdex-servings-${slug}`, String(servings)) } catch { /* ignore */ }
+  }, [servings, recipe?.servings, slug])
 
   const toggleIngredient = (index: number) => {
     setCheckedIngredients(prev => {
@@ -1608,7 +1623,7 @@ export default function CookModePage() {
       } else if (e.key === ' ' && activeStep < total) {
         e.preventDefault()
         const currentStep = recipe.steps[activeStep]
-        if (currentStep?.timer_minutes) {
+        if (currentStep?.timer_minutes && !isOvernightStep(currentStep)) {
           const timerKey = `${recipe.id}-${activeStep}`
           if (!timers[timerKey]?.active) {
             startTimer(timerKey, currentStep.timer_minutes * 60, `Step ${activeStep + 1}`)
@@ -1756,20 +1771,27 @@ export default function CookModePage() {
     }
   }
 
-  // ─── Render step text with optional inline ingredient amounts ────
-  function renderStepText(text: string, isActive: boolean) {
-    if (!isActive || !showAmounts || ingredientAmountMap.size === 0) return text
+  // ─── Render step text with inline ingredient amounts and scaling ────
+  // Always-on (across every step). Amounts come from the ingredient list
+  // and scale with the user's servings selection. If the prose already
+  // contains a measurement immediately before the ingredient name we don't
+  // double-up — we just color the name. Otherwise we append the recipe's
+  // total amount as a hint.
+  function renderStepText(text: string) {
+    const scaledText = scaleStepProse(text, scaleFactor)
+    if (!showAmounts || ingredientAmountMap.size === 0) return scaledText
 
-    // Scan text for ingredient names and inject bold amounts inline
     const parts: React.ReactNode[] = []
-    let remaining = text
+    let remaining = scaledText
     let keyIdx = 0
+    let absolutePos = 0
     const sortedNames = [...ingredientAmountMap.keys()].sort((a, b) => b.length - a.length)
+    const seenInThisStep = new Set<string>()
 
     while (remaining.length > 0) {
       let earliestMatch: { pos: number; name: string; matchLen: number } | null = null
       for (const name of sortedNames) {
-        if (name.length <= 2) continue
+        if (name.length <= 2 || seenInThisStep.has(name)) continue
         const pos = remaining.toLowerCase().indexOf(name)
         if (pos !== -1 && (!earliestMatch || pos < earliestMatch.pos)) {
           earliestMatch = { pos, name, matchLen: name.length }
@@ -1784,13 +1806,19 @@ export default function CookModePage() {
       }
       const matchedText = remaining.slice(earliestMatch.pos, earliestMatch.pos + earliestMatch.matchLen)
       const amount = ingredientAmountMap.get(earliestMatch.name)!
+      const inlineAmountAlreadyPresent = hasMeasurementBefore(scaledText, absolutePos + earliestMatch.pos)
       parts.push(
-        <span key={keyIdx++}>
-          {matchedText}<span style={{ fontWeight: 700, color: C.text2, whiteSpace: 'nowrap' }}> ({amount})</span>
+        <span key={keyIdx++} style={{ color: C.accent, fontWeight: 600 }}>
+          {matchedText}
+          {!inlineAmountAlreadyPresent && (
+            <span style={{ fontWeight: 700, whiteSpace: 'nowrap' }}> ({amount})</span>
+          )}
         </span>
       )
-      remaining = remaining.slice(earliestMatch.pos + earliestMatch.matchLen)
-      sortedNames.splice(sortedNames.indexOf(earliestMatch.name), 1)
+      seenInThisStep.add(earliestMatch.name)
+      const consumed = earliestMatch.pos + earliestMatch.matchLen
+      remaining = remaining.slice(consumed)
+      absolutePos += consumed
     }
     return <>{parts}</>
   }
@@ -1831,7 +1859,7 @@ export default function CookModePage() {
                 <span style={{ color: C.gold, fontWeight: 600 }}>{swap.replacement}</span>
               </>
             ) : (
-              item.name
+              <span style={{ fontWeight: 600 }}>{item.name}</span>
             )}
             {item.notes && <span style={{ color: C.text3, fontSize: options.fontSize - 1 }}> ({item.notes})</span>}
           </p>
@@ -2133,18 +2161,25 @@ export default function CookModePage() {
                           margin: 0, fontWeight: 400,
                           transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
                         }}>
-                          {renderStepText(step.text, style.isActive)}
+                          {renderStepText(step.text)}
                         </p>
 
                         {/* Passive step hint */}
-                        {style.isActive && classifyStep(step.text) === 'passive' && (
+                        {style.isActive && classifyStep(step.text) === 'passive' && !isOvernightStep(step) && (
                           <p style={{ fontSize: 11, color: PHASE_META.passive.color, margin: '10px 0 0', fontFamily: SANS, fontStyle: 'italic' }}>
                             Waiting step — {step.timer_minutes ? 'start the timer and move on when ready.' : 'come back when this is done.'}
                           </p>
                         )}
 
-                        {/* Timer */}
-                        {step.timer_minutes && (style.isActive || timers[`${recipe.id}-${i}`]?.active) && (
+                        {/* Overnight wait hint — no timer, just a reminder */}
+                        {style.isActive && isOvernightStep(step) && (
+                          <p style={{ fontSize: 12, color: C.accent, margin: '10px 0 0', fontFamily: SANS, fontStyle: 'italic' }}>
+                            Long wait — best done overnight. Come back when ready.
+                          </p>
+                        )}
+
+                        {/* Timer (suppressed for overnight steps — no use for an 8 hr countdown) */}
+                        {step.timer_minutes && !isOvernightStep(step) && (style.isActive || timers[`${recipe.id}-${i}`]?.active) && (
                           <InlineTimer minutes={step.timer_minutes} label={`Step ${i + 1}`} timerKey={`${recipe.id}-${i}`} timers={timers} onStart={startTimer} />
                         )}
 

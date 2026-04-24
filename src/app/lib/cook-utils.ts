@@ -90,6 +90,40 @@ export function scaleAmount(amount: string, factor: number): string {
   return scaleToken(amount.trim())
 }
 
+// Number tokens that scaleAmount can handle: mixed fractions, plain fractions,
+// decimals, whole+unicode fraction, bare unicode fraction, plain integers.
+const STEP_NUM_RE = `(?:\\d+\\s+\\d+\\/\\d+|\\d+\\/\\d+|\\d+\\.\\d+|\\d+\\s*[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\\d+)`
+
+// Units that genuinely scale with servings. Excludes °F/°C, "minutes",
+// "inch", and bare counts like "3 eggs" (no unit) — those don't belong here.
+const STEP_SCALABLE_UNIT_RE = `(?:tbsp|tablespoons?|tsp|teaspoons?|cups?|oz|ounces?|lbs?|pounds?|grams?|g|kg|kilograms?|ml|milliliters?|l|liters?|litres?|pinch(?:es)?|dash(?:es)?|cans?|sticks?|cloves?)`
+
+/**
+ * Scale measurement amounts embedded in step prose.
+ * "Add 1 tbsp honey" → "Add 2 tbsp honey" at 2x. Leaves bare numbers alone
+ * ("3 eggs", "350°F", "10 minutes" don't get touched).
+ */
+export function scaleStepProse(text: string, factor: number): string {
+  if (!text || factor === 1) return text
+  const re = new RegExp(`(${STEP_NUM_RE})\\s+(${STEP_SCALABLE_UNIT_RE})\\b`, 'gi')
+  return text.replace(re, (_full, num: string, unit: string) => {
+    const scaled = scaleAmount(num.trim(), factor)
+    return `${scaled} ${unit}`
+  })
+}
+
+/**
+ * Did the prose just before `pos` already include a measurement?
+ * Used to decide whether to append "(2 tbsp)" after an ingredient name —
+ * if the step already says "1 tbsp honey" we don't need to also annotate it.
+ */
+export function hasMeasurementBefore(text: string, pos: number): boolean {
+  if (pos <= 0) return false
+  const before = text.slice(Math.max(0, pos - 40), pos)
+  const re = new RegExp(`(${STEP_NUM_RE})\\s+(${STEP_SCALABLE_UNIT_RE})\\s+(?:of\\s+)?$`, 'i')
+  return re.test(before)
+}
+
 /**
  * Classify whether a recipe step is "prep" or "cook".
  *
@@ -412,6 +446,25 @@ export function parseTimerFromText(text: string): number | null {
 export function resolveTimerMinutes(step: { text: string; timer_minutes?: number | null }): number | null {
   if (step.timer_minutes != null && step.timer_minutes > 0) return step.timer_minutes
   return parseTimerFromText(step.text)
+}
+
+/**
+ * Does this step want the cook to wait overnight (or for many hours)?
+ * Used to suppress useless 8-hour timers and to surface a "start the night
+ * before" banner on the recipe.
+ */
+export function isOvernightStep(step: { text: string; timer_minutes?: number | null }): boolean {
+  const text = step.text.toLowerCase()
+  if (/\bover\s?night\b/.test(text)) return true
+  if (/\b(?:8|10|12|24)\s*\+?\s*hours?\b/.test(text)) return true
+  if (classifyStep(step.text) !== 'passive') return false
+  const minutes = resolveTimerMinutes(step)
+  return minutes !== null && minutes >= 240
+}
+
+export function recipeRequiresOvernight(steps: { text: string; timer_minutes?: number | null }[] | null | undefined): boolean {
+  if (!steps) return false
+  return steps.some(isOvernightStep)
 }
 
 /**
