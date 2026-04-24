@@ -203,24 +203,25 @@ function unlockAudio() {
 // from now). Survives tab backgrounding. Uses a square+sine layered tone that
 // reads as an alarm, not a toy beep. Repeats twice so the alert lingers for
 // several seconds even if the first pass is missed.
+// Also tracks scheduled oscillators so we can stop them if the user taps Stop.
+type ScheduledNode = { osc: OscillatorNode; gain: GainNode; endTime: number }
+const scheduledNodes: ScheduledNode[] = []
+const scheduledVibrateTimeouts: number[] = []
+
 function scheduleBeeps(offsetSeconds: number) {
   const ctx = getAudioCtx()
   if (!ctx) return
   try {
     if (ctx.state === 'suspended') ctx.resume().catch(() => { /* ignore */ })
     const startAt = Math.max(ctx.currentTime, ctx.currentTime + offsetSeconds)
-    // 6 pulses, alternating pitch — roughly 2 seconds total, then repeat
-    // pattern once more for emphasis.
     const pattern = [880, 1175, 880, 1175, 880, 1175]
     for (let rep = 0; rep < 2; rep++) {
       for (let i = 0; i < pattern.length; i++) {
         const t = startAt + rep * 2.4 + i * 0.28
         const freq = pattern[i]
-        // Square oscillator for the edgy body
         const sq = ctx.createOscillator()
         sq.type = 'square'
         sq.frequency.value = freq
-        // Sine oscillator one octave down for warmth
         const sine = ctx.createOscillator()
         sine.type = 'sine'
         sine.frequency.value = freq / 2
@@ -233,16 +234,47 @@ function scheduleBeeps(offsetSeconds: number) {
         gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
         sq.start(t); sine.start(t)
         sq.stop(t + 0.24); sine.stop(t + 0.24)
+        // Track the sq oscillator + shared gain so we can cancel. The sine
+        // oscillator is stopped when the gain is silenced, so tracking one
+        // oscillator per pulse is enough.
+        scheduledNodes.push({ osc: sq, gain, endTime: t + 0.24 })
       }
     }
   } catch { /* ignore */ }
 }
 
+function scheduleVibrationAt(offsetSeconds: number) {
+  const pattern = [400, 150, 400, 150, 400, 150, 600]
+  if (offsetSeconds <= 0) {
+    try { navigator.vibrate?.(pattern) } catch { /* ignore */ }
+    return
+  }
+  const id = window.setTimeout(() => {
+    try { navigator.vibrate?.(pattern) } catch { /* ignore */ }
+  }, offsetSeconds * 1000)
+  scheduledVibrateTimeouts.push(id)
+}
+
+/** Stop every still-pending beep + vibration. Safe to call repeatedly. */
+function cancelAllAlerts() {
+  const ctx = getAudioCtx()
+  const now = ctx?.currentTime ?? 0
+  for (const node of scheduledNodes) {
+    if (node.endTime <= now) continue
+    try { node.gain.gain.cancelScheduledValues(now) } catch { /* ignore */ }
+    try { node.gain.gain.setValueAtTime(0.0001, now) } catch { /* ignore */ }
+    try { node.osc.stop(now) } catch { /* ignore */ }
+    try { node.gain.disconnect() } catch { /* ignore */ }
+  }
+  scheduledNodes.length = 0
+  for (const id of scheduledVibrateTimeouts) clearTimeout(id)
+  scheduledVibrateTimeouts.length = 0
+  try { navigator.vibrate?.(0) } catch { /* ignore */ }
+}
+
 function playBeepsNow() {
   scheduleBeeps(0)
-  // Longer, more insistent vibration pattern. Works on Android vibrate mode;
-  // silently ignored on iOS (which doesn't expose navigator.vibrate).
-  try { navigator.vibrate?.([400, 150, 400, 150, 400, 150, 600]) } catch { /* ignore */ }
+  scheduleVibrationAt(0)
 }
 
 // System notification — works across tab-switch, backgrounded tabs, and
@@ -305,7 +337,7 @@ function cancelSwNotification(key: string) {
 
 function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
   minutes: number; label: string; timerKey: string
-  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
+  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string; alarmed?: boolean }>
   onStart: (key: string, seconds: number, label: string) => void
 }) {
   const t = timers[timerKey]
@@ -475,7 +507,7 @@ function CustomTimerDialog({ onClose, onStart }: {
 // ─── Floating timer panel ────────────────────────────────────────────────
 
 function FloatingTimerPanel({ timers, onGoToStep, onStartCustom }: {
-  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
+  timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string; alarmed?: boolean }>
   onGoToStep: (step: number) => void
   onStartCustom: (seconds: number, label: string) => void
 }) {
@@ -1236,7 +1268,15 @@ export default function CookModePage() {
   const [activeStep, setActiveStep] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
   const [showIngredientsMobile, setShowIngredientsMobile] = useState(false)
-  const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>>({})
+  const [timers, setTimers] = useState<Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string; alarmed?: boolean }>>({})
+  const [closeWarningDismissed, setCloseWarningDismissed] = useState(false)
+  useEffect(() => {
+    try { if (sessionStorage.getItem('recdex-timer-close-warning-dismissed') === '1') setCloseWarningDismissed(true) } catch { /* ignore */ }
+  }, [])
+  const dismissCloseWarning = useCallback(() => {
+    setCloseWarningDismissed(true)
+    try { sessionStorage.setItem('recdex-timer-close-warning-dismissed', '1') } catch { /* ignore */ }
+  }, [])
   const [cookRating, setCookRating] = useState<number | null>(null)
   const [hoverRating, setHoverRating] = useState<number>(0)
   const [substitutions, setSubstitutions] = useState('')
@@ -1331,7 +1371,7 @@ export default function CookModePage() {
     try {
       const savedTimers = localStorage.getItem(`recdex-timers-${slug}`)
       if (savedTimers) {
-        const parsed = JSON.parse(savedTimers) as Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
+        const parsed = JSON.parse(savedTimers) as Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string; alarmed?: boolean }>
         // Recompute remaining against wall clock so a timer that finished
         // while the tab was closed shows 0 instead of its pre-close value.
         const now = Date.now()
@@ -1507,11 +1547,18 @@ export default function CookModePage() {
             if (newRemaining !== next[k].remaining) {
               changed = true
               next[k] = { ...next[k], remaining: newRemaining }
-              if (newRemaining === 0) {
-                setTimerAlerts(alerts => [...alerts, { key: k, label: next[k].label }])
-                // Beeps were already scheduled at timer start via Web Audio.
-                // Play again now for foreground reinforcement + vibration.
-                playBeepsNow()
+              if (newRemaining === 0 && !next[k].alarmed) {
+                next[k] = { ...next[k], alarmed: true }
+                setTimerAlerts(alerts => {
+                  // Guard against duplicate alerts if multiple recalcs race.
+                  if (alerts.some(a => a.key === k)) return alerts
+                  return [...alerts, { key: k, label: next[k].label }]
+                })
+                // Beeps + vibration were already scheduled at timer start to
+                // fire at this moment via Web Audio and setTimeout — firing
+                // again here would double up and overlap as an "intermittent"
+                // second alarm. Only fire the notification (which is idle
+                // otherwise) and leave audio alone.
                 fireNotification('Timer done!', `${next[k].label} is ready.`)
               }
             }
@@ -1550,23 +1597,17 @@ export default function CookModePage() {
   }, [activeStep, recipe, autoShownTips])
 
   const startTimer = useCallback((key: string, seconds: number, label: string) => {
-    // Unlock audio on this user gesture (idempotent)
     unlockAudio()
-    // Schedule beeps to fire at T+seconds via Web Audio — this survives
-    // tab backgrounding because Web Audio runs independent of setInterval.
     scheduleBeeps(seconds)
-    // Kick off notification permission (first time only) then schedule a
-    // system notification via setTimeout — works while tab is backgrounded.
+    scheduleVibrationAt(seconds)
     const fireAt = Date.now() + seconds * 1000
     ensureNotifPermission().then(p => {
       if (p === 'granted') {
-        // Direct page setTimeout (used while tab is active / backgrounded)
         window.setTimeout(() => fireNotification('Timer done!', `${label} is ready.`), seconds * 1000)
-        // And offload to the service worker (fires on locked screen when PWA installed)
         scheduleSwNotification(fireAt, 'Timer done!', `${label} is ready.`)
       }
     })
-    setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, startedAt: Date.now(), label } }))
+    setTimers(prev => ({ ...prev, [key]: { active: true, total: seconds, remaining: seconds, startedAt: Date.now(), label, alarmed: false } }))
   }, [])
 
   const replayAlert = useCallback(() => {
@@ -1604,8 +1645,14 @@ export default function CookModePage() {
   }, [recipe, slug])
 
   const dismissAlert = useCallback((key: string, index: number) => {
+    cancelAllAlerts()
     cancelSwNotification(key)
     setTimerAlerts(a => a.filter((_, j) => j !== index))
+  }, [])
+
+  const stopAllAlarms = useCallback(() => {
+    cancelAllAlerts()
+    setTimerAlerts([])
   }, [])
 
   // Unlock AudioContext on first user gesture anywhere on the page —
@@ -2100,6 +2147,30 @@ export default function CookModePage() {
         )
       })()}
 
+      {/* Close-page warning — shown once per session when a timer is running. */}
+      {!closeWarningDismissed && Object.values(timers).some(t => t.active && t.remaining > 0) && (
+        <div style={{
+          padding: '8px 14px', margin: '6px 24px 0',
+          background: C.goldBg, border: `1px solid ${C.gold}80`, borderRadius: 8,
+          display: 'flex', alignItems: 'center', gap: 10, animation: 'slideUp 0.2s ease',
+          flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gold} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span style={{ flex: 1, fontSize: 12, fontFamily: SANS, color: C.text, lineHeight: 1.4 }}>
+            <strong style={{ color: C.gold }}>Heads up — </strong>
+            this timer stops if you close the page. For background timers, add Recipe Index to your home screen.
+          </span>
+          <button onClick={dismissCloseWarning} aria-label="Dismiss warning" style={{
+            padding: '4px 8px', borderRadius: 4, border: 'none', background: 'transparent',
+            color: C.text3, fontSize: 14, cursor: 'pointer', lineHeight: 1,
+          }}>×</button>
+        </div>
+      )}
+
       {/* Active substitution banner */}
       <SwapBanner swaps={activeSwaps} onRemove={removeSwap} />
 
@@ -2116,6 +2187,15 @@ export default function CookModePage() {
               }}>
                 <span style={{ fontSize: 14 }}>✓</span>
                 <span style={{ flex: 1, fontSize: 12, fontFamily: SANS, color: C.text }}>{alert.label} timer is done!</span>
+                <button onClick={stopAllAlarms} title="Stop the alarm" style={{
+                  padding: '4px 10px', borderRadius: 4, border: 'none',
+                  background: C.accent, color: '#fff',
+                  fontSize: 10, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
+                  display: 'flex', alignItems: 'center', gap: 4, letterSpacing: 0.3,
+                }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
+                  Stop
+                </button>
                 <button onClick={replayAlert} title="Replay alert" style={{
                   padding: '4px 8px', borderRadius: 4, border: `1px solid ${C.accent}`, background: 'transparent',
                   color: C.accent, fontSize: 10, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
