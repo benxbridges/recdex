@@ -106,6 +106,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
 
   const [shuffledRecipes, setShuffledRecipes] = useState<Recipe[]>([])
+  const [noteExpanded, setNoteExpanded] = useState(false)
   const allRecipesRef = useRef<Recipe[]>([])
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -782,29 +783,42 @@ export default function Home() {
           background: C.warm,
           border: `1px solid ${C.ruleLight}`,
         }}>
-          <p style={{
-            fontSize: 10, fontWeight: 700, color: C.accent,
-            textTransform: 'uppercase', letterSpacing: 1.5,
-            fontFamily: MONO, margin: '0 0 14px',
-          }}>
-            A note from Ben
-          </p>
-          {BENS_NOTE_PARAGRAPHS.map((p, i) => (
-            <p key={i} style={{
-              fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
-              color: C.text, lineHeight: 1.65,
-              margin: i < BENS_NOTE_PARAGRAPHS.length - 1 ? '0 0 10px' : 0,
-            }}>
-              {p}
-            </p>
-          ))}
-          <p style={{
-            fontFamily: MONO, fontSize: 11, color: C.text3,
-            margin: '18px 0 0', textAlign: 'right' as const,
-            letterSpacing: 0.3,
-          }}>
-            — Ben
-          </p>
+          <button
+            onClick={() => setNoteExpanded(v => !v)}
+            aria-expanded={noteExpanded}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: 0, margin: noteExpanded ? '0 0 14px' : 0,
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 700, color: C.accent,
+              textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO,
+            }}
+          >
+            <span>A note from Ben</span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" style={{ transform: noteExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          {noteExpanded && (
+            <>
+              {BENS_NOTE_PARAGRAPHS.map((p, i) => (
+                <p key={i} style={{
+                  fontFamily: SERIF, fontSize: isMobile ? 15 : 16, fontWeight: 400,
+                  color: C.text, lineHeight: 1.65,
+                  margin: i < BENS_NOTE_PARAGRAPHS.length - 1 ? '0 0 10px' : 0,
+                }}>
+                  {p}
+                </p>
+              ))}
+              <p style={{
+                fontFamily: MONO, fontSize: 11, color: C.text3,
+                margin: '18px 0 0', textAlign: 'right' as const,
+                letterSpacing: 0.3,
+              }}>
+                — Ben
+              </p>
+            </>
+          )}
         </div>
       </div>
 
