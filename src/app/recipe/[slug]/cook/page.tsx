@@ -1198,7 +1198,11 @@ export default function CookModePage() {
     })
   }
 
-  // Load persisted ingredient checks + swaps
+  // Load persisted ingredient checks + swaps + active step + timers.
+  // This lets a user tab away (text, Instagram, another app) and return to
+  // cook mode exactly where they left off, even after a full reload. Timers
+  // use wall-clock startedAt, so remaining time is recomputed against
+  // Date.now() on rehydrate.
   useEffect(() => {
     try {
       const saved = localStorage.getItem(`recdex-checked-${slug}`)
@@ -1208,7 +1212,53 @@ export default function CookModePage() {
       const savedSwaps = localStorage.getItem(`recdex-swaps-${slug}`)
       if (savedSwaps) setActiveSwaps(JSON.parse(savedSwaps))
     } catch { /* */ }
+    try {
+      const savedStep = localStorage.getItem(`recdex-step-${slug}`)
+      if (savedStep) {
+        const n = parseInt(savedStep, 10)
+        if (Number.isFinite(n) && n >= 0) setActiveStep(n)
+      }
+    } catch { /* */ }
+    try {
+      const savedTimers = localStorage.getItem(`recdex-timers-${slug}`)
+      if (savedTimers) {
+        const parsed = JSON.parse(savedTimers) as Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string }>
+        // Recompute remaining against wall clock so a timer that finished
+        // while the tab was closed shows 0 instead of its pre-close value.
+        const now = Date.now()
+        const rehydrated: typeof parsed = {}
+        Object.keys(parsed).forEach(k => {
+          const t = parsed[k]
+          if (!t) return
+          if (t.active && t.startedAt) {
+            const elapsed = Math.floor((now - t.startedAt) / 1000)
+            const remaining = Math.max(0, t.total - elapsed)
+            rehydrated[k] = { ...t, remaining }
+          } else {
+            rehydrated[k] = t
+          }
+        })
+        setTimers(rehydrated)
+      }
+    } catch { /* */ }
   }, [slug])
+
+  // Persist active step so tab-switches / reloads resume where the user was.
+  useEffect(() => {
+    try { localStorage.setItem(`recdex-step-${slug}`, String(activeStep)) } catch { /* */ }
+  }, [slug, activeStep])
+
+  // Persist timers on every change. startedAt is wall-clock absolute so we
+  // can recompute remaining on rehydrate.
+  useEffect(() => {
+    try {
+      if (Object.keys(timers).length === 0) {
+        localStorage.removeItem(`recdex-timers-${slug}`)
+      } else {
+        localStorage.setItem(`recdex-timers-${slug}`, JSON.stringify(timers))
+      }
+    } catch { /* */ }
+  }, [slug, timers])
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 820)

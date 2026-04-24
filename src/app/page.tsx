@@ -7,6 +7,8 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
+import BensNoteModal from '@/app/components/BensNoteModal'
+import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 // ===== TYPES =====
 type Recipe = {
@@ -360,6 +362,9 @@ export default function Home() {
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       `}</style>
 
+      {/* First-visit intro from Ben */}
+      <BensNoteModal />
+
       {/* ===== HEADER ===== */}
       <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
@@ -563,16 +568,6 @@ export default function Home() {
                 />
               </div>
             </div>
-          </div>
-
-          {/* Full pantry shortcut — sits below toolbox, not inside */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', maxWidth: 480, margin: '10px auto 0' }}>
-            <Link href="/pantry" style={{
-              fontSize: 11, fontFamily: MONO, color: C.text3,
-              textDecoration: 'none', letterSpacing: 0.3,
-            }}>
-              Full pantry →
-            </Link>
           </div>
 
           {/* Extraction preview */}
@@ -794,20 +789,15 @@ export default function Home() {
           }}>
             A note from Ben
           </p>
-          <p style={{
-            fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
-            color: C.text, lineHeight: 1.65,
-            margin: '0 0 10px',
-          }}>
-            Hey — I&apos;m Ben. I love cooking. I made this site because I wanted an easier way to follow recipes, sub ingredients, set timers, and learn techniques, without changing apps.
-          </p>
-          <p style={{
-            fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
-            color: C.text, lineHeight: 1.65,
-            margin: 0,
-          }}>
-            I also think recipes should be public knowledge — without fanfare and 6,000 ads between you and a good dinner. Hope you enjoy.
-          </p>
+          {BENS_NOTE_PARAGRAPHS.map((p, i) => (
+            <p key={i} style={{
+              fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
+              color: C.text, lineHeight: 1.65,
+              margin: i < BENS_NOTE_PARAGRAPHS.length - 1 ? '0 0 10px' : 0,
+            }}>
+              {p}
+            </p>
+          ))}
           <p style={{
             fontFamily: MONO, fontSize: 11, color: C.text3,
             margin: '18px 0 0', textAlign: 'right' as const,
