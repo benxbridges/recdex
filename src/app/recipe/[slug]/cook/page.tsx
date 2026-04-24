@@ -109,6 +109,8 @@ function EggDot({ size = 9 }: { size?: number }) {
 
 let sharedAudioCtx: AudioContext | null = null
 let audioUnlocked = false
+let silentPrimerEl: HTMLAudioElement | null = null
+let silentPrimerUrl: string | null = null
 
 function getAudioCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null
@@ -123,14 +125,68 @@ function getAudioCtx(): AudioContext | null {
   return sharedAudioCtx
 }
 
+// Build a 0.1s silent WAV blob once so we can use it as an HTMLAudioElement
+// source. Playing this element in a loop keeps iOS's audio session pinned to
+// "Playback" category, which lets Web Audio beeps bypass the silent switch.
+function getSilentPrimerUrl(): string | null {
+  if (typeof window === 'undefined') return null
+  if (silentPrimerUrl) return silentPrimerUrl
+  try {
+    const sampleRate = 8000
+    const samples = 800 // 0.1s
+    const headerSize = 44
+    const buffer = new ArrayBuffer(headerSize + samples)
+    const view = new DataView(buffer)
+    // "RIFF"
+    view.setUint8(0, 0x52); view.setUint8(1, 0x49); view.setUint8(2, 0x46); view.setUint8(3, 0x46)
+    view.setUint32(4, buffer.byteLength - 8, true)
+    // "WAVE"
+    view.setUint8(8, 0x57); view.setUint8(9, 0x41); view.setUint8(10, 0x56); view.setUint8(11, 0x45)
+    // "fmt "
+    view.setUint8(12, 0x66); view.setUint8(13, 0x6D); view.setUint8(14, 0x74); view.setUint8(15, 0x20)
+    view.setUint32(16, 16, true)
+    view.setUint16(20, 1, true) // PCM
+    view.setUint16(22, 1, true) // mono
+    view.setUint32(24, sampleRate, true)
+    view.setUint32(28, sampleRate, true)
+    view.setUint16(32, 1, true)
+    view.setUint16(34, 8, true)
+    // "data"
+    view.setUint8(36, 0x64); view.setUint8(37, 0x61); view.setUint8(38, 0x74); view.setUint8(39, 0x61)
+    view.setUint32(40, samples, true)
+    for (let i = 0; i < samples; i++) view.setUint8(headerSize + i, 128)
+    silentPrimerUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
+    return silentPrimerUrl
+  } catch { return null }
+}
+
+function startSilentPrimer() {
+  if (typeof window === 'undefined') return
+  if (silentPrimerEl && !silentPrimerEl.paused) return
+  try {
+    const url = getSilentPrimerUrl()
+    if (!url) return
+    if (!silentPrimerEl) {
+      silentPrimerEl = new Audio(url)
+      silentPrimerEl.loop = true
+      silentPrimerEl.preload = 'auto'
+      // iOS needs both attrs — `playsinline` allows inline playback without
+      // taking over the screen; volume 0.01 keeps it inaudible without
+      // confusing iOS's "is this really silent?" session check.
+      silentPrimerEl.setAttribute('playsinline', '')
+      silentPrimerEl.setAttribute('webkit-playsinline', '')
+      silentPrimerEl.volume = 0.01
+    }
+    silentPrimerEl.play().catch(() => { /* ignore */ })
+  } catch { /* ignore */ }
+}
+
 function unlockAudio() {
   if (audioUnlocked) return
   const ctx = getAudioCtx()
   if (!ctx) return
   try {
-    // iOS requires resuming the context inside a user gesture
     if (ctx.state === 'suspended') ctx.resume()
-    // Play a silent buffer to fully unlock
     const buf = ctx.createBuffer(1, 1, 22050)
     const src = ctx.createBufferSource()
     src.buffer = buf
@@ -138,35 +194,55 @@ function unlockAudio() {
     src.start(0)
     audioUnlocked = true
   } catch { /* ignore */ }
+  // Kick off the silent primer so iOS silent switch is bypassed for the
+  // remainder of the session.
+  startSilentPrimer()
 }
 
-// Schedule a 3-beep alert at a specific AudioContext time (seconds from now).
-// Survives tab backgrounding.
+// Schedule a louder alert sequence at a specific AudioContext time (seconds
+// from now). Survives tab backgrounding. Uses a square+sine layered tone that
+// reads as an alarm, not a toy beep. Repeats twice so the alert lingers for
+// several seconds even if the first pass is missed.
 function scheduleBeeps(offsetSeconds: number) {
   const ctx = getAudioCtx()
   if (!ctx) return
   try {
     if (ctx.state === 'suspended') ctx.resume().catch(() => { /* ignore */ })
     const startAt = Math.max(ctx.currentTime, ctx.currentTime + offsetSeconds)
-    for (let i = 0; i < 3; i++) {
-      const osc = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.connect(gain)
-      gain.connect(ctx.destination)
-      osc.frequency.value = 880
-      const t = startAt + i * 0.25
-      gain.gain.setValueAtTime(0.0001, t)
-      gain.gain.exponentialRampToValueAtTime(0.25, t + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18)
-      osc.start(t)
-      osc.stop(t + 0.2)
+    // 6 pulses, alternating pitch — roughly 2 seconds total, then repeat
+    // pattern once more for emphasis.
+    const pattern = [880, 1175, 880, 1175, 880, 1175]
+    for (let rep = 0; rep < 2; rep++) {
+      for (let i = 0; i < pattern.length; i++) {
+        const t = startAt + rep * 2.4 + i * 0.28
+        const freq = pattern[i]
+        // Square oscillator for the edgy body
+        const sq = ctx.createOscillator()
+        sq.type = 'square'
+        sq.frequency.value = freq
+        // Sine oscillator one octave down for warmth
+        const sine = ctx.createOscillator()
+        sine.type = 'sine'
+        sine.frequency.value = freq / 2
+        const gain = ctx.createGain()
+        sq.connect(gain)
+        sine.connect(gain)
+        gain.connect(ctx.destination)
+        gain.gain.setValueAtTime(0.0001, t)
+        gain.gain.exponentialRampToValueAtTime(0.7, t + 0.01)
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22)
+        sq.start(t); sine.start(t)
+        sq.stop(t + 0.24); sine.stop(t + 0.24)
+      }
     }
   } catch { /* ignore */ }
 }
 
 function playBeepsNow() {
   scheduleBeeps(0)
-  try { navigator.vibrate?.([200, 100, 200, 100, 200]) } catch { /* ignore */ }
+  // Longer, more insistent vibration pattern. Works on Android vibrate mode;
+  // silently ignored on iOS (which doesn't expose navigator.vibrate).
+  try { navigator.vibrate?.([400, 150, 400, 150, 400, 150, 600]) } catch { /* ignore */ }
 }
 
 // System notification — works across tab-switch, backgrounded tabs, and
