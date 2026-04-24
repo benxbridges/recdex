@@ -416,9 +416,9 @@ export default function Home() {
           {/* ─── Toolbox ─── */}
           <div style={{
             maxWidth: 480, margin: '0 auto',
-            background: C.bg, border: `1.5px solid ${C.rule}`,
+            background: C.bg, border: `1.5px solid ${C.accent}`,
             borderRadius: 16, overflow: 'hidden',
-            boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+            boxShadow: '0 4px 24px rgba(232,123,90,0.15), 0 1px 2px rgba(232,123,90,0.08)',
             textAlign: 'left' as const,
           }}>
             {/* ── Row 1: Paste a recipe link ── */}
