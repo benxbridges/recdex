@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
@@ -68,13 +67,14 @@ function GalleryIcon({ size = 20 }: { size?: number }) {
   )
 }
 
+const MAX_PAGES = 4
+
 export default function ScanPage() {
-  const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const addPageInputRef = useRef<HTMLInputElement>(null)
 
-  const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [imageData, setImageData] = useState<string | null>(null)
+  const [images, setImages] = useState<string[]>([])
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState('')
   const [recipe, setRecipe] = useState<ScannedRecipe | null>(null)
@@ -82,40 +82,56 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null)
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    // Reset the input so picking the same file again still fires onChange
+    e.target.value = ''
+    if (files.length === 0) return
 
     setError(null)
     setRecipe(null)
     setRawText('')
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file.')
+    const remaining = MAX_PAGES - images.length
+    if (remaining <= 0) {
+      setError(`You can add up to ${MAX_PAGES} pages.`)
       return
     }
+    const toAdd = files.slice(0, remaining)
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Image is too large. Please use an image under 10MB.')
-      return
+    for (const file of toAdd) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select image files only.')
+        return
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Each image must be under 10MB.')
+        return
+      }
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      setImagePreview(result)
-      setImageData(result)
-    }
-    reader.readAsDataURL(file)
+    Promise.all(
+      toAdd.map(file => new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      }))
+    ).then(dataUrls => {
+      setImages(prev => [...prev, ...dataUrls].slice(0, MAX_PAGES))
+    }).catch(() => setError('Could not read image. Try another file.'))
+  }
+
+  function removeImage(index: number) {
+    setImages(prev => prev.filter((_, i) => i !== index))
+    setError(null)
   }
 
   async function handleScan() {
-    if (!imageData) return
+    if (images.length === 0) return
 
     setScanning(true)
     setError(null)
-    setScanProgress('Analyzing image...')
+    setScanProgress(images.length > 1 ? `Analyzing ${images.length} pages...` : 'Analyzing image...')
 
     try {
       const progressTimer = setTimeout(() => setScanProgress('Extracting recipe details...'), 3000)
@@ -124,7 +140,7 @@ export default function ScanPage() {
       const res = await fetch('/api/scan-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData }),
+        body: JSON.stringify({ images }),
       })
 
       clearTimeout(progressTimer)
@@ -176,8 +192,7 @@ export default function ScanPage() {
   }
 
   function handleReset() {
-    setImagePreview(null)
-    setImageData(null)
+    setImages([])
     setRecipe(null)
     setRawText('')
     setError(null)
@@ -216,7 +231,7 @@ export default function ScanPage() {
       <div style={{ maxWidth: 600, margin: '0 auto', padding: 'clamp(16px, 4vw, 24px)' }}>
 
         {/* ─── No image yet: capture UI ─── */}
-        {!imagePreview && !recipe && (
+        {images.length === 0 && !recipe && (
           <div style={{ textAlign: 'center', paddingTop: 40 }}>
             {/* Camera capture button */}
             <button
@@ -256,7 +271,7 @@ export default function ScanPage() {
               fontFamily: SANS, fontSize: 13, color: C.text3,
               margin: '0 0 28px',
             }}>
-              Point your camera at a cookbook recipe
+              Snap each page — up to {MAX_PAGES}. Recipes can span a spread.
             </p>
 
             {/* Gallery upload option */}
@@ -279,6 +294,7 @@ export default function ScanPage() {
               ref={galleryInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileSelect}
               style={{ display: 'none' }}
             />
@@ -294,39 +310,106 @@ export default function ScanPage() {
         )}
 
         {/* ─── Image preview + scan button ─── */}
-        {imagePreview && !recipe && (
+        {images.length > 0 && !recipe && (
           <div>
-            {/* Image preview */}
+            {/* Pages header */}
             <div style={{
-              borderRadius: 12, overflow: 'hidden',
-              border: `1px solid ${C.ruleLight}`,
-              marginBottom: 16,
-              position: 'relative',
+              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+              marginBottom: 10,
             }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imagePreview}
-                alt="Cookbook page"
-                style={{
-                  width: '100%', display: 'block',
-                  maxHeight: 400, objectFit: 'contain',
-                  background: C.warm,
-                }}
-              />
-              {/* Retake button overlay */}
+              <p style={{
+                fontSize: 10, fontWeight: 700, color: C.text3,
+                textTransform: 'uppercase', letterSpacing: 1.5,
+                fontFamily: MONO, margin: 0,
+              }}>
+                {images.length} {images.length === 1 ? 'page' : 'pages'}
+              </p>
               <button
                 onClick={handleReset}
                 style={{
-                  position: 'absolute', top: 10, right: 10,
-                  padding: '6px 12px', borderRadius: 6,
-                  background: 'rgba(0,0,0,0.6)', border: 'none',
-                  color: '#fff', fontSize: 11, fontFamily: SANS, fontWeight: 500,
-                  cursor: 'pointer',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: 11, fontFamily: SANS, color: C.text3, padding: 0,
                 }}
               >
-                Retake
+                Clear all
               </button>
             </div>
+
+            {/* Image grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: images.length === 1 ? '1fr' : 'repeat(2, 1fr)',
+              gap: 8,
+              marginBottom: 12,
+            }}>
+              {images.map((src, idx) => (
+                <div key={idx} style={{
+                  position: 'relative', borderRadius: 10, overflow: 'hidden',
+                  border: `1px solid ${C.ruleLight}`, background: C.warm,
+                  aspectRatio: images.length === 1 ? undefined : '3/4',
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={src}
+                    alt={`Page ${idx + 1}`}
+                    style={{
+                      width: '100%', height: '100%', display: 'block',
+                      maxHeight: images.length === 1 ? 400 : undefined,
+                      objectFit: images.length === 1 ? 'contain' : 'cover',
+                    }}
+                  />
+                  <span style={{
+                    position: 'absolute', top: 6, left: 6,
+                    padding: '3px 8px', borderRadius: 4,
+                    background: 'rgba(0,0,0,0.65)', color: '#fff',
+                    fontSize: 10, fontFamily: MONO, fontWeight: 600,
+                  }}>
+                    {idx + 1}
+                  </span>
+                  <button
+                    onClick={() => removeImage(idx)}
+                    aria-label={`Remove page ${idx + 1}`}
+                    style={{
+                      position: 'absolute', top: 6, right: 6,
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'rgba(0,0,0,0.65)', border: 'none',
+                      color: '#fff', fontSize: 14, lineHeight: 1,
+                      cursor: 'pointer', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add another page */}
+            {images.length < MAX_PAGES && (
+              <>
+                <button
+                  onClick={() => addPageInputRef.current?.click()}
+                  style={{
+                    width: '100%', padding: '12px 16px', borderRadius: 10,
+                    border: `1.5px dashed ${C.ruleLight}`, background: 'transparent',
+                    color: C.text2, fontSize: 13, fontFamily: SANS, fontWeight: 500,
+                    cursor: 'pointer', marginBottom: 16,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16, lineHeight: 1, color: C.accent }}>+</span>
+                  Add another page <span style={{ color: C.text3, fontFamily: MONO, fontSize: 11 }}>({MAX_PAGES - images.length} left)</span>
+                </button>
+                <input
+                  ref={addPageInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+              </>
+            )}
 
             {/* Error message */}
             {error && (
@@ -367,7 +450,7 @@ export default function ScanPage() {
                   {scanProgress}
                 </>
               ) : (
-                'Scan Recipe'
+                images.length > 1 ? `Scan ${images.length} pages` : 'Scan Recipe'
               )}
             </button>
 
