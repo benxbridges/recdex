@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 function EggDot({ size = 8 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
@@ -63,6 +64,38 @@ export default function AboutPage() {
         <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 40px' }}>
           An open recipe commons
         </p>
+
+        <div style={{
+          marginBottom: 40,
+          padding: '22px 24px',
+          borderRadius: 12,
+          background: C.warm,
+          border: `1px solid ${C.ruleLight}`,
+        }}>
+          <p style={{
+            fontSize: 10, fontWeight: 700, color: C.text3,
+            textTransform: 'uppercase', letterSpacing: 1.5,
+            fontFamily: MONO, margin: '0 0 14px',
+          }}>
+            A note from Ben
+          </p>
+          {BENS_NOTE_PARAGRAPHS.map((p, i) => (
+            <p key={i} style={{
+              fontFamily: SERIF, fontSize: 15,
+              color: C.text, lineHeight: 1.65,
+              margin: i < BENS_NOTE_PARAGRAPHS.length - 1 ? '0 0 10px' : 0,
+            }}>
+              {p}
+            </p>
+          ))}
+          <p style={{
+            fontFamily: MONO, fontSize: 11, color: C.text3,
+            margin: '14px 0 0', textAlign: 'right' as const,
+            letterSpacing: 0.3,
+          }}>
+            — Ben
+          </p>
+        </div>
 
         <div style={sectionStyle}>
           <h3 style={headingStyle}>How it works</h3>
