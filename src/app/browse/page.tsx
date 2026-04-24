@@ -745,7 +745,7 @@ function BrowseContent() {
       {/* FOOTER */}
       <div style={{ borderTop: `1px solid ${C.ruleLight}`, padding: `20px ${pad}`, textAlign: 'center' }}>
         <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: 0 }}>
-          Recipes are free to read, use, and share.{' '}
+          A collection of kitchen tools and recipes to help you become your best cook.{' '}
           <Link href="/" style={{ color: C.accent, textDecoration: 'none' }}>← Back home</Link>
         </p>
       </div>
