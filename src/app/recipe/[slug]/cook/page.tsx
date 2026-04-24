@@ -78,6 +78,14 @@ function formatTimerDisplay(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+// Absolute wall-clock time the timer will fire. Shown next to the countdown
+// so a user glancing at their lock-screen clock knows when the pasta is done
+// without returning to this tab.
+function formatExpiryTime(startedAt: number, totalSeconds: number): string {
+  const fireAt = new Date(startedAt + totalSeconds * 1000)
+  return fireAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
 // ─── Egg dot (brand element) ─────────────────────────────────────────────
 
 function EggDot({ size = 9 }: { size?: number }) {
@@ -246,6 +254,11 @@ function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
         </div>
         <div style={{ flex: 1 }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: isFinished ? C.accent : isUrgent ? C.accent : C.text, margin: 0, fontFamily: SANS }}>{isFinished ? `${label} — Done!` : isUrgent ? `${label} — Almost!` : label}</p>
+          {!isFinished && (
+            <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '2px 0 0', letterSpacing: 0.2 }}>
+              done at {formatExpiryTime(t.startedAt, t.total)}
+            </p>
+          )}
           <div style={{ height: 3, borderRadius: 2, background: C.timerRing, marginTop: 5, overflow: 'hidden' }}>
             <div style={{ height: '100%', borderRadius: 2, background: ringColor, width: `${pct}%`, transition: 'width 0.5s ease' }} />
           </div>
@@ -495,6 +508,11 @@ function FloatingTimerPanel({ timers, onGoToStep, onStartCustom }: {
                   {isFinished ? '✓' : formatTimerDisplay(timer.remaining)}
                 </span>
               </div>
+              {!isFinished && (
+                <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '0 0 4px', letterSpacing: 0.2 }}>
+                  done at {formatExpiryTime(timer.startedAt, timer.total)}
+                </p>
+              )}
               <div style={{ height: 3, borderRadius: 2, background: C.ruleLight, overflow: 'hidden' }}>
                 <div style={{ height: '100%', borderRadius: 2, background: isFinished ? C.green : isUrgent ? C.accent : C.accent, width: `${pct}%`, transition: 'width 0.5s ease' }} />
               </div>
@@ -1260,6 +1278,27 @@ export default function CookModePage() {
     } catch { /* */ }
   }, [slug, timers])
 
+  // Cross-tab sync: if the same recipe is open in another tab and a timer is
+  // started or the active step changes there, the storage event fires in
+  // every other tab for that origin. Mirror the change locally so both tabs
+  // stay in sync without polling.
+  useEffect(() => {
+    const timersKey = `recdex-timers-${slug}`
+    const stepKey = `recdex-step-${slug}`
+    const handler = (e: StorageEvent) => {
+      if (e.key === timersKey) {
+        try {
+          setTimers(e.newValue ? JSON.parse(e.newValue) : {})
+        } catch { /* */ }
+      } else if (e.key === stepKey && e.newValue) {
+        const n = parseInt(e.newValue, 10)
+        if (Number.isFinite(n) && n >= 0) setActiveStep(n)
+      }
+    }
+    window.addEventListener('storage', handler)
+    return () => window.removeEventListener('storage', handler)
+  }, [slug])
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 820)
     check(); window.addEventListener('resize', check)
@@ -1392,13 +1431,18 @@ export default function CookModePage() {
     }
 
     const interval = setInterval(recalcTimers, 1000)
-    // Recalculate immediately when user returns to the tab
+    // Recalculate immediately when user returns to the tab. We listen to both
+    // visibilitychange (standard) and resume (Page Lifecycle API) because
+    // Chrome can fully freeze a backgrounded tab — setInterval stops and
+    // visibility may not fire — so resume is the belt-and-suspenders path.
     const handleVisibility = () => { if (document.visibilityState === 'visible') recalcTimers() }
     document.addEventListener('visibilitychange', handleVisibility)
+    document.addEventListener('resume', recalcTimers)
 
     return () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', handleVisibility)
+      document.removeEventListener('resume', recalcTimers)
     }
   }, [timers])
 
