@@ -779,6 +779,45 @@ export default function Home() {
         </div>
       )}
 
+      {/* ===== A NOTE FROM BEN ===== */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '8px 16px 32px' : '16px clamp(16px,4vw,24px) 48px' }}>
+        <div style={{
+          padding: isMobile ? '22px 20px' : '28px 32px',
+          borderRadius: 14,
+          background: C.warm,
+          border: `1px solid ${C.ruleLight}`,
+        }}>
+          <p style={{
+            fontSize: 10, fontWeight: 700, color: C.text3,
+            textTransform: 'uppercase', letterSpacing: 1.5,
+            fontFamily: MONO, margin: '0 0 14px',
+          }}>
+            A note from Ben
+          </p>
+          <p style={{
+            fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
+            color: C.text, lineHeight: 1.65,
+            margin: '0 0 10px',
+          }}>
+            Hey — I&apos;m Ben. I love cooking. I made this site because I wanted an easier way to follow recipes, sub ingredients, set timers, and learn techniques, without changing apps.
+          </p>
+          <p style={{
+            fontFamily: SERIF, fontSize: isMobile ? 15 : 16,
+            color: C.text, lineHeight: 1.65,
+            margin: 0,
+          }}>
+            I also think recipes should be public knowledge — without fanfare and 6,000 ads between you and a good dinner. Hope you enjoy.
+          </p>
+          <p style={{
+            fontFamily: MONO, fontSize: 11, color: C.text3,
+            margin: '18px 0 0', textAlign: 'right' as const,
+            letterSpacing: 0.3,
+          }}>
+            — Ben
+          </p>
+        </div>
+      </div>
+
       {/* ===== FOOTER ===== */}
       <footer style={{ borderTop: `1.5px solid ${C.text}`, marginTop: 'auto' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px clamp(16px,4vw,24px)' }}>
