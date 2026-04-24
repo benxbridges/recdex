@@ -1235,49 +1235,48 @@ export default function RecipePage() {
                   </div>
                 ))}
               </div>
-              <ConsensusAnnotations slug={slug} />
+              {/* Copy ingredients to clipboard — sits directly under the
+                  final ingredient so the action is tied to the list it acts on. */}
+              <button
+                onClick={async () => {
+                  const lines = ingredientItems.map(item => {
+                    const amount = scaleAmount(item.amount, servingsMultiplier)
+                    const head = [amount, item.unit].filter(Boolean).join(' ')
+                    return `${head ? head + ' ' : ''}${item.name}${item.notes ? ` (${item.notes})` : ''}`
+                  })
+                  const payload = `${recipe.title}\n${lines.join('\n')}`
+                  try {
+                    await navigator.clipboard.writeText(payload)
+                    setShoppingToast(true)
+                    setTimeout(() => setShoppingToast(false), 2000)
+                  } catch {
+                    const ta = document.createElement('textarea')
+                    ta.value = payload
+                    document.body.appendChild(ta)
+                    ta.select()
+                    try { document.execCommand('copy') } catch { /* ignore */ }
+                    document.body.removeChild(ta)
+                    setShoppingToast(true)
+                    setTimeout(() => setShoppingToast(false), 2000)
+                  }
+                }}
+                style={{
+                  marginTop: 14, padding: '10px 18px', borderRadius: 6,
+                  border: `1.5px solid ${C.accent}`, background: C.accentBg,
+                  color: C.accent, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: SANS,
+                  display: 'inline-flex', alignItems: 'center', gap: 7,
+                  transition: 'all 0.15s',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="9" y="9" width="13" height="13" rx="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+                Copy to clipboard
+              </button>
             </div>
-            {/* Copy ingredients to clipboard — keeps the list portable without
-                forcing users into a separate shopping-list flow. */}
-            <button
-              onClick={async () => {
-                const lines = ingredientItems.map(item => {
-                  const amount = scaleAmount(item.amount, servingsMultiplier)
-                  const head = [amount, item.unit].filter(Boolean).join(' ')
-                  return `${head ? head + ' ' : ''}${item.name}${item.notes ? ` (${item.notes})` : ''}`
-                })
-                const payload = `${recipe.title}\n${lines.join('\n')}`
-                try {
-                  await navigator.clipboard.writeText(payload)
-                  setShoppingToast(true)
-                  setTimeout(() => setShoppingToast(false), 2000)
-                } catch {
-                  // Clipboard API unavailable — fall back to a textarea select-and-copy
-                  const ta = document.createElement('textarea')
-                  ta.value = payload
-                  document.body.appendChild(ta)
-                  ta.select()
-                  try { document.execCommand('copy') } catch { /* ignore */ }
-                  document.body.removeChild(ta)
-                  setShoppingToast(true)
-                  setTimeout(() => setShoppingToast(false), 2000)
-                }
-              }}
-              style={{
-                marginTop: 12, padding: '10px 18px', borderRadius: 6,
-                border: `1.5px solid ${C.accent}`, background: C.accentBg,
-                color: C.accent, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', fontFamily: SANS,
-                display: 'flex', alignItems: 'center', gap: 7,
-                transition: 'all 0.15s',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" />
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-              </svg>
-              Copy to clipboard
-            </button>
+            <ConsensusAnnotations slug={slug} />
             {shoppingToast && (
               <div style={{
                 position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
@@ -1306,18 +1305,18 @@ export default function RecipePage() {
 
         {isMobile && <div style={{ height: 1, background: C.rule }} />}
 
-        {/* Process — a short prose arc that doesn't compete with cook mode */}
+        {/* Recipe Overview — a short prose arc that doesn't compete with cook mode */}
         {hasSteps ? (
           <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.1s both' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Process</h2>
+              <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text }}>Recipe Overview</h2>
               <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
                 {recipe.steps.length} steps{recipe.time_total ? ` · ${formatTime(recipe.time_total)}` : ''}
               </span>
             </div>
 
             {recipe.summary ? (
-              <p style={{ fontFamily: SERIF, fontSize: 17, lineHeight: 1.65, color: C.text2, margin: '0 0 24px' }}>
+              <p style={{ fontFamily: SERIF, fontSize: 17, fontStyle: 'italic', lineHeight: 1.65, color: C.text2, margin: '0 0 24px' }}>
                 {recipe.summary}
               </p>
             ) : (
@@ -1363,7 +1362,7 @@ export default function RecipePage() {
           </div>
         ) : (
           <div style={{ paddingTop: 24, paddingBottom: 24 }}>
-            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Process</h2>
+            <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, marginBottom: 8 }}>Recipe Overview</h2>
             <p style={{ fontSize: 13, color: C.text3, fontFamily: SANS, lineHeight: 1.6 }}>No step-by-step instructions available for this recipe.</p>
           </div>
         )}
@@ -1398,7 +1397,7 @@ export default function RecipePage() {
           return (
             <>
               <div style={{ paddingTop: 24, paddingBottom: 24, animation: 'fadeIn 0.3s ease 0.08s both' }}>
-                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.text, margin: '0 0 14px' }}>Kitchen Consensus</h2>
+                <h2 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.blue, margin: '0 0 14px' }}>Kitchen Consensus</h2>
                 <div style={{
                   padding: '20px 22px', borderRadius: 10,
                   background: `linear-gradient(135deg, ${C.warm} 0%, ${C.cool} 100%)`,

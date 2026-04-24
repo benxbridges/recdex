@@ -6,18 +6,33 @@ import { BENS_NOTE_PARAGRAPHS, BENS_NOTE_STORAGE_KEY } from '@/app/lib/bens-note
 
 export default function BensNoteModal() {
   const [open, setOpen] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 560)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   useEffect(() => {
     try {
       const seen = localStorage.getItem(BENS_NOTE_STORAGE_KEY)
       if (!seen) {
-        // Small delay so the page paints first — the modal lands feeling
-        // intentional rather than blocking.
         const t = setTimeout(() => setOpen(true), 400)
         return () => clearTimeout(t)
       }
     } catch { /* storage blocked — skip */ }
   }, [])
+
+  // Lock body scroll while the modal is up so users don't scroll the page
+  // instead of the modal content.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [open])
 
   const close = () => {
     setOpen(false)
@@ -36,56 +51,70 @@ export default function BensNoteModal() {
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(20, 15, 10, 0.55)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20, animation: 'fadeIn 0.25s ease',
+        padding: isMobile ? 12 : 20, animation: 'fadeIn 0.25s ease',
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         style={{
           position: 'relative',
-          maxWidth: 520, width: '100%',
+          maxWidth: 460, width: '100%',
+          maxHeight: isMobile ? 'calc(100vh - 24px)' : 'calc(100vh - 40px)',
+          display: 'flex', flexDirection: 'column',
           background: C.warm,
           borderRadius: 14,
           border: `1px solid ${C.ruleLight}`,
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25)',
-          padding: '36px 32px 28px',
           animation: 'slideUp 0.3s ease',
+          overflow: 'hidden',
         }}
       >
         <button
           onClick={close}
           aria-label="Close"
           style={{
-            position: 'absolute', top: 10, right: 10,
-            width: 30, height: 30, borderRadius: 999, border: 'none',
-            background: 'transparent', color: C.text3, cursor: 'pointer',
-            fontSize: 20, lineHeight: 1,
+            position: 'absolute', top: 8, right: 8, zIndex: 2,
+            width: 36, height: 36, borderRadius: 999, border: 'none',
+            background: 'rgba(0,0,0,0.04)', color: C.text2, cursor: 'pointer',
+            fontSize: 22, lineHeight: 1,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
           ×
         </button>
 
-        <p style={{
-          fontSize: 10, fontWeight: 700, color: C.text3,
-          textTransform: 'uppercase', letterSpacing: 1.5,
-          fontFamily: MONO, margin: '0 0 14px',
+        {/* Scrollable body */}
+        <div style={{
+          overflowY: 'auto',
+          padding: isMobile ? '22px 20px 16px' : '32px 32px 20px',
+          WebkitOverflowScrolling: 'touch',
         }}>
-          A note from Ben
-        </p>
-
-        {BENS_NOTE_PARAGRAPHS.map((p, i) => (
-          <p key={i} style={{
-            fontFamily: SERIF, fontSize: 16,
-            color: C.text, lineHeight: 1.65,
-            margin: i === 0 ? '0 0 12px' : '0 0 12px',
+          <p style={{
+            fontSize: 10, fontWeight: 700, color: C.accent,
+            textTransform: 'uppercase', letterSpacing: 1.5,
+            fontFamily: MONO, margin: '0 0 14px',
           }}>
-            {p}
+            A note from Ben
           </p>
-        ))}
 
+          {BENS_NOTE_PARAGRAPHS.map((p, i) => (
+            <p key={i} style={{
+              fontFamily: SERIF, fontSize: isMobile ? 14 : 15, fontWeight: 400,
+              color: C.text, lineHeight: 1.6,
+              margin: i < BENS_NOTE_PARAGRAPHS.length - 1 ? '0 0 10px' : 0,
+            }}>
+              {p}
+            </p>
+          ))}
+        </div>
+
+        {/* Sticky footer so the CTA is always reachable */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginTop: 18, gap: 12,
+          padding: isMobile ? '12px 20px 16px' : '14px 32px 20px',
+          borderTop: `1px solid ${C.ruleLight}`,
+          background: C.warm,
+          gap: 12, flexShrink: 0,
         }}>
           <span style={{
             fontFamily: MONO, fontSize: 11, color: C.text3, letterSpacing: 0.3,
