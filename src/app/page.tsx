@@ -368,7 +368,6 @@ export default function Home() {
               <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>The world's cookbook.</p>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
@@ -713,7 +712,7 @@ export default function Home() {
         <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '24px 16px' : '36px clamp(16px,4vw,24px)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Discover</p>
+              <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Discover</p>
               <button
                 onClick={() => shuffleRecipes(allRecipesRef.current)}
                 title="Shuffle"
@@ -763,7 +762,7 @@ export default function Home() {
       {categories.length > 0 && (
         <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 32px' : '28px clamp(16px,4vw,24px) 40px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Browse by cuisine</p>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Browse by cuisine</p>
             <Link href="/browse" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>See all {totalCount} →</Link>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -789,7 +788,7 @@ export default function Home() {
           border: `1px solid ${C.ruleLight}`,
         }}>
           <p style={{
-            fontSize: 10, fontWeight: 700, color: C.text3,
+            fontSize: 10, fontWeight: 700, color: C.accent,
             textTransform: 'uppercase', letterSpacing: 1.5,
             fontFamily: MONO, margin: '0 0 14px',
           }}>

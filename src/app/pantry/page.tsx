@@ -486,7 +486,6 @@ export default function PantryPage() {
               <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              {!isMobile && <p style={{ fontFamily: SANS, fontSize: 10, color: C.text3, margin: '3px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>}
             </div>
             {!isMobile ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>

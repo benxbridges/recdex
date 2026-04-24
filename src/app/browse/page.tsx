@@ -281,23 +281,21 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
             </div>
         }
       </div>
-      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
-        <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, transition: 'color 0.1s' }}>
-          {recipe.title}
-        </span>
-        {recipe.description && (
-          <span style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, marginLeft: 8 }}>
-            {recipe.description}
-          </span>
-        )}
+      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 500, color: hovered ? C.accent : C.text, lineHeight: 1.3, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'color 0.1s' }}>
+        {recipe.title}
       </span>
+      {recipe.time_total && (
+        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0 }}>{formatTime(recipe.time_total)}</span>
+      )}
       {recipe.cuisine && (
         <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3, background: C.warm, border: `1px solid ${C.ruleLight}`, padding: '2px 7px', borderRadius: 10, flexShrink: 0, letterSpacing: '0.03em' }}>
           {normalizeCuisine(recipe.cuisine)}
         </span>
       )}
-      {recipe.time_total && (
-        <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3, flexShrink: 0, minWidth: 48, textAlign: 'right' }}>{formatTime(recipe.time_total)}</span>
+      {recipe.description && (
+        <span style={{ fontFamily: SERIF, fontSize: 13, fontStyle: 'italic', color: C.text3, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {recipe.description}
+        </span>
       )}
     </div>
   )
@@ -563,7 +561,6 @@ function BrowseContent() {
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
               Recipe Index<EggDot size={9} />
             </h1>
-            <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
           </Link>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>Browse</span>

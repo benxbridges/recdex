@@ -42,7 +42,6 @@ export default function AboutPage() {
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<EggDot size={9} />
               </h1>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>An open recipe commons</p>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
               <Link href="/" style={{ color: C.text2, textDecoration: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Home</Link>

@@ -531,7 +531,6 @@ function ContributeInner() {
               <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
                 Recipe Index<span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
               </h1>
-              <p style={{ fontFamily: SANS, fontSize: 11, color: C.text3, margin: '4px 0 0', letterSpacing: 0.3 }}>Be a better cook.</p>
             </Link>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
                 <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
