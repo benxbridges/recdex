@@ -8,6 +8,7 @@ import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
+import CookbookShelf from '@/app/components/CookbookShelf'
 import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 // ===== TYPES =====
@@ -408,6 +409,7 @@ export default function Home() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
+              <Link href="/tools" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>The kit</Link>
               <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
               <Link href="/about" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>About</Link>
               <ThemeToggle />
@@ -918,6 +920,11 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
+
+      {/* ===== COOKBOOK SHELF (affiliate) ===== */}
+      <CookbookShelf />
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
 

@@ -1280,7 +1280,9 @@ export default function CookModePage() {
   const [cookRating, setCookRating] = useState<number | null>(null)
   const [hoverRating, setHoverRating] = useState<number>(0)
   const [substitutions, setSubstitutions] = useState('')
-  const [tip, setTip] = useState('')
+  const [logNote, setLogNote] = useState('')
+  const [logWithWho, setLogWithWho] = useState('')
+  const [logPrivate, setLogPrivate] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [checkedIngredients, setCheckedIngredients] = useState<Record<number, boolean>>({})
   const [timerAlerts, setTimerAlerts] = useState<{ key: string; label: string }[]>([])
@@ -2523,10 +2525,13 @@ export default function CookModePage() {
 
                 {!feedbackSubmitted ? (
                   <div style={{ borderRadius: 10, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>
-                    {/* Header */}
+                    {/* Header — reframed as "Cook log" */}
                     <div style={{ padding: '24px 28px 20px', background: C.greenBg, borderBottom: `1px solid #D5DDD2` }}>
-                      <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.green, margin: '0 0 4px' }}>Nice work!</p>
-                      <p style={{ fontSize: 13, color: C.text2, margin: 0, fontFamily: SANS, lineHeight: 1.5 }}>You just cooked {recipe.title}. Help the community by sharing how it went.</p>
+                      <p style={{ fontFamily: MONO, fontSize: 10, color: C.green, textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 6px', fontWeight: 700 }}>Cook log entry</p>
+                      <p style={{ fontFamily: SERIF, fontSize: 22, fontWeight: 600, color: C.green, margin: '0 0 4px' }}>Nice work.</p>
+                      <p style={{ fontSize: 13, color: C.text2, margin: 0, fontFamily: SANS, lineHeight: 1.5 }}>
+                        You just cooked {recipe.title}. Pin a note to this recipe — for you, and for the next cook.
+                      </p>
                     </div>
 
                     {/* Photo capture */}
@@ -2535,9 +2540,9 @@ export default function CookModePage() {
                       <PhotoCapture recipeSlug={slug} recipeTitle={recipe.title} />
                     </div>
 
-                    {/* How did it turn out? — Egg rating */}
+                    {/* Rating */}
                     <div style={{ padding: '20px 28px', borderBottom: `1px solid ${C.ruleLight}` }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', fontFamily: SANS }}>How would you rate this recipe?</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 12px', fontFamily: SANS }}>How was it?</p>
                       <div
                         style={{ display: 'flex', gap: 6, alignItems: 'center' }}
                         onMouseLeave={() => setHoverRating(0)}
@@ -2566,32 +2571,53 @@ export default function CookModePage() {
                       </div>
                     </div>
 
-                    {/* Substitutions */}
+                    {/* The note — the warm reframe */}
                     <div style={{ padding: '20px 28px', borderBottom: `1px solid ${C.ruleLight}` }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: SANS }}>Substitute anything?</p>
-                      <p style={{ fontSize: 12, color: C.text3, margin: '0 0 10px', fontFamily: SANS, lineHeight: 1.5 }}>Swapped an ingredient or changed a quantity? Let others know.</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: SANS }}>Pin a note to the recipe</p>
+                      <p style={{ fontSize: 12, color: C.text3, margin: '0 0 10px', fontFamily: SANS, lineHeight: 1.5, fontStyle: 'italic' }}>
+                        Like a slip of paper tucked into a cookbook page. What happened, what you&apos;d change.
+                      </p>
                       <textarea
-                        value={substitutions}
-                        onChange={e => setSubstitutions(e.target.value)}
-                        placeholder="e.g. Used rigatoni instead of spaghetti, added a pinch of chili flakes..."
+                        value={logNote}
+                        onChange={e => setLogNote(e.target.value)}
+                        placeholder={"e.g. Made this on a slow Sunday. Solid but not great — would sub anchovy paste for the capers next time."}
                         style={{
-                          width: '100%', minHeight: 70, padding: '10px 14px', borderRadius: 6,
-                          border: `1.5px solid ${C.ruleLight}`, background: C.bg, resize: 'vertical',
-                          fontSize: 13, fontFamily: SANS, color: C.text, lineHeight: 1.5,
+                          width: '100%', minHeight: 90, padding: '12px 16px', borderRadius: 6,
+                          border: `1.5px solid ${C.ruleLight}`,
+                          background: '#FCFAF2', resize: 'vertical',
+                          fontSize: 14, fontFamily: SERIF, color: C.text, lineHeight: 1.55,
                           outline: 'none',
+                          backgroundImage: `repeating-linear-gradient(transparent, transparent 23px, ${C.ruleLight} 23px, ${C.ruleLight} 24px)`,
+                        }}
+                        onFocus={e => { e.target.style.borderColor = C.gold }}
+                        onBlur={e => { e.target.style.borderColor = C.ruleLight }}
+                      />
+                    </div>
+
+                    {/* Cooked with */}
+                    <div style={{ padding: '20px 28px', borderBottom: `1px solid ${C.ruleLight}` }}>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: SANS }}>Cooked with (optional)</p>
+                      <input
+                        value={logWithWho}
+                        onChange={e => setLogWithWho(e.target.value)}
+                        placeholder="e.g. Julia and Ben"
+                        style={{
+                          width: '100%', padding: '10px 14px', borderRadius: 6,
+                          border: `1.5px solid ${C.ruleLight}`, background: C.bg,
+                          fontSize: 13, fontFamily: SANS, color: C.text, outline: 'none',
                         }}
                         onFocus={e => { e.target.style.borderColor = C.rule }}
                         onBlur={e => { e.target.style.borderColor = C.ruleLight }}
                       />
                     </div>
 
-                    {/* Tip for next cook */}
+                    {/* Substitutions (kept, more compact) */}
                     <div style={{ padding: '20px 28px', borderBottom: `1px solid ${C.ruleLight}` }}>
-                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: SANS }}>Tip for the next cook?</p>
+                      <p style={{ fontSize: 11, fontWeight: 600, color: C.text3, textTransform: 'uppercase', letterSpacing: 1, margin: '0 0 8px', fontFamily: SANS }}>Substitutions (optional)</p>
                       <textarea
-                        value={tip}
-                        onChange={e => setTip(e.target.value)}
-                        placeholder="e.g. Take it off heat before adding the cheese — it makes all the difference."
+                        value={substitutions}
+                        onChange={e => setSubstitutions(e.target.value)}
+                        placeholder="e.g. Used rigatoni instead of spaghetti, doubled the chili flakes."
                         style={{
                           width: '100%', minHeight: 60, padding: '10px 14px', borderRadius: 6,
                           border: `1.5px solid ${C.ruleLight}`, background: C.bg, resize: 'vertical',
@@ -2603,9 +2629,25 @@ export default function CookModePage() {
                       />
                     </div>
 
+                    {/* Privacy toggle */}
+                    <div style={{ padding: '14px 28px', borderBottom: `1px solid ${C.ruleLight}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <input
+                        id="log-private"
+                        type="checkbox"
+                        checked={logPrivate}
+                        onChange={e => setLogPrivate(e.target.checked)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <label htmlFor="log-private" style={{ fontFamily: SANS, fontSize: 12, color: C.text2, cursor: 'pointer' }}>
+                        Keep this note private — don&apos;t show it on the recipe page.
+                      </label>
+                    </div>
+
                     {/* Submit + skip */}
                     <div style={{ padding: '20px 28px', textAlign: 'center' }}>
-                      <p style={{ fontSize: 11, color: C.text3, margin: '0 0 12px', fontFamily: SANS, fontStyle: 'italic' }}>Community tips help other cooks nail this recipe.</p>
+                      <p style={{ fontSize: 11, color: C.text3, margin: '0 0 12px', fontFamily: SANS, fontStyle: 'italic' }}>
+                        Public notes help future cooks. Private ones stay with you.
+                      </p>
                       <button onClick={async () => {
                         const NUMERIC_TO_LEGACY: Record<number, string> = { 5: 'amazing', 4: 'good', 3: 'ok', 2: 'tricky', 1: 'tricky' }
                         const cookEvent = {
@@ -2613,7 +2655,8 @@ export default function CookModePage() {
                           cookedAt: Date.now(),
                           ...(cookRating && { rating: cookRating }),
                           ...(substitutions && { substitutions }),
-                          ...(tip && { tip }),
+                          ...(logNote && { tip: logNote }),
+                          ...(logWithWho && { withWho: logWithWho }),
                         }
                         const existing = JSON.parse(localStorage.getItem('recdex-cooked') || '[]')
                         existing.unshift(cookEvent)
@@ -2621,10 +2664,31 @@ export default function CookModePage() {
 
                         const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
                         const displayName = profile.displayName
-                        if (displayName && (tip || substitutions || cookRating)) {
+
+                        // Persist as a cook_log row (Supabase) — public unless marked private
+                        if (cookRating || logNote || substitutions || logWithWho) {
+                          try {
+                            await fetch('/api/cook-log', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                recipe_slug: recipe.slug,
+                                display_name: displayName || null,
+                                note: logNote || null,
+                                with_who: logWithWho || null,
+                                rating: cookRating || null,
+                                substitutions: substitutions || null,
+                                private: logPrivate,
+                              }),
+                            })
+                          } catch { /* best-effort */ }
+                        }
+
+                        // Also write a Community Note (existing behavior) so the recipe page comments stay populated
+                        if (displayName && !logPrivate && (logNote || substitutions || cookRating)) {
                           const parts: string[] = []
                           if (substitutions) parts.push(`🔄 Substitution: ${substitutions}`)
-                          if (tip) parts.push(`💡 Tip: ${tip}`)
+                          if (logNote) parts.push(`💡 Note: ${logNote}`)
                           const body = parts.join('\n\n')
                           await supabase.from('comments').insert({
                             recipe_id: recipe.id,
@@ -2638,12 +2702,12 @@ export default function CookModePage() {
                         setFeedbackSubmitted(true)
                       }} style={{
                         width: '100%', padding: '13px 28px', borderRadius: 6, border: 'none',
-                        background: (cookRating || substitutions || tip) ? C.green : C.ruleLight,
-                        color: (cookRating || substitutions || tip) ? '#fff' : C.text3,
+                        background: (cookRating || substitutions || logNote || logWithWho) ? C.green : C.ruleLight,
+                        color: (cookRating || substitutions || logNote || logWithWho) ? '#fff' : C.text3,
                         fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: SANS,
                         transition: 'all 0.15s',
                       }}>
-                        {(substitutions || tip) ? 'Submit & mark as cooked' : 'Mark as cooked'}
+                        {(logNote || substitutions || logWithWho) ? 'Save to log & mark as cooked' : 'Mark as cooked'}
                       </button>
                       <p onClick={() => {
                         const cookEvent = {
@@ -2668,16 +2732,13 @@ export default function CookModePage() {
                     <div style={{ borderRadius: 10, background: C.greenBg, border: '1px solid #D5DDD2', padding: 28, textAlign: 'center', marginBottom: 24 }}>
                       <p style={{ fontSize: 28, margin: '0 0 6px' }}>🎉</p>
                       <p style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 600, color: C.green, margin: '0 0 4px' }}>
-                        {(substitutions || tip) ? 'Thanks for contributing!' : 'Cooked!'}
+                        {(substitutions || logNote || logWithWho) ? 'Pinned to the recipe.' : 'Cooked!'}
                       </p>
                       <p style={{ fontSize: 13, color: C.text2, margin: '0 0 20px', fontFamily: SANS, lineHeight: 1.5 }}>
-                        {(substitutions || tip)
-                          ? (() => {
-                              const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
-                              return profile.displayName
-                                ? 'Your notes have been shared as a Community Note on this recipe.'
-                                : 'Your notes will help other cooks with this recipe.'
-                            })()
+                        {(substitutions || logNote || logWithWho)
+                          ? (logPrivate
+                              ? 'Your note is saved to your private log.'
+                              : 'Your note will live on this recipe page so the next cook can read it.')
                           : `${recipe.title} is now in your cook history.`}
                       </p>
                       {/* Share with a friend */}

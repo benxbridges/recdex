@@ -7,6 +7,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { withUtm } from '@/app/lib/unsplash'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import CookLog from '@/app/components/CookLog'
 import { recipeRequiresOvernight } from '@/app/lib/cook-utils'
 
 // ===== TYPES =====
@@ -1500,6 +1501,9 @@ export default function RecipePage() {
             </div>
           </div>
         )}
+
+        {/* ===== FROM THE COOK LOG ===== */}
+        <CookLog recipeSlug={slug} />
 
         {/* ===== COMMUNITY NOTES ===== */}
         <div style={{ paddingTop: 28, paddingBottom: 28 }}>
