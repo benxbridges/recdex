@@ -57,6 +57,11 @@ Goal: make URL/picture → cook mode reliable enough that cook mode stands as th
 
 ## Backlog
 
+### Monetization
+- [ ] **Become a Bookshop.org affiliate** (preferred — 10% commission). Apply at bookshop.org/affiliate-program. Once approved, get your affiliate ID (the `<id>` in `bookshop.org/a/<id>/`).
+- [ ] **Become an Amazon Associate** (fallback — ~3-4.5%). Apply at affiliate-program.amazon.com. Get your tracking ID (the `<tag>` in `?tag=<tag>-20`).
+- [ ] **Update cookbook URLs** in Supabase once IDs are live. Run e.g. `UPDATE cookbooks SET bookshop_url = REPLACE(bookshop_url, 'bookshop.org/p/', 'bookshop.org/a/<your-id>/');` Until that's done, the homepage shelf links earn nothing.
+
 ### Cook Mode Polish
 - [ ] Timer urgency colors (yellow at 30s, red+pulse at 10s)
 - [ ] Timer sound + haptic (Web Audio beep, navigator.vibrate)
