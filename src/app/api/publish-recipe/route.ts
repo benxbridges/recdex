@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     ingredients: recipe.ingredients || [],
     steps: recipe.steps || [],
     tags: [],
-    status: 'published',
+    status: recipe.status === 'draft' ? 'draft' : 'published',
     submitted_by: null,
     source: 'community',
     source_attribution: recipe.source_attribution || null,

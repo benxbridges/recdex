@@ -64,7 +64,7 @@ function EggDot({ size = 9 }: { size?: number }) {
 }
 
 // Single static placeholder — rotation felt like marketing copy
-const PLACEHOLDER = 'Paste a recipe link…'
+const PLACEHOLDER = 'Paste any recipe URL — YouTube, TikTok, blog…'
 
 // ===== INGREDIENT MATCHING HELPERS =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -159,7 +159,7 @@ export default function Home() {
     fetchHomepage()
   }, [shuffleRecipes])
 
-  // Extract recipe from URL
+  // Extract recipe from URL — and auto-import as a draft so the index grows
   const extractRecipe = useCallback(async (url: string) => {
     const normalized = url.startsWith('http') ? url : `https://${url}`
     extractingUrlRef.current = normalized
@@ -188,6 +188,37 @@ export default function Home() {
       if (data.recipe) {
         setExtractedRecipe(data.recipe)
         setExtractState('preview')
+
+        // Fire-and-forget: save as draft so admin can review & publish.
+        const recipe = data.recipe
+        const baseSlug = (recipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+        const slug = `${baseSlug}-${Date.now().toString(36)}`
+        let sourceAttribution: string | null = null
+        try { sourceAttribution = new URL(normalized).hostname.replace('www.', '') } catch { /* ignore */ }
+
+        fetch('/api/publish-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            recipe: {
+              slug,
+              status: 'draft',
+              title: recipe.title,
+              description: recipe.description || null,
+              cuisine: recipe.cuisine || null,
+              difficulty: recipe.difficulty || 'easy',
+              time_total: recipe.time_total ?? null,
+              servings: recipe.servings ?? null,
+              ingredients: recipe.ingredients || [],
+              steps: (recipe.steps || []).map((s: { step?: number; text: string; timer_minutes?: number | null }, i: number) => ({
+                step: i + 1, text: s.text, timer_minutes: s.timer_minutes ?? null,
+              })),
+              source_url: normalized,
+              source_attribution: sourceAttribution,
+              video_url: platform !== 'web' ? normalized : null,
+            },
+          }),
+        }).catch(() => { /* best-effort: draft will be missing if publish fails */ })
       }
     } catch {
       if (extractingUrlRef.current === normalized) {
@@ -400,20 +431,43 @@ export default function Home() {
           <h2 style={{
             fontFamily: SERIF,
             fontSize: isMobile ? 30 : 42,
-            fontWeight: 700, color: C.text, margin: '0 0 10px',
+            fontWeight: 700, color: C.text, margin: '0 0 14px',
             letterSpacing: -1, lineHeight: 1.05,
           }}>
             Cook something.
           </h2>
-          <p style={{
-            fontFamily: SANS, fontSize: isMobile ? 13 : 14,
-            color: C.text2, margin: '0 auto 22px', maxWidth: 420,
-            lineHeight: 1.5,
-          }}>
-            Recipe Index helps you cook any recipe more easily — and find one when you&apos;re curious.
-          </p>
 
-          {/* ─── Toolbox ─── */}
+          {/* ─── 1-2-3 ribbon ─── */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            justifyContent: 'center', margin: '0 auto 22px',
+            maxWidth: 480,
+          }}>
+            {[
+              { n: 1, t: 'Paste a recipe link' },
+              { n: 2, t: 'Click Cook' },
+              { n: 3, t: 'Cook' },
+            ].map((s, i, arr) => (
+              <span key={s.n} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: C.accent, color: '#fff',
+                    fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                  }}>{s.n}</span>
+                  <span style={{
+                    fontFamily: SANS, fontSize: isMobile ? 12 : 13, color: C.text2, fontWeight: 500,
+                  }}>{s.t}</span>
+                </span>
+                {i < arr.length - 1 && (
+                  <span style={{ color: C.text3, fontSize: 12, opacity: 0.6 }} aria-hidden>→</span>
+                )}
+              </span>
+            ))}
+          </div>
+
+          {/* ─── Card 1: Bring a recipe ─── */}
           <div style={{
             maxWidth: 480, margin: '0 auto',
             background: C.bg, border: `1.5px solid ${C.accent}`,
@@ -509,6 +563,41 @@ export default function Home() {
               )}
             </div>
 
+            {/* ── Platform icons row — under the URL input ── */}
+            <div style={{
+              padding: isMobile ? '8px 14px 10px' : '8px 16px 10px',
+              display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+              borderBottom: `1px solid ${C.ruleLight}`,
+              background: C.warm,
+            }}>
+              <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Works with
+              </span>
+              {[
+                { name: 'YouTube', color: '#FF0000', svg: <path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.9-2-.9C16.6 5 12 5 12 5s-4.6 0-7 .1c-.4 0-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.8C6.8 19 12 19 12 19s4.6 0 7-.1c.4 0 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z" /> },
+                { name: 'TikTok', color: '#69C9D0', svg: <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.53V6.77a4.85 4.85 0 01-1.02-.08z" /> },
+                { name: 'Instagram', color: '#E1306C', svg: null },
+                { name: 'Any blog', color: C.text2, svg: null },
+              ].map(p => (
+                <span key={p.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: SANS, fontSize: 11, color: C.text3 }}>
+                  {p.name === 'Instagram' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round">
+                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                      <circle cx="12" cy="12" r="4" />
+                    </svg>
+                  ) : p.name === 'Any blog' ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                    </svg>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill={p.color}>{p.svg}</svg>
+                  )}
+                  {p.name}
+                </span>
+              ))}
+            </div>
+
             {/* ── Row 2: Scan a recipe ── */}
             <Link href="/scan" style={{
               display: 'flex', alignItems: 'center', gap: 12,
@@ -525,51 +614,129 @@ export default function Home() {
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <span style={{ flex: 1, fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>
-                Scan a recipe
-              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>Scan a cookbook page</div>
+                <div style={{ fontSize: 11, fontFamily: SANS, color: C.text3, marginTop: 1 }}>Snap a photo, we&apos;ll extract the recipe</div>
+              </div>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3}
                 strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </Link>
 
-            {/* ── Row 3: Cook with what you have ── */}
-            <div style={{ padding: isMobile ? '10px 14px 12px' : '12px 16px 14px' }}>
+            {/* ── Row 3: Write it manually ── */}
+            <Link href="/contribute?mode=manual" style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: isMobile ? '12px 14px' : '14px 16px',
+              textDecoration: 'none', color: C.text,
+              transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}06`)}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.text3}
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>Write a recipe by hand</div>
+                <div style={{ fontSize: 11, fontFamily: SANS, color: C.text3, marginTop: 1 }}>Type out ingredients and steps yourself</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3}
+                strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </Link>
+          </div>
+
+          {/* ─── Loading panel — visible while extracting ─── */}
+          {extractState === 'extracting' && (
+            <div style={{
+              maxWidth: 480, margin: '14px auto 0',
+              padding: '20px 18px', borderRadius: 14,
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              boxShadow: '0 4px 20px rgba(232,123,90,0.18)',
+              textAlign: 'center' as const,
+              animation: 'fadeIn 0.2s ease',
+            }}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                minHeight: 28,
+                width: 36, height: 36, border: `3px solid ${C.accent}`, borderTopColor: 'transparent',
+                borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 14px',
+              }} />
+              <h3 style={{
+                fontFamily: SERIF, fontSize: isMobile ? 18 : 20, fontWeight: 700,
+                color: C.text, margin: '0 0 6px',
+              }}>Reading the recipe…</h3>
+              <p style={{
+                fontFamily: SANS, fontSize: 13, color: C.text2, margin: '0 0 14px', lineHeight: 1.5,
               }}>
-                <span style={{
-                  fontSize: 16, lineHeight: 1, flexShrink: 0,
-                  filter: 'saturate(0.85)',
-                }} aria-hidden>🍳</span>
-                {kitchenTags.map(tag => (
-                  <span key={tag} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    padding: '4px 9px', borderRadius: 7, background: C.warm, border: `1px solid ${C.ruleLight}`,
-                    fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
-                  }}>
-                    {tag}
-                    <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                      fontSize: 11, color: C.text3, lineHeight: 1,
-                    }}>×</button>
-                  </span>
+                Pulling the page, extracting ingredients and steps, getting it ready to cook.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {['Fetching page', 'Reading content', 'Extracting recipe'].map((s, i) => (
+                  <span key={s} style={{
+                    fontFamily: MONO, fontSize: 10, color: C.text3,
+                    padding: '4px 10px', borderRadius: 20,
+                    background: C.warm, border: `1px solid ${C.ruleLight}`,
+                    animation: `fadeIn 0.3s ease ${i * 0.3}s both`,
+                  }}>{s}</span>
                 ))}
-                <input
-                  value={kitchenInput}
-                  onChange={e => handleKitchenInputChange(e.target.value)}
-                  onKeyDown={handleKitchenKeyDown}
-                  placeholder={kitchenTags.length === 0 ? 'What do you have to cook with?' : 'Add more…'}
-                  style={{
-                    flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
-                    fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
-                  }}
-                />
               </div>
             </div>
-          </div>
+          )}
+
+          {/* ─── Card 2: Cook with what you have (secondary) ─── */}
+          {extractState !== 'extracting' && extractState !== 'preview' && (
+            <div style={{
+              maxWidth: 480, margin: '14px auto 0',
+              background: 'transparent', border: `1px solid ${C.ruleLight}`,
+              borderRadius: 12, overflow: 'hidden',
+              textAlign: 'left' as const,
+            }}>
+              <div style={{
+                padding: isMobile ? '8px 14px 4px' : '10px 16px 4px',
+                fontFamily: MONO, fontSize: 9, color: C.text3,
+                textTransform: 'uppercase', letterSpacing: 1,
+              }}>
+                Or, cook with what you have
+              </div>
+              <div style={{ padding: isMobile ? '6px 14px 12px' : '6px 16px 14px' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  minHeight: 28,
+                }}>
+                  <span style={{
+                    fontSize: 16, lineHeight: 1, flexShrink: 0,
+                    filter: 'saturate(0.85)',
+                  }} aria-hidden>🍳</span>
+                  {kitchenTags.map(tag => (
+                    <span key={tag} style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px', borderRadius: 7, background: C.warm, border: `1px solid ${C.ruleLight}`,
+                      fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
+                    }}>
+                      {tag}
+                      <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                        fontSize: 11, color: C.text3, lineHeight: 1,
+                      }}>×</button>
+                    </span>
+                  ))}
+                  <input
+                    value={kitchenInput}
+                    onChange={e => handleKitchenInputChange(e.target.value)}
+                    onKeyDown={handleKitchenKeyDown}
+                    placeholder={kitchenTags.length === 0 ? 'What do you have to cook with?' : 'Add more…'}
+                    style={{
+                      flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
+                      fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Extraction preview */}
           {extractState === 'preview' && extractedRecipe && (

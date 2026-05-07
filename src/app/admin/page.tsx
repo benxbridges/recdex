@@ -14,6 +14,8 @@ type Recipe = {
   photo_credit: string | null
   cuisine: string | null
   source_attribution: string | null
+  source_url: string | null
+  status: string
   created_at: string
   ingredients?: { name: string; amount: string; unit: string }[]
   steps?: { step: number; text: string }[]
@@ -126,8 +128,8 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
     setLoading(true)
     const { data, error } = await supabase
       .from('recipes')
-      .select('slug, title, image_url, photo_credit, cuisine, source_attribution, created_at, ingredients, steps')
-      .eq('status', 'published')
+      .select('slug, title, image_url, photo_credit, cuisine, source_attribution, source_url, status, created_at, ingredients, steps')
+      .in('status', ['published', 'draft'])
       .order('created_at', { ascending: false })
     if (!error && data) setRecipes(data as Recipe[])
     setLoading(false)
@@ -219,7 +221,7 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.text3 }}>Loading recipes</span>
           </div>
         ) : tab === 'photos' ? (
-          <PhotoReview recipes={recipes} password={password} onUpdate={loadRecipes} unsplashKey={unsplashKey} />
+          <PhotoReview recipes={recipes.filter(r => r.status === 'published')} password={password} onUpdate={loadRecipes} unsplashKey={unsplashKey} />
         ) : (
           <RecipeManagement recipes={recipes} password={password} onUpdate={loadRecipes} />
         )}
@@ -573,11 +575,16 @@ function EggPlaceholder() {
 function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; password: string; onUpdate: () => void }) {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all')
   const [page, setPage] = useState(0)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [publishing, setPublishing] = useState<string | null>(null)
   const perPage = 50
+
+  const draftCount = useMemo(() => recipes.filter(r => r.status === 'draft').length, [recipes])
+  const publishedCount = useMemo(() => recipes.filter(r => r.status === 'published').length, [recipes])
 
   const sources = useMemo(() => {
     const s = new Set<string>()
@@ -587,6 +594,9 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
 
   const filtered = useMemo(() => {
     let result = recipes
+    if (statusFilter !== 'all') {
+      result = result.filter(r => r.status === statusFilter)
+    }
     if (search.trim()) {
       const q = search.trim().toLowerCase()
       result = result.filter(r => r.title.toLowerCase().includes(q))
@@ -595,12 +605,12 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
       result = result.filter(r => r.source_attribution === sourceFilter)
     }
     return result
-  }, [recipes, search, sourceFilter])
+  }, [recipes, search, sourceFilter, statusFilter])
 
   const totalPages = Math.ceil(filtered.length / perPage)
   const pageRecipes = filtered.slice(page * perPage, (page + 1) * perPage)
 
-  useEffect(() => { setPage(0) }, [search, sourceFilter])
+  useEffect(() => { setPage(0) }, [search, sourceFilter, statusFilter])
 
   async function handleDelete(slug: string) {
     setDeleting(true)
@@ -616,8 +626,50 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
     setDeleting(false)
   }
 
+  async function handlePublish(slug: string) {
+    setPublishing(slug)
+    try {
+      await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'publish-recipe', password, slug }),
+      })
+      onUpdate()
+    } catch { /* ignore */ }
+    setPublishing(null)
+  }
+
   return (
     <>
+      {/* Status pills */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
+        {([
+          { key: 'all' as const, label: 'All', count: recipes.length, activeColor: C.text },
+          { key: 'draft' as const, label: 'Drafts', count: draftCount, activeColor: C.gold },
+          { key: 'published' as const, label: 'Published', count: publishedCount, activeColor: C.green },
+        ]).map(f => (
+          <button
+            key={f.key}
+            onClick={() => setStatusFilter(f.key)}
+            style={{
+              background: statusFilter === f.key ? `${f.activeColor}18` : C.warm,
+              border: `1px solid ${statusFilter === f.key ? f.activeColor : C.rule}`,
+              color: statusFilter === f.key ? f.activeColor : C.text2,
+              borderRadius: 20, padding: '5px 14px',
+              fontFamily: MONO, fontSize: 11, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}
+          >
+            {f.label}
+            <span style={{
+              background: statusFilter === f.key ? f.activeColor : C.rule,
+              color: statusFilter === f.key ? C.bg : C.text3,
+              borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 700,
+            }}>{f.count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
         <input
@@ -651,7 +703,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
       {/* Table */}
       <div style={{ borderRadius: 8, border: `1px solid ${C.rule}`, overflow: 'hidden' }}>
         {/* Header row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 100px 100px 40px', gap: 0, padding: '8px 14px', background: C.cool, borderBottom: `1px solid ${C.rule}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 140px 100px 100px 110px', gap: 0, padding: '8px 14px', background: C.cool, borderBottom: `1px solid ${C.rule}` }}>
           <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>Title</span>
           <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>Source</span>
           <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>Cuisine</span>
@@ -662,18 +714,27 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
         {pageRecipes.map(recipe => (
           <div key={recipe.slug}>
             <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 140px 100px 100px 40px', gap: 0,
+              display: 'grid', gridTemplateColumns: '1fr 140px 100px 100px 110px', gap: 0,
               padding: '10px 14px', borderBottom: `1px solid ${C.ruleLight}`,
               background: expandedSlug === recipe.slug ? C.warm : 'transparent',
               alignItems: 'center',
             }}>
-              <span
+              <div
                 onClick={() => setExpandedSlug(expandedSlug === recipe.slug ? null : recipe.slug)}
-                style={{ fontFamily: SERIF, fontSize: 13, color: C.text, cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 8 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', overflow: 'hidden', paddingRight: 8 }}
                 title={recipe.title}
               >
-                {recipe.title}
-              </span>
+                {recipe.status === 'draft' && (
+                  <span style={{
+                    fontFamily: MONO, fontSize: 9, fontWeight: 700, color: C.gold,
+                    background: C.goldBg, border: `1px solid ${C.gold}`,
+                    padding: '1px 6px', borderRadius: 3, letterSpacing: 1, flexShrink: 0,
+                  }}>DRAFT</span>
+                )}
+                <span style={{ fontFamily: SERIF, fontSize: 13, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {recipe.title}
+                </span>
+              </div>
               <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {recipe.source_attribution || '—'}
               </span>
@@ -683,7 +744,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
               <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>
                 {formatDate(recipe.created_at)}
               </span>
-              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
                 {confirmDelete === recipe.slug ? (
                   <div style={{ display: 'flex', gap: 4 }}>
                     <button
@@ -697,11 +758,26 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
                     >Cancel</button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setConfirmDelete(recipe.slug)}
-                    title="Delete recipe"
-                    style={{ background: C.accentBg, border: `1px solid ${C.accent}`, color: C.accent, borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer', fontWeight: 700, lineHeight: 1 }}
-                  >&#10007;</button>
+                  <>
+                    {recipe.status === 'draft' && (
+                      <button
+                        onClick={() => handlePublish(recipe.slug)}
+                        disabled={publishing === recipe.slug}
+                        title="Publish recipe"
+                        style={{
+                          background: C.greenBg, border: `1px solid ${C.green}`, color: C.green,
+                          borderRadius: 4, padding: '2px 10px', fontFamily: MONO, fontSize: 9, fontWeight: 700,
+                          cursor: publishing === recipe.slug ? 'wait' : 'pointer',
+                          opacity: publishing === recipe.slug ? 0.6 : 1, letterSpacing: 0.5,
+                        }}
+                      >{publishing === recipe.slug ? '…' : 'PUBLISH'}</button>
+                    )}
+                    <button
+                      onClick={() => setConfirmDelete(recipe.slug)}
+                      title="Delete recipe"
+                      style={{ background: C.accentBg, border: `1px solid ${C.accent}`, color: C.accent, borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer', fontWeight: 700, lineHeight: 1 }}
+                    >&#10007;</button>
+                  </>
                 )}
               </div>
             </div>
