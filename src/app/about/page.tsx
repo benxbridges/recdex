@@ -122,7 +122,7 @@ export default function AboutPage() {
             </li>
           </ul>
           <p style={{ ...bodyStyle, marginTop: 14 }}>
-            See the <Link href="/tools" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>full kit of cooking tools →</Link>
+            See <Link href="/tools" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>all the tools →</Link>
           </p>
         </div>
 
@@ -151,7 +151,7 @@ export default function AboutPage() {
           </p>
           <div style={{ display: 'flex', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
             <Link href="/browse" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Browse recipes →</Link>
-            <Link href="/tools" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>The kit →</Link>
+            <Link href="/tools" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Tools →</Link>
             <Link href="/contribute" style={{ fontFamily: SANS, fontSize: 12, color: C.accent, textDecoration: 'none' }}>Bring a recipe →</Link>
           </div>
         </div>

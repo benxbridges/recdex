@@ -409,7 +409,7 @@ export default function Home() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
               <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/tools" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>The kit</Link>
+              <Link href="/tools" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Tools</Link>
               <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
               <Link href="/about" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>About</Link>
               <ThemeToggle />

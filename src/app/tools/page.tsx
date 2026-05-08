@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { ReactNode } from 'react'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
 
@@ -9,76 +10,142 @@ function EggDot({ size = 8 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
 }
 
+// ─── Tool icons ──────────────────────────────────────────────────────────
+// Each tool gets a small distinctive SVG. Stroke = accent color so the row
+// reads as a single visual rhythm. Sized 36px — readable but not heavy.
+
+const ICON_SIZE = 36
+const stroke = { stroke: C.accent, strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
+
+const Icons = {
+  link: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  ),
+  camera: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  ),
+  cookMode: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <rect x="5" y="3" width="14" height="18" rx="2" />
+      <path d="M9 8h6M9 12h6M9 16h4" />
+    </svg>
+  ),
+  timer: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 2.5" />
+      <path d="M9 2h6" />
+    </svg>
+  ),
+  scale: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <circle cx="9" cy="8" r="3" />
+      <circle cx="17" cy="9" r="2.5" />
+      <path d="M3 21v-1a6 6 0 0 1 12 0v1" />
+      <path d="M14 21v-1a4.5 4.5 0 0 1 7-3.7" />
+    </svg>
+  ),
+  swap: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M7 7h12l-3-3" />
+      <path d="M17 17H5l3 3" />
+    </svg>
+  ),
+  bulb: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M9 21h6" />
+      <path d="M10 17h4" />
+      <path d="M12 3a6 6 0 0 0-4 10.5c1 1 1.5 2 1.5 3.5h5c0-1.5.5-2.5 1.5-3.5A6 6 0 0 0 12 3z" />
+    </svg>
+  ),
+  consensus: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M4 20V10" />
+      <path d="M10 20V4" />
+      <path d="M16 20v-9" />
+      <path d="M22 20V7" />
+    </svg>
+  ),
+  note: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+      <path d="M14 3v6h6" />
+      <path d="M8 13h8M8 17h5" />
+    </svg>
+  ),
+  index: (
+    <svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" {...stroke}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </svg>
+  ),
+}
+
 type Tool = {
   title: string
-  tag: string
   blurb: string
-  detail: string
+  icon: ReactNode
   cta?: { label: string; href: string }
 }
 
 const TOOLS: Tool[] = [
   {
-    title: 'Paste a link, get a recipe',
-    tag: 'Import',
-    blurb: 'Drop any recipe URL — blog, YouTube, TikTok, Instagram — and we pull out the recipe.',
-    detail: "No more scrolling past the five-paragraph essay about somebody's grandmother. Paste it, we strip it, you cook.",
+    title: 'Paste a link',
+    blurb: 'Drop in any recipe URL — blog, YouTube, TikTok, Instagram. We pull out the recipe.',
+    icon: Icons.link,
     cta: { label: 'Try it', href: '/' },
   },
   {
     title: 'Scan a cookbook page',
-    tag: 'Import',
-    blurb: 'Snap a photo of a recipe in a real cookbook and we extract it for cook mode.',
-    detail: 'Your cookbooks are great. Cooking from a propped-open page next to a sink full of water is not.',
+    blurb: 'Snap a photo of a printed recipe and we convert it for cook mode.',
+    icon: Icons.camera,
     cta: { label: 'Open scanner', href: '/scan' },
   },
   {
     title: 'Cook mode',
-    tag: 'Cooking',
-    blurb: "A step-by-step view designed for one hand and a screen that won't fall asleep.",
-    detail: 'Big text, clear progression, screen stays awake, hands-free where possible. The whole UI gets out of the way of cooking.',
+    blurb: 'Step-by-step view that keeps your screen awake and stays out of your way.',
+    icon: Icons.cookMode,
   },
   {
-    title: 'In-line timers',
-    tag: 'Cooking',
-    blurb: 'When a step says "simmer for 12 minutes," a timer is already there. Tap to start.',
-    detail: 'No copy-pasting into Siri, no juggling phone alarms. Timers live inside the step that needs them, and they ping you when they fire.',
+    title: 'Built-in timers',
+    blurb: 'Timers live inside the steps that need them. Tap to start, get pinged when they fire.',
+    icon: Icons.timer,
   },
   {
-    title: 'Amount tabbing',
-    tag: 'Cooking',
-    blurb: 'Scale a recipe to your headcount in one tap. All the math gets redone for you.',
-    detail: 'Cooking for 6 instead of 4? Tap once. Quantities re-render across the whole recipe. No napkin math.',
+    title: 'Scale to your servings',
+    blurb: 'Resize a recipe to your headcount. Quantities re-render across the whole recipe.',
+    icon: Icons.scale,
   },
   {
-    title: 'Quick swaps',
-    tag: 'Cooking',
-    blurb: "Out of buttermilk? Tap the ingredient. We'll tell you what works.",
-    detail: "Real substitutions for real cooking — not \"just use yogurt\" with no ratio. We tell you what to use, how much, and what it'll change.",
+    title: 'Substitutions',
+    blurb: 'Tap an ingredient to see what works as a swap, with the right ratio.',
+    icon: Icons.swap,
   },
   {
-    title: 'Cooking tips',
-    tag: 'Cooking',
-    blurb: 'Contextual technique help inside the step that needs it.',
-    detail: 'When a step asks you to deglaze a pan or fold egg whites, the tip is right there — not in a separate glossary you have to navigate to.',
+    title: 'Technique tips',
+    blurb: 'Short notes on tricky cooking steps, right inside the step that uses them.',
+    icon: Icons.bulb,
   },
   {
     title: 'Kitchen Consensus',
-    tag: 'Community',
-    blurb: 'When cooks disagree on a recipe, we surface the consensus. When they agree, we just cook.',
-    detail: "For canonical recipes, we've compared how different sources do it and rolled up the differences — what most cooks do, where it splits, who's right about what.",
+    blurb: 'When recipes for the same dish disagree, see how most cooks actually do it.',
+    icon: Icons.consensus,
   },
   {
-    title: 'Cook log notes',
-    tag: 'Community',
-    blurb: 'After you cook a recipe, pin a note to it. Like tucking a slip of paper into a cookbook page.',
-    detail: "Wrote \"made this on 11.7 with Julia, would sub anchovy paste next time\"? Now the next cook sees that. The cookbook gets warmer the more it's used.",
+    title: 'Cook log',
+    blurb: 'Pin a note to a recipe after you make it — like a slip of paper in a cookbook.',
+    icon: Icons.note,
   },
   {
-    title: 'Auto-import as a draft',
-    tag: 'Community',
-    blurb: 'Every recipe brought to the site gets saved. The index grows from people cooking.',
-    detail: 'When you paste a link, we save the recipe as a draft. After admin review, it joins the public index — credited to its source.',
+    title: 'A growing index',
+    blurb: 'Every link you paste is saved to the index after a quick review.',
+    icon: Icons.index,
   },
 ]
 
@@ -101,7 +168,7 @@ export default function ToolsPage() {
               <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
               <Link href="/about" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>About</Link>
               <div style={{ width: 1, height: 14, background: C.rule }} />
-              <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>The kit</span>
+              <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>Tools</span>
               <ThemeToggle />
             </div>
           </div>
@@ -112,9 +179,9 @@ export default function ToolsPage() {
         <h2 style={{
           fontFamily: SERIF, fontSize: 'clamp(28px,5vw,40px)', fontWeight: 700,
           color: C.text, margin: '0 0 8px', lineHeight: 1.1, letterSpacing: -0.5,
-        }}>The kit</h2>
+        }}>Tools</h2>
         <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2, margin: '0 0 36px', lineHeight: 1.6, maxWidth: 540 }}>
-          A short tour of the tools Recipe Index gives you for actually cooking. Most of these are off in a corner of the cook view — they show up when you need them.
+          What Recipe Index gives you for actually cooking.
         </p>
 
         <div style={{
@@ -123,35 +190,24 @@ export default function ToolsPage() {
         }}>
           {TOOLS.map((t) => (
             <article key={t.title} style={{
-              padding: '18px 20px',
+              padding: '20px 22px',
               background: C.warm,
               border: `1px solid ${C.ruleLight}`,
               borderRadius: 10,
               display: 'flex', flexDirection: 'column',
             }}>
-              <span style={{
-                alignSelf: 'flex-start',
-                fontFamily: MONO, fontSize: 9, fontWeight: 700,
-                color: C.accent, background: C.accentBg,
-                padding: '2px 8px', borderRadius: 3,
-                textTransform: 'uppercase', letterSpacing: 1,
-                marginBottom: 10,
-              }}>{t.tag}</span>
+              <div style={{ marginBottom: 14 }}>{t.icon}</div>
               <h3 style={{
-                fontFamily: SERIF, fontSize: 17, fontWeight: 700, color: C.text,
+                fontFamily: SERIF, fontSize: 18, fontWeight: 700, color: C.text,
                 margin: '0 0 6px', lineHeight: 1.25,
               }}>{t.title}</h3>
               <p style={{
-                fontFamily: SANS, fontSize: 13.5, color: C.text2,
-                margin: '0 0 8px', lineHeight: 1.55,
-              }}>{t.blurb}</p>
-              <p style={{
-                fontFamily: SANS, fontSize: 12.5, color: C.text3,
+                fontFamily: SANS, fontSize: 14, color: C.text2,
                 margin: 0, lineHeight: 1.55,
-              }}>{t.detail}</p>
+              }}>{t.blurb}</p>
               {t.cta && (
                 <Link href={t.cta.href} style={{
-                  marginTop: 12, alignSelf: 'flex-start',
+                  marginTop: 14, alignSelf: 'flex-start',
                   fontFamily: MONO, fontSize: 11, color: C.accent,
                   textDecoration: 'none', letterSpacing: 0.5,
                 }}>
@@ -160,34 +216,6 @@ export default function ToolsPage() {
               )}
             </article>
           ))}
-        </div>
-
-        <div style={{
-          marginTop: 48, padding: '22px 24px',
-          borderRadius: 12, background: C.warm,
-          border: `1px solid ${C.ruleLight}`,
-        }}>
-          <p style={{
-            fontSize: 10, fontWeight: 700, color: C.text3,
-            textTransform: 'uppercase', letterSpacing: 1.5,
-            fontFamily: MONO, margin: '0 0 12px',
-          }}>The short version</p>
-          <p style={{ fontFamily: SERIF, fontSize: 16, color: C.text, lineHeight: 1.6, margin: 0 }}>
-            Bring a recipe. Cook it. Pin a note for the next cook. That&apos;s the whole loop.
-          </p>
-          <div style={{ display: 'flex', gap: 14, marginTop: 18, flexWrap: 'wrap' }}>
-            <Link href="/" style={{
-              fontFamily: SANS, fontSize: 13, fontWeight: 600,
-              padding: '10px 18px', borderRadius: 6,
-              background: C.accent, color: '#fff', textDecoration: 'none',
-            }}>Try it on the homepage →</Link>
-            <Link href="/about" style={{
-              fontFamily: SANS, fontSize: 13, fontWeight: 600,
-              padding: '10px 18px', borderRadius: 6,
-              background: 'transparent', color: C.text2,
-              border: `1px solid ${C.rule}`, textDecoration: 'none',
-            }}>Read the longer version →</Link>
-          </div>
         </div>
       </div>
     </div>
