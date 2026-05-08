@@ -64,9 +64,6 @@ function EggDot({ size = 9 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
 
-// Single static placeholder — rotation felt like marketing copy
-const PLACEHOLDER = 'Paste any recipe URL — YouTube, TikTok, blog…'
-
 // ===== INGREDIENT MATCHING HELPERS =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
 
@@ -469,30 +466,33 @@ export default function Home() {
             ))}
           </div>
 
-          {/* ─── Card 1: Bring a recipe ─── */}
+          {/* ─── Search + Scan: one bar, one peer button ─── */}
           <div style={{
-            maxWidth: 480, margin: '0 auto',
-            background: C.bg, border: `1.5px solid ${C.accent}`,
-            borderRadius: 16, overflow: 'hidden',
-            boxShadow: '0 4px 24px rgba(232,123,90,0.15), 0 1px 2px rgba(232,123,90,0.08)',
-            textAlign: 'left' as const,
+            maxWidth: 560, margin: '0 auto',
+            display: 'flex', gap: 8,
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: 'stretch',
           }}>
-            {/* ── Row 1: Paste a recipe link ── */}
+            {/* Input bar */}
             <div style={{
               position: 'relative',
+              flex: 1, minWidth: 0,
+              display: 'flex', alignItems: 'center', gap: 10,
               padding: isMobile ? '12px 14px' : '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              borderBottom: `1px solid ${C.ruleLight}`,
-              background: extractState === 'extracting' ? `${C.accent}08` : inputFocused ? `${C.accent}06` : 'transparent',
-              transition: 'background 0.15s',
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              borderRadius: 12,
+              boxShadow: extractState === 'extracting' || inputFocused
+                ? '0 4px 18px rgba(232,123,90,0.18)'
+                : '0 2px 8px rgba(232,123,90,0.08)',
+              transition: 'box-shadow 0.15s',
             }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke={extractState === 'extracting' ? C.accent : inputFocused ? C.accent : C.text3}
                 strokeWidth="2" strokeLinecap="round"
                 style={{ flexShrink: 0, transition: 'stroke 0.15s' }}
               >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
               </svg>
               <input
                 value={input}
@@ -502,7 +502,7 @@ export default function Home() {
                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
                 onPaste={handlePaste}
                 disabled={extractState === 'extracting'}
-                placeholder={PLACEHOLDER}
+                placeholder="Paste a recipe link or search…"
                 style={{
                   flex: 1, minWidth: 0,
                   border: 'none', outline: 'none', background: 'transparent',
@@ -523,7 +523,7 @@ export default function Home() {
               {/* Live suggestion dropdown */}
               {inputFocused && searchMatches.length > 0 && (
                 <div style={{
-                  position: 'absolute', top: '100%', left: 12, right: 12, marginTop: 2,
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6,
                   background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 10,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.22)', zIndex: 30,
                   overflow: 'hidden',
@@ -565,90 +565,29 @@ export default function Home() {
               )}
             </div>
 
-            {/* ── Platform icons row — under the URL input ── */}
-            <div style={{
-              padding: isMobile ? '8px 14px 10px' : '8px 16px 10px',
-              display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-              borderBottom: `1px solid ${C.ruleLight}`,
-              background: C.warm,
-            }}>
-              <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Works with
-              </span>
-              {[
-                { name: 'YouTube', color: '#FF0000', svg: <path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.9-2-.9C16.6 5 12 5 12 5s-4.6 0-7 .1c-.4 0-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.8C6.8 19 12 19 12 19s4.6 0 7-.1c.4 0 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z" /> },
-                { name: 'TikTok', color: '#69C9D0', svg: <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.53V6.77a4.85 4.85 0 01-1.02-.08z" /> },
-                { name: 'Instagram', color: '#E1306C', svg: null },
-                { name: 'Any blog', color: C.text2, svg: null },
-              ].map(p => (
-                <span key={p.name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontFamily: SANS, fontSize: 11, color: C.text3 }}>
-                  {p.name === 'Instagram' ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round">
-                      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                      <circle cx="12" cy="12" r="4" />
-                    </svg>
-                  ) : p.name === 'Any blog' ? (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={p.color} strokeWidth="2" strokeLinecap="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
-                    </svg>
-                  ) : (
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill={p.color}>{p.svg}</svg>
-                  )}
-                  {p.name}
-                </span>
-              ))}
-            </div>
-
-            {/* ── Row 2: Scan a recipe ── */}
+            {/* Scan button — peer with the input */}
             <Link href="/scan" style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: isMobile ? '12px 14px' : '14px 16px',
-              borderBottom: `1px solid ${C.ruleLight}`,
-              textDecoration: 'none', color: C.text,
-              transition: 'background 0.15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8,
+              padding: isMobile ? '12px 14px' : '0 22px',
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              borderRadius: 12, color: C.accent,
+              textDecoration: 'none',
+              fontFamily: SANS, fontSize: isMobile ? 15 : 15, fontWeight: 600,
+              boxShadow: '0 2px 8px rgba(232,123,90,0.08)',
+              transition: 'background 0.15s, color 0.15s',
+              minWidth: isMobile ? 'auto' : 110,
+              flexShrink: 0,
             }}
-              onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}06`)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={e => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.bg; e.currentTarget.style.color = C.accent }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.text3}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>Scan a cookbook page</div>
-                <div style={{ fontSize: 11, fontFamily: SANS, color: C.text3, marginTop: 1 }}>Snap a photo, we&apos;ll extract the recipe</div>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3}
-                strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </Link>
-
-            {/* ── Row 3: Write it manually ── */}
-            <Link href="/contribute?mode=manual" style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: isMobile ? '12px 14px' : '14px 16px',
-              textDecoration: 'none', color: C.text,
-              transition: 'background 0.15s',
-            }}
-              onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}06`)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.text3}
-                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <path d="M12 20h9" />
-                <path d="M16.5 3.5a2.121 2.121 0 113 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>Write a recipe by hand</div>
-                <div style={{ fontSize: 11, fontFamily: SANS, color: C.text3, marginTop: 1 }}>Type out ingredients and steps yourself</div>
-              </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3}
-                strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              Scan
             </Link>
           </div>
 
