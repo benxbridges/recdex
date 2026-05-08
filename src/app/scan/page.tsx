@@ -69,6 +69,39 @@ function GalleryIcon({ size = 20 }: { size?: number }) {
 
 const MAX_PAGES = 4
 
+// Phone photos are typically 3–8MB JPEGs; base64-encoding inflates them ~33%
+// and the Vercel serverless function body limit is ~4.5MB, so we downscale
+// + recompress every image before upload. 1600px on the long edge is plenty
+// for OCR and keeps payloads under ~1MB after base64 encoding.
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('read_failed'))
+    reader.readAsDataURL(file)
+  })
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = () => reject(new Error('decode_failed'))
+    i.src = dataUrl
+  })
+
+  const longEdge = Math.max(img.width, img.height)
+  const scale = longEdge > maxDim ? maxDim / longEdge : 1
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas_unavailable')
+  ctx.drawImage(img, 0, 0, w, h)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
 export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
@@ -81,7 +114,7 @@ export default function ScanPage() {
   const [rawText, setRawText] = useState('')
   const [error, setError] = useState<string | null>(null)
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
     // Reset the input so picking the same file again still fires onChange
     e.target.value = ''
@@ -103,22 +136,19 @@ export default function ScanPage() {
         setError('Please select image files only.')
         return
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError('Each image must be under 10MB.')
+      // Generous outer cap before compression
+      if (file.size > 25 * 1024 * 1024) {
+        setError('Image is too large (over 25MB). Try a smaller photo.')
         return
       }
     }
 
-    Promise.all(
-      toAdd.map(file => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      }))
-    ).then(dataUrls => {
+    try {
+      const dataUrls = await Promise.all(toAdd.map(file => compressImage(file)))
       setImages(prev => [...prev, ...dataUrls].slice(0, MAX_PAGES))
-    }).catch(() => setError('Could not read image. Try another file.'))
+    } catch {
+      setError("Couldn't process the photo. Try a different one.")
+    }
   }
 
   function removeImage(index: number) {
@@ -146,7 +176,23 @@ export default function ScanPage() {
       clearTimeout(progressTimer)
       clearTimeout(progressTimer2)
 
-      const data = await res.json()
+      // Distinguish payload-too-large + server errors from extraction failures
+      if (res.status === 413) {
+        setError('Photos are still too large. Try cropping or taking a lower-res shot.')
+        return
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        console.error('[scan] non-OK response:', res.status, text)
+        setError(`Scan failed (${res.status}). Try again or use a smaller photo.`)
+        return
+      }
+
+      const data = await res.json().catch(() => null)
+      if (!data) {
+        setError('The server returned an unexpected response. Try again.')
+        return
+      }
 
       if (data.error) {
         if (data.error === 'no_recipe_found') {
@@ -163,8 +209,9 @@ export default function ScanPage() {
         // Bring the freshly-extracted recipe into view
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      console.error('[scan] fetch error:', err)
+      setError('Something went wrong uploading the photo. Check your connection and try again.')
     } finally {
       setScanning(false)
       setScanProgress('')

@@ -436,7 +436,7 @@ export default function Home() {
             fontWeight: 700, color: C.text, margin: '0 0 14px',
             letterSpacing: -1, lineHeight: 1.05,
           }}>
-            Cook something.
+            Cook from anything.
           </h2>
 
           {/* ─── 1-2-3 ribbon ─── */}
@@ -688,57 +688,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* ─── Card 2: Cook with what you have (secondary) ─── */}
-          {extractState !== 'extracting' && extractState !== 'preview' && (
-            <div style={{
-              maxWidth: 480, margin: '14px auto 0',
-              background: 'transparent', border: `1px solid ${C.ruleLight}`,
-              borderRadius: 12, overflow: 'hidden',
-              textAlign: 'left' as const,
-            }}>
-              <div style={{
-                padding: isMobile ? '8px 14px 4px' : '10px 16px 4px',
-                fontFamily: MONO, fontSize: 9, color: C.text3,
-                textTransform: 'uppercase', letterSpacing: 1,
-              }}>
-                Or, cook with what you have
-              </div>
-              <div style={{ padding: isMobile ? '6px 14px 12px' : '6px 16px 14px' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                  minHeight: 28,
-                }}>
-                  <span style={{
-                    fontSize: 16, lineHeight: 1, flexShrink: 0,
-                    filter: 'saturate(0.85)',
-                  }} aria-hidden>🍳</span>
-                  {kitchenTags.map(tag => (
-                    <span key={tag} style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '4px 9px', borderRadius: 7, background: C.warm, border: `1px solid ${C.ruleLight}`,
-                      fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
-                    }}>
-                      {tag}
-                      <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
-                        background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                        fontSize: 11, color: C.text3, lineHeight: 1,
-                      }}>×</button>
-                    </span>
-                  ))}
-                  <input
-                    value={kitchenInput}
-                    onChange={e => handleKitchenInputChange(e.target.value)}
-                    onKeyDown={handleKitchenKeyDown}
-                    placeholder={kitchenTags.length === 0 ? 'What do you have to cook with?' : 'Add more…'}
-                    style={{
-                      flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
-                      fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          {/* "Cook with what you have" was moved out of the hero — see section
+              below the Discover list. */}
 
           {/* Extraction preview */}
           {extractState === 'preview' && extractedRecipe && (
@@ -832,43 +783,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Kitchen matches (below toolbox, still within hero) */}
-          {kitchenMatches.length > 0 && (
-            <div style={{
-              marginTop: 16, textAlign: 'left' as const,
-              maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
-              display: 'flex', flexDirection: 'column', gap: 6,
-              animation: 'fadeIn 0.2s ease',
-            }}>
-              {kitchenMatches.slice(0, showAllKitchenMatches ? 10 : 3).map(m => (
-                <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                  borderRadius: 8, background: C.bg, border: `1px solid ${C.ruleLight}`,
-                  textDecoration: 'none',
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {m.recipe.title}
-                    </span>
-                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
-                      {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
-                    {m.matched}/{m.total}
-                  </span>
-                </Link>
-              ))}
-              {kitchenMatches.length > 3 && !showAllKitchenMatches && (
-                <button onClick={() => setShowAllKitchenMatches(true)} style={{
-                  fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600,
-                  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '6px 0',
-                }}>
-                  +{kitchenMatches.length - 3} more matches →
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -920,6 +834,86 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
+
+      {/* ===== COOK WITH WHAT YOU HAVE ===== */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '24px 16px' : '36px clamp(16px,4vw,24px)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Cook with what you have</p>
+          {kitchenTags.length > 0 && (
+            <button
+              onClick={() => { setKitchenTags([]); setShowAllKitchenMatches(false) }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontFamily: SANS, color: C.text3 }}
+            >Clear</button>
+          )}
+        </div>
+        <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 14px', lineHeight: 1.5 }}>
+          Type ingredients in your kitchen. We&apos;ll match recipes that use what you have.
+        </p>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          minHeight: 44, padding: '10px 14px',
+          background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }} aria-hidden>🍳</span>
+          {kitchenTags.map(tag => (
+            <span key={tag} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 9px', borderRadius: 7, background: C.bg, border: `1px solid ${C.ruleLight}`,
+              fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
+            }}>
+              {tag}
+              <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontSize: 11, color: C.text3, lineHeight: 1,
+              }}>×</button>
+            </span>
+          ))}
+          <input
+            value={kitchenInput}
+            onChange={e => handleKitchenInputChange(e.target.value)}
+            onKeyDown={handleKitchenKeyDown}
+            placeholder={kitchenTags.length === 0 ? 'e.g. chicken, garlic, lemon…' : 'Add more…'}
+            style={{
+              flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
+            }}
+          />
+        </div>
+
+        {kitchenMatches.length > 0 && (
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {kitchenMatches.slice(0, showAllKitchenMatches ? 10 : 3).map(m => (
+              <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                borderRadius: 8, background: C.bg, border: `1px solid ${C.ruleLight}`,
+                textDecoration: 'none',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.recipe.title}
+                  </span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
+                    {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
+                  {m.matched}/{m.total}
+                </span>
+              </Link>
+            ))}
+            {kitchenMatches.length > 3 && !showAllKitchenMatches && (
+              <button onClick={() => setShowAllKitchenMatches(true)} style={{
+                fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600,
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '8px 0',
+              }}>
+                +{kitchenMatches.length - 3} more matches →
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
 
