@@ -90,64 +90,7 @@ export default function CookbookShelf() {
           className="cookbook-scroller"
         >
           {books.map(b => (
-            <a
-              key={b.id}
-              href={buyHref(b)}
-              target="_blank"
-              rel="noopener noreferrer sponsored"
-              style={{
-                flex: '0 0 200px', scrollSnapAlign: 'start',
-                textDecoration: 'none', color: C.text,
-                display: 'flex', flexDirection: 'column',
-              }}
-            >
-              {/* Cover */}
-              <div style={{
-                width: '100%', aspectRatio: '2 / 3',
-                background: C.cool, borderRadius: 4, overflow: 'hidden',
-                boxShadow: '0 6px 16px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
-                position: 'relative',
-              }}>
-                {b.cover_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={b.cover_url}
-                    alt={`${b.title} cover`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    loading="lazy"
-                  />
-                ) : (
-                  <div style={{
-                    width: '100%', height: '100%', display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    fontFamily: SERIF, fontSize: 13, color: C.text3, padding: 16, textAlign: 'center',
-                  }}>{b.title}</div>
-                )}
-              </div>
-
-              {/* Meta */}
-              <div style={{ padding: '10px 2px 0' }}>
-                <div style={{
-                  fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text,
-                  lineHeight: 1.25, marginBottom: 2,
-                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                }}>{b.title}</div>
-                <div style={{
-                  fontFamily: SANS, fontSize: 11, color: C.text3, marginBottom: 6,
-                }}>{b.author}</div>
-                {b.blurb && (
-                  <div style={{
-                    fontFamily: SANS, fontSize: 12, color: C.text2, lineHeight: 1.45,
-                    display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                    marginBottom: 8,
-                  }}>{b.blurb}</div>
-                )}
-                <span style={{
-                  display: 'inline-block', fontFamily: MONO, fontSize: 10,
-                  color: C.accent, letterSpacing: 0.5,
-                }}>{buyLabel(b)} →</span>
-              </div>
-            </a>
+            <BookCard key={b.id} book={b} buyHref={buyHref(b)} buyLabel={buyLabel(b)} />
           ))}
         </div>
       </div>
@@ -156,5 +99,69 @@ export default function CookbookShelf() {
         .cookbook-scroller::-webkit-scrollbar { display: none; }
       `}</style>
     </section>
+  )
+}
+
+function BookCard({ book, buyHref, buyLabel }: { book: Cookbook; buyHref: string; buyLabel: string }) {
+  const [imgFailed, setImgFailed] = useState(false)
+  return (
+    <a
+      href={buyHref}
+      target="_blank"
+      rel="noopener noreferrer sponsored"
+      style={{
+        flex: '0 0 200px', scrollSnapAlign: 'start',
+        textDecoration: 'none', color: C.text,
+        display: 'flex', flexDirection: 'column',
+      }}
+    >
+      {/* Cover */}
+      <div style={{
+        width: '100%', aspectRatio: '2 / 3',
+        background: C.cool, borderRadius: 4, overflow: 'hidden',
+        boxShadow: '0 6px 16px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.08)',
+        position: 'relative',
+      }}>
+        {book.cover_url && !imgFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={book.cover_url}
+            alt={`${book.title} cover`}
+            onError={() => setImgFailed(true)}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            loading="lazy"
+          />
+        ) : (
+          <div style={{
+            width: '100%', height: '100%', display: 'flex',
+            alignItems: 'center', justifyContent: 'center',
+            fontFamily: SERIF, fontSize: 13, color: C.text3, padding: 16, textAlign: 'center',
+          }}>{book.title}</div>
+        )}
+      </div>
+
+      {/* Meta */}
+      <div style={{ padding: '10px 2px 0' }}>
+        <div style={{
+          fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text,
+          lineHeight: 1.25, marginBottom: 2,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>{book.title}</div>
+        <div style={{
+          fontFamily: SANS, fontSize: 11, color: C.text3, marginBottom: 6,
+        }}>{book.author}</div>
+        {book.blurb && (
+          <div style={{
+            fontFamily: SANS, fontSize: 12, color: C.text2, lineHeight: 1.45,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+            marginBottom: 8,
+          }}>{book.blurb}</div>
+        )}
+        <span style={{
+          display: 'inline-block', fontFamily: MONO, fontSize: 10,
+          color: C.accent, letterSpacing: 0.5,
+        }}>{buyLabel} →</span>
+      </div>
+    </a>
   )
 }

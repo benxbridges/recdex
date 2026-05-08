@@ -130,6 +130,7 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
   onClick: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
 
   return (
     <div
@@ -150,8 +151,8 @@ function RecipeCard({ recipe, matchedIngredient, onClick }: {
     >
       {/* Image */}
       <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', background: C.cool, overflow: 'hidden', flexShrink: 0 }}>
-        {recipe.image_url
-          ? <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+        {recipe.image_url && !imgFailed
+          ? <img src={recipe.image_url} alt={recipe.title} onError={() => setImgFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <BrokenEggCard />
         }
         {recipe.time_total && (
@@ -199,6 +200,7 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
   onClick: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
 
   return (
     <div
@@ -217,8 +219,8 @@ function RecipeRow({ recipe, matchedIngredient, onClick }: {
     >
       {/* Thumbnail */}
       <div style={{ width: 72, height: 50, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {recipe.image_url
-          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+        {recipe.image_url && !imgFailed
+          ? <img src={recipe.image_url} alt="" onError={() => setImgFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <svg width="24" height="18" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.3 }}>
               <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="3"/></g>
               <g transform="translate(102,35) rotate(12)"><path d="M0 48 L8 44 L16 50 L24 42 L32 48 L40 44 L48 50 C48 22,36 0,20 0 C4 0,-8 22,0 48Z" fill={C.cool} stroke={C.rule} strokeWidth="3"/></g>
@@ -255,6 +257,7 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
   onClick: () => void
 }) {
   const [hovered, setHovered] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
 
   return (
     <div
@@ -272,8 +275,8 @@ function IndexRow({ recipe, matchedIngredient, onClick }: {
     >
       {/* Tiny thumbnail */}
       <div style={{ width: 44, height: 44, borderRadius: 5, overflow: 'hidden', flexShrink: 0, background: C.warm, border: `1px solid ${C.ruleLight}`, marginTop: 1 }}>
-        {recipe.image_url
-          ? <img src={recipe.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
+        {recipe.image_url && !imgFailed
+          ? <img src={recipe.image_url} alt="" onError={() => setImgFailed(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="16" height="12" viewBox="0 0 200 150" fill="none" style={{ opacity: 0.25 }}>
                 <g transform="translate(42,30) rotate(-8)"><path d="M0 50 C0 22,12 0,28 0 C44 0,56 22,56 50 L50 52 L42 48 L34 54 L26 46 L18 52 L10 48 L0 50Z" fill={C.cool} stroke={C.rule} strokeWidth="4"/></g>

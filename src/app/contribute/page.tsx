@@ -232,8 +232,13 @@ function ContributeInner() {
     return () => window.removeEventListener('resize', check)
   }, [])
 
-  // Pre-fill URL from query params and auto-extract
+  // Pre-fill URL + mode from query params, auto-extract for URL pastes
   useEffect(() => {
+    const modeParam = searchParams.get('mode')
+    if (modeParam === 'manual' || modeParam === 'video') {
+      setMode(modeParam)
+      if (modeParam === 'manual') setFlowStep('review')
+    }
     const prefillUrl = searchParams.get('url')
     if (prefillUrl && !url) {
       setUrl(prefillUrl)

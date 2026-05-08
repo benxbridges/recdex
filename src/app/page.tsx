@@ -9,6 +9,7 @@ import ThemeToggle from '@/app/components/ThemeToggle'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
 import CookbookShelf from '@/app/components/CookbookShelf'
+import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
 import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 // ===== TYPES =====
@@ -119,6 +120,9 @@ export default function Home() {
   const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null)
   const [extractError, setExtractError] = useState('')
   const [pasteText, setPasteText] = useState('')
+  const [extractedSourceUrl, setExtractedSourceUrl] = useState<string>('')
+  const [extractedPlatform, setExtractedPlatform] = useState<string>('web')
+  const [publishing, setPublishing] = useState(false)
   const extractingUrlRef = useRef('')
 
   // Responsive
@@ -157,7 +161,8 @@ export default function Home() {
     fetchHomepage()
   }, [shuffleRecipes])
 
-  // Extract recipe from URL — and auto-import as a draft so the index grows
+  // Extract recipe from URL. Real publish happens after the user confirms
+  // credit + correctness in the PublishCheckModal — see handlePublishConfirm.
   const extractRecipe = useCallback(async (url: string) => {
     const normalized = url.startsWith('http') ? url : `https://${url}`
     extractingUrlRef.current = normalized
@@ -185,38 +190,9 @@ export default function Home() {
       }
       if (data.recipe) {
         setExtractedRecipe(data.recipe)
+        setExtractedSourceUrl(normalized)
+        setExtractedPlatform(platform)
         setExtractState('preview')
-
-        // Fire-and-forget: save as draft so admin can review & publish.
-        const recipe = data.recipe
-        const baseSlug = (recipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-        const slug = `${baseSlug}-${Date.now().toString(36)}`
-        let sourceAttribution: string | null = null
-        try { sourceAttribution = new URL(normalized).hostname.replace('www.', '') } catch { /* ignore */ }
-
-        fetch('/api/publish-recipe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            recipe: {
-              slug,
-              status: 'draft',
-              title: recipe.title,
-              description: recipe.description || null,
-              cuisine: recipe.cuisine || null,
-              difficulty: recipe.difficulty || 'easy',
-              time_total: recipe.time_total ?? null,
-              servings: recipe.servings ?? null,
-              ingredients: recipe.ingredients || [],
-              steps: (recipe.steps || []).map((s: { step?: number; text: string; timer_minutes?: number | null }, i: number) => ({
-                step: i + 1, text: s.text, timer_minutes: s.timer_minutes ?? null,
-              })),
-              source_url: normalized,
-              source_attribution: sourceAttribution,
-              video_url: platform !== 'web' ? normalized : null,
-            },
-          }),
-        }).catch(() => { /* best-effort: draft will be missing if publish fails */ })
       }
     } catch {
       if (extractingUrlRef.current === normalized) {
@@ -348,22 +324,70 @@ export default function Home() {
     }
   }
 
-  const startCooking = () => {
+  // Publish the extracted recipe with the user's confirmed credit fields,
+  // then route to /recipe/{slug}/cook. This both makes the recipe live
+  // (returning visitors can re-cook it) and avoids the back-button cache
+  // bug — the recipe is a real DB row, not sessionStorage.
+  async function handlePublishConfirm(credit: PublishCheckCredit) {
     if (!extractedRecipe) return
-    const tempRecipe = {
-      id: 'temp-scan',
-      slug: 'temp-scan',
-      title: extractedRecipe.title,
-      description: extractedRecipe.description || null,
-      cuisine: extractedRecipe.cuisine || null,
-      difficulty: extractedRecipe.difficulty || 'medium',
-      time_total: extractedRecipe.time_total || null,
-      servings: extractedRecipe.servings || null,
-      ingredients: extractedRecipe.ingredients,
-      steps: extractedRecipe.steps,
+    setPublishing(true)
+    const baseSlug = (extractedRecipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = `${baseSlug}-${Date.now().toString(36)}`
+    let fallbackAttribution: string | null = null
+    try { fallbackAttribution = new URL(extractedSourceUrl).hostname.replace('www.', '') } catch { /* ignore */ }
+
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            status: 'published',
+            title: extractedRecipe.title,
+            description: extractedRecipe.description || null,
+            cuisine: extractedRecipe.cuisine || null,
+            difficulty: extractedRecipe.difficulty || 'easy',
+            time_total: extractedRecipe.time_total ?? null,
+            servings: extractedRecipe.servings ?? null,
+            ingredients: extractedRecipe.ingredients || [],
+            steps: (extractedRecipe.steps || []).map((s, i) => ({
+              step: i + 1, text: s.text, timer_minutes: s.timer_minutes ?? null,
+            })),
+            source_url: extractedSourceUrl,
+            source_attribution: credit.sourceAttribution?.trim() || fallbackAttribution,
+            creator_name: credit.creatorName?.trim() || null,
+            video_url: extractedPlatform !== 'web' ? extractedSourceUrl : null,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      const realSlug = data?.slug || slug
+      window.location.href = `/recipe/${realSlug}/cook`
+    } catch {
+      // Network failure — fall back to temp cook flow so the user still
+      // gets to cook what they pasted.
+      const tempRecipe = {
+        id: 'temp-scan', slug: 'temp-scan',
+        title: extractedRecipe.title,
+        description: extractedRecipe.description || null,
+        cuisine: extractedRecipe.cuisine || null,
+        difficulty: extractedRecipe.difficulty || 'medium',
+        time_total: extractedRecipe.time_total || null,
+        servings: extractedRecipe.servings || null,
+        ingredients: extractedRecipe.ingredients,
+        steps: extractedRecipe.steps,
+      }
+      sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(tempRecipe))
+      window.location.href = '/recipe/temp-scan/cook'
     }
-    sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(tempRecipe))
-    window.location.href = '/recipe/temp-scan/cook'
+  }
+
+  function handlePublishCancel() {
+    setExtractState('idle')
+    setExtractedRecipe(null)
+    setExtractedSourceUrl('')
+    setInput('')
   }
 
   // Onboarding fullscreen
@@ -379,8 +403,6 @@ export default function Home() {
     )
   }
 
-  const ingCount = extractedRecipe?.ingredients?.length || 0
-  const stepCount = extractedRecipe?.steps?.length || 0
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
@@ -670,53 +692,6 @@ export default function Home() {
           {/* "Cook with what you have" was moved out of the hero — see section
               below the Discover list. */}
 
-          {/* Extraction preview */}
-          {extractState === 'preview' && extractedRecipe && (
-            <div style={{ marginTop: 16, animation: 'slideUp 0.3s ease', textAlign: 'left', maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
-              <div style={{
-                padding: '18px 20px', borderRadius: 14,
-                background: C.bg, border: `1.5px solid ${C.green}`,
-                boxShadow: '0 4px 20px rgba(107,158,98,0.15)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: MONO, color: C.green, textTransform: 'uppercase', letterSpacing: 1 }}>Recipe found</span>
-                </div>
-                <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: '0 0 8px', lineHeight: 1.2 }}>
-                  {extractedRecipe.title}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {extractedRecipe.time_total && <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(extractedRecipe.time_total)}</span>}
-                  {extractedRecipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{extractedRecipe.cuisine}</span></>}
-                  <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                  <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{ingCount} ingredients · {stepCount} steps</span>
-                </div>
-                <button
-                  onClick={startCooking}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    padding: '14px 24px', borderRadius: 12, border: 'none',
-                    background: C.accent, color: '#fff',
-                    fontSize: 16, fontWeight: 700, fontFamily: SANS, cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(232,123,90,0.3)',
-                    transition: 'transform 0.15s',
-                  }}
-                  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.98)')}
-                  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-                >
-                  Start Cooking
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
-                </button>
-              </div>
-              <button
-                onClick={() => { setExtractState('idle'); setInput(''); setExtractedRecipe(null) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: C.text3, fontFamily: SANS, marginTop: 8, padding: '4px 0' }}
-              >
-                Try a different recipe
-              </button>
-            </div>
-          )}
-
           {/* Extraction error */}
           {extractState === 'error' && (
             <div style={{ marginTop: 16, animation: 'fadeIn 0.2s ease', textAlign: 'left', maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
@@ -988,6 +963,27 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Verify-and-publish dialog (shown after a successful extract) */}
+      <PublishCheckModal
+        open={extractState === 'preview' && !!extractedRecipe}
+        mode="link"
+        summary={{
+          title: extractedRecipe?.title || '',
+          cuisine: extractedRecipe?.cuisine || null,
+          timeMinutes: extractedRecipe?.time_total ?? null,
+          ingredientCount: extractedRecipe?.ingredients?.length || 0,
+          stepCount: extractedRecipe?.steps?.length || 0,
+        }}
+        initialCredit={{
+          sourceUrl: extractedSourceUrl,
+          creatorName: '',
+          sourceAttribution: (() => { try { return new URL(extractedSourceUrl).hostname.replace('www.', '') } catch { return '' } })(),
+        }}
+        onCancel={handlePublishCancel}
+        onConfirm={handlePublishConfirm}
+        busy={publishing}
+      />
     </div>
   )
 }

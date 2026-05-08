@@ -4,6 +4,8 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
+import { copyIngredientsToClipboard } from '@/app/lib/copy-ingredients'
 
 type Ingredient = { name: string; amount: string; unit: string; notes?: string }
 type Step = { step: number; text: string; timer_minutes: number | null; phase?: string }
@@ -111,8 +113,10 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState('')
   const [recipe, setRecipe] = useState<ScannedRecipe | null>(null)
-  const [rawText, setRawText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [copyToast, setCopyToast] = useState(false)
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
@@ -122,7 +126,6 @@ export default function ScanPage() {
 
     setError(null)
     setRecipe(null)
-    setRawText('')
 
     const remaining = MAX_PAGES - images.length
     if (remaining <= 0) {
@@ -205,7 +208,6 @@ export default function ScanPage() {
 
       if (data.recipe) {
         setRecipe(data.recipe)
-        setRawText(data.raw_text || '')
         // Bring the freshly-extracted recipe into view
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
@@ -218,32 +220,79 @@ export default function ScanPage() {
     }
   }
 
-  function handleCookNow() {
+  // Open the verify-and-publish dialog. The actual publish happens in
+  // handlePublishConfirm once the user has confirmed author + cookbook.
+  function handlePublishClick() {
     if (!recipe) return
+    setPublishOpen(true)
+  }
 
-    // Build a recipe object compatible with the cook mode page
-    const tempRecipe = {
-      id: 'temp-scan',
-      slug: 'temp-scan',
-      title: recipe.title,
-      description: recipe.description || null,
-      cuisine: recipe.cuisine || null,
-      difficulty: recipe.difficulty || 'medium',
-      time_total: recipe.time_total || null,
-      servings: recipe.servings || null,
-      ingredients: recipe.ingredients,
-      steps: recipe.steps,
-      source_attribution: [recipe.source_author, recipe.source_book].filter(Boolean).join(' — ') || null,
+  async function handlePublishConfirm(credit: PublishCheckCredit) {
+    if (!recipe) return
+    setPublishing(true)
+    const baseSlug = (recipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = `${baseSlug}-${Date.now().toString(36)}`
+    const author = credit.author?.trim() || ''
+    const cookbook = credit.cookbook?.trim() || ''
+    const sourceAttribution = [author, cookbook].filter(Boolean).join(' — ') || null
+
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            status: 'published',
+            title: recipe.title,
+            description: recipe.description || null,
+            cuisine: recipe.cuisine || null,
+            difficulty: recipe.difficulty || 'easy',
+            time_total: recipe.time_total ?? null,
+            time_active: recipe.cook_time ?? null,
+            servings: recipe.servings ?? null,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+            creator_name: author || null,
+            source_attribution: sourceAttribution,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      const realSlug = data?.slug || slug
+      window.location.href = `/recipe/${realSlug}/cook`
+    } catch {
+      // Fallback to temp cook flow if publish errors out.
+      const tempRecipe = {
+        id: 'temp-scan', slug: 'temp-scan',
+        title: recipe.title,
+        description: recipe.description || null,
+        cuisine: recipe.cuisine || null,
+        difficulty: recipe.difficulty || 'medium',
+        time_total: recipe.time_total || null,
+        servings: recipe.servings || null,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        source_attribution: sourceAttribution,
+      }
+      sessionStorage.setItem(TEMP_RECIPE_KEY, JSON.stringify(tempRecipe))
+      window.location.href = '/recipe/temp-scan/cook'
     }
+  }
 
-    sessionStorage.setItem(TEMP_RECIPE_KEY, JSON.stringify(tempRecipe))
-    window.location.href = '/recipe/temp-scan/cook'
+  async function handleCopyIngredients() {
+    if (!recipe) return
+    const items = getIngredientItems(recipe.ingredients)
+    const ok = await copyIngredientsToClipboard(recipe.title, items)
+    if (ok) {
+      setCopyToast(true)
+      setTimeout(() => setCopyToast(false), 2000)
+    }
   }
 
   function handleReset() {
     setImages([])
     setRecipe(null)
-    setRawText('')
     setError(null)
   }
 
@@ -641,7 +690,7 @@ export default function ScanPage() {
             {/* CTAs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
-                onClick={handleCookNow}
+                onClick={handlePublishClick}
                 style={{
                   width: '100%', padding: '14px 20px', borderRadius: 10,
                   border: 'none', background: C.accent, color: '#fff',
@@ -650,26 +699,42 @@ export default function ScanPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
-                Cook Now
+                Publish & cook
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
               </button>
 
-              <button
-                onClick={handleReset}
-                style={{
-                  width: '100%', padding: '12px 20px', borderRadius: 10,
-                  border: `1px solid ${C.ruleLight}`, background: 'transparent',
-                  color: C.text2,
-                  fontSize: 13, fontWeight: 500, fontFamily: SANS,
-                  cursor: 'pointer',
-                }}
-              >
-                Scan another recipe
-              </button>
-            </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleCopyIngredients}
+                  style={{
+                    flex: 1, padding: '11px 14px', borderRadius: 10,
+                    border: `1.5px solid ${C.accent}`, background: C.accentBg, color: C.accent,
+                    fontSize: 13, fontWeight: 600, fontFamily: SANS,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  {copyToast ? 'Copied!' : 'Copy ingredients'}
+                </button>
 
-            {/* Raw text toggle */}
-            {rawText && <RawTextToggle rawText={rawText} />}
+                <button
+                  onClick={handleReset}
+                  style={{
+                    flex: 1, padding: '11px 14px', borderRadius: 10,
+                    border: `1px solid ${C.ruleLight}`, background: 'transparent',
+                    color: C.text2,
+                    fontSize: 13, fontWeight: 500, fontFamily: SANS,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Scan another
+                </button>
+              </div>
+            </div>
 
             <p style={{
               fontFamily: SANS, fontSize: 11, color: C.text3,
@@ -680,6 +745,26 @@ export default function ScanPage() {
           </div>
         )}
       </div>
+
+      {/* Verify-and-publish dialog */}
+      <PublishCheckModal
+        open={publishOpen && !!recipe}
+        mode="cookbook"
+        summary={{
+          title: recipe?.title || '',
+          cuisine: recipe?.cuisine || null,
+          timeMinutes: recipe?.time_total ?? null,
+          ingredientCount: recipe ? getIngredientItems(recipe.ingredients).length : 0,
+          stepCount: recipe?.steps?.length || 0,
+        }}
+        initialCredit={{
+          author: recipe?.source_author || '',
+          cookbook: recipe?.source_book || '',
+        }}
+        onCancel={() => setPublishOpen(false)}
+        onConfirm={handlePublishConfirm}
+        busy={publishing}
+      />
 
       {/* Spinner animation */}
       <style>{`
@@ -693,40 +778,3 @@ export default function ScanPage() {
 
 // ─── Raw text expandable ──────────────────────────────────────────────────
 
-function RawTextToggle({ rawText }: { rawText: string }) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: C.text3, fontSize: 12, fontFamily: SANS,
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: 0,
-        }}
-      >
-        <svg
-          width="12" height="12" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-          style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-        Raw text from image
-      </button>
-      {expanded && (
-        <pre style={{
-          marginTop: 8, padding: 16, borderRadius: 8,
-          background: C.warm, border: `1px solid ${C.ruleLight}`,
-          fontSize: 12, fontFamily: MONO, color: C.text2,
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          lineHeight: 1.6, maxHeight: 300, overflow: 'auto',
-        }}>
-          {rawText}
-        </pre>
-      )}
-    </div>
-  )
-}

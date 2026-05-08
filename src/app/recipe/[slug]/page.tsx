@@ -9,6 +9,7 @@ import { withUtm } from '@/app/lib/unsplash'
 import ThemeToggle from '@/app/components/ThemeToggle'
 import CookLog from '@/app/components/CookLog'
 import { recipeRequiresOvernight } from '@/app/lib/cook-utils'
+import { copyIngredientsToClipboard } from '@/app/lib/copy-ingredients'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -619,6 +620,7 @@ export default function RecipePage() {
   const [loading, setLoading] = useState(true)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [heroImgFailed, setHeroImgFailed] = useState(false)
   const [showGroceryList, setShowGroceryList] = useState(false)
   const [showShareCard, setShowShareCard] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
@@ -841,7 +843,9 @@ export default function RecipePage() {
         </div>
       </header>
 
-      {/* HERO IMAGE */}
+      {/* HERO IMAGE — only when we have a working photo. Missing/broken
+          falls through to the title rendering in the content section. */}
+      {recipe.image_url && !heroImgFailed && (
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px clamp(16px,4vw,24px) 0' }}>
         <div style={{
           width: '100%', aspectRatio: isMobile ? '16/10' : '21/9',
@@ -849,9 +853,11 @@ export default function RecipePage() {
           position: 'relative',
           boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)',
         }}>
-          {recipe.image_url ? (
+          {true ? (
             <>
-              <img src={recipe.image_url} alt={recipe.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <img src={recipe.image_url} alt={recipe.title}
+                onError={() => setHeroImgFailed(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               {/* Title overlay on photo */}
               <div style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -884,11 +890,10 @@ export default function RecipePage() {
                 </div>
               )}
             </>
-          ) : (
-            <NoPhotoPlaceholder />
-          )}
+          ) : null}
         </div>
       </div>
+      )}
 
       {/* CONTENT */}
       <div style={{ maxWidth: isMobile ? 680 : 960, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
@@ -964,7 +969,7 @@ export default function RecipePage() {
             )
           })()}
 
-          {!recipe.image_url && (
+          {(!recipe.image_url || heroImgFailed) && (
             <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(28px, 5vw, 38px)', fontWeight: 700, color: C.text, lineHeight: 1.1, letterSpacing: -0.5, marginBottom: 10 }}>
               {recipe.title}
             </h1>
@@ -1240,26 +1245,9 @@ export default function RecipePage() {
                   final ingredient so the action is tied to the list it acts on. */}
               <button
                 onClick={async () => {
-                  const lines = ingredientItems.map(item => {
-                    const amount = scaleAmount(item.amount, servingsMultiplier)
-                    const head = [amount, item.unit].filter(Boolean).join(' ')
-                    return `${head ? head + ' ' : ''}${item.name}${item.notes ? ` (${item.notes})` : ''}`
-                  })
-                  const payload = `${recipe.title}\n${lines.join('\n')}`
-                  try {
-                    await navigator.clipboard.writeText(payload)
-                    setShoppingToast(true)
-                    setTimeout(() => setShoppingToast(false), 2000)
-                  } catch {
-                    const ta = document.createElement('textarea')
-                    ta.value = payload
-                    document.body.appendChild(ta)
-                    ta.select()
-                    try { document.execCommand('copy') } catch { /* ignore */ }
-                    document.body.removeChild(ta)
-                    setShoppingToast(true)
-                    setTimeout(() => setShoppingToast(false), 2000)
-                  }
+                  await copyIngredientsToClipboard(recipe.title, ingredientItems, servingsMultiplier)
+                  setShoppingToast(true)
+                  setTimeout(() => setShoppingToast(false), 2000)
                 }}
                 style={{
                   marginTop: 14, padding: '10px 18px', borderRadius: 6,
