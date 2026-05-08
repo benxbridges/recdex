@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -566,20 +566,7 @@ function BrowseContent() {
     <div style={{ background: C.bg, minHeight: '100vh', color: C.text }}>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, background: C.bg, zIndex: 50 }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Link href="/" style={{ textDecoration: 'none' }}>
-            <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-              Recipe Index<EggDot size={9} />
-            </h1>
-          </Link>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: C.text }}>Browse</span>
-              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-              <ThemeToggle />
-            </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* HERO + SEARCH */}
       <div style={{ padding: `clamp(32px, 5vw, 52px) ${pad} 0`, maxWidth: 1100, margin: '0 auto' }}>

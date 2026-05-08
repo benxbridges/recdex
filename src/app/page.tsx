@@ -5,11 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
 import CookbookShelf from '@/app/components/CookbookShelf'
 import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
+import SiteHeader from '@/app/components/SiteHeader'
 import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 // ===== TYPES =====
@@ -418,24 +418,7 @@ export default function Home() {
       <BensNoteModal />
 
       {/* ===== HEADER ===== */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setInput(''); setExtractState('idle'); setExtractedRecipe(null) }}>
-              <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<EggDot size={9} />
-              </h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/tools" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Tools</Link>
-              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-              <Link href="/about" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>About</Link>
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* ===== HERO: THE TOOLKIT ===== */}
       <div style={{

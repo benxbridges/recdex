@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { resolveTimerMinutes } from '@/app/lib/cook-utils'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
 type Platform = 'youtube' | 'tiktok' | 'instagram' | 'web' | 'other'
@@ -529,22 +529,7 @@ function ContributeInner() {
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
       {/* Header */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Link href="/" style={{ textDecoration: 'none', cursor: 'pointer' }}>
-              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
-              </h1>
-            </Link>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-                <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-                <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-                <ThemeToggle />
-              </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <div style={{ maxWidth: 620, margin: '0 auto', padding: 'clamp(40px,8vw,72px) clamp(16px,4vw,24px)' }}>
 

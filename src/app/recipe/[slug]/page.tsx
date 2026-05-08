@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { withUtm } from '@/app/lib/unsplash'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 import CookLog from '@/app/components/CookLog'
 import { recipeRequiresOvernight } from '@/app/lib/cook-utils'
 import { copyIngredientsToClipboard } from '@/app/lib/copy-ingredients'
@@ -816,32 +816,7 @@ export default function RecipePage() {
       `}</style>
 
       {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
-              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<EggDot size={9} />
-              </h1>
-            </div>
-            {!isMobile ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, fontFamily: SANS }}>
-                <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Browse</span>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <span onClick={() => router.push('/pantry')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Kitchen</span>
-                <div style={{ width: 1, height: 14, background: C.rule }} />
-                <span onClick={() => router.push('/profile')} style={{ color: C.text2, cursor: 'pointer', fontSize: 11, fontWeight: 500 }}>Profile</span>
-                <ThemeToggle />
-              </div>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span onClick={() => router.back()} style={{ color: C.text2, cursor: 'pointer', fontSize: 12, fontFamily: SANS }}>←</span>
-                <ThemeToggle />
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* HERO IMAGE — only when we have a working photo. Missing/broken
           falls through to the title rendering in the content section. */}

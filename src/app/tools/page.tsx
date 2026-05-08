@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ReactNode } from 'react'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 
 function EggDot({ size = 8 }: { size?: number }) {
   return <span style={{ display: 'inline-block', width: size, height: size, borderRadius: '50%', background: C.accent, marginLeft: 2, verticalAlign: 'super' }} />
@@ -154,26 +154,7 @@ export default function ToolsPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg }}>
-      {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
-              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<EggDot size={9} />
-              </h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
-              <Link href="/" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Home</Link>
-              <Link href="/browse" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/about" style={{ color: C.text2, textDecoration: 'none', fontSize: 11, fontWeight: 500 }}>About</Link>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <span style={{ color: C.accent, fontSize: 11, fontWeight: 600, fontFamily: MONO, letterSpacing: 0.3 }}>Tools</span>
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: 'clamp(40px,7vw,64px) clamp(16px,4vw,24px) 80px' }}>
         <h2 style={{

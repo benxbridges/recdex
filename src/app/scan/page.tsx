@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
 import { copyIngredientsToClipboard } from '@/app/lib/copy-ingredients'
 
@@ -300,31 +300,7 @@ export default function ScanPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: C.bg }}>
-      {/* Header */}
-      <div style={{
-        borderBottom: `1px solid ${C.rule}`, background: C.bg,
-        position: 'sticky', top: 0, zIndex: 50,
-      }}>
-        <div style={{
-          maxWidth: 600, margin: '0 auto',
-          padding: '12px clamp(16px, 4vw, 24px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ textDecoration: 'none', color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
-            </Link>
-            <h1 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>
-              Scan cookbook
-            </h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-            <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-            <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </div>
+      <SiteHeader />
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: 'clamp(16px, 4vw, 24px)' }}>
 

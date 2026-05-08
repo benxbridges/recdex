@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== EGG SYSTEM (shared with profile) =====
 const EGG_TIERS = [
@@ -194,25 +194,7 @@ export default function LeaderboardPage() {
         @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      {/* HEADER */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}` }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer' }} onClick={() => router.push('/')}>
-              <h1 style={{ fontFamily: SERIF, fontSize: 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<EggDot size={9} />
-              </h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, fontFamily: SANS }}>
-              <span onClick={() => router.push('/')} style={{ color: C.text2, cursor: 'pointer' }}>← Home</span>
-              <div style={{ width: 1, height: 14, background: C.rule }} />
-              <Link href="/lists" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Lists</Link>
-              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* PAGE CONTENT */}
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}>
