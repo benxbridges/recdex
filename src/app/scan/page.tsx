@@ -3,7 +3,9 @@
 import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
+import SiteHeader from '@/app/components/SiteHeader'
+import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
+import { copyIngredientsToClipboard } from '@/app/lib/copy-ingredients'
 
 type Ingredient = { name: string; amount: string; unit: string; notes?: string }
 type Step = { step: number; text: string; timer_minutes: number | null; phase?: string }
@@ -69,6 +71,39 @@ function GalleryIcon({ size = 20 }: { size?: number }) {
 
 const MAX_PAGES = 4
 
+// Phone photos are typically 3–8MB JPEGs; base64-encoding inflates them ~33%
+// and the Vercel serverless function body limit is ~4.5MB, so we downscale
+// + recompress every image before upload. 1600px on the long edge is plenty
+// for OCR and keeps payloads under ~1MB after base64 encoding.
+async function compressImage(file: File, maxDim = 1600, quality = 0.82): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('read_failed'))
+    reader.readAsDataURL(file)
+  })
+
+  const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const i = new Image()
+    i.onload = () => resolve(i)
+    i.onerror = () => reject(new Error('decode_failed'))
+    i.src = dataUrl
+  })
+
+  const longEdge = Math.max(img.width, img.height)
+  const scale = longEdge > maxDim ? maxDim / longEdge : 1
+  const w = Math.round(img.width * scale)
+  const h = Math.round(img.height * scale)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new Error('canvas_unavailable')
+  ctx.drawImage(img, 0, 0, w, h)
+  return canvas.toDataURL('image/jpeg', quality)
+}
+
 export default function ScanPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
@@ -78,10 +113,12 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState('')
   const [recipe, setRecipe] = useState<ScannedRecipe | null>(null)
-  const [rawText, setRawText] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishing, setPublishing] = useState(false)
+  const [copyToast, setCopyToast] = useState(false)
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || [])
     // Reset the input so picking the same file again still fires onChange
     e.target.value = ''
@@ -89,7 +126,6 @@ export default function ScanPage() {
 
     setError(null)
     setRecipe(null)
-    setRawText('')
 
     const remaining = MAX_PAGES - images.length
     if (remaining <= 0) {
@@ -103,22 +139,19 @@ export default function ScanPage() {
         setError('Please select image files only.')
         return
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError('Each image must be under 10MB.')
+      // Generous outer cap before compression
+      if (file.size > 25 * 1024 * 1024) {
+        setError('Image is too large (over 25MB). Try a smaller photo.')
         return
       }
     }
 
-    Promise.all(
-      toAdd.map(file => new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      }))
-    ).then(dataUrls => {
+    try {
+      const dataUrls = await Promise.all(toAdd.map(file => compressImage(file)))
       setImages(prev => [...prev, ...dataUrls].slice(0, MAX_PAGES))
-    }).catch(() => setError('Could not read image. Try another file.'))
+    } catch {
+      setError("Couldn't process the photo. Try a different one.")
+    }
   }
 
   function removeImage(index: number) {
@@ -146,7 +179,23 @@ export default function ScanPage() {
       clearTimeout(progressTimer)
       clearTimeout(progressTimer2)
 
-      const data = await res.json()
+      // Distinguish payload-too-large + server errors from extraction failures
+      if (res.status === 413) {
+        setError('Photos are still too large. Try cropping or taking a lower-res shot.')
+        return
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        console.error('[scan] non-OK response:', res.status, text)
+        setError(`Scan failed (${res.status}). Try again or use a smaller photo.`)
+        return
+      }
+
+      const data = await res.json().catch(() => null)
+      if (!data) {
+        setError('The server returned an unexpected response. Try again.')
+        return
+      }
 
       if (data.error) {
         if (data.error === 'no_recipe_found') {
@@ -159,44 +208,91 @@ export default function ScanPage() {
 
       if (data.recipe) {
         setRecipe(data.recipe)
-        setRawText(data.raw_text || '')
         // Bring the freshly-extracted recipe into view
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      console.error('[scan] fetch error:', err)
+      setError('Something went wrong uploading the photo. Check your connection and try again.')
     } finally {
       setScanning(false)
       setScanProgress('')
     }
   }
 
-  function handleCookNow() {
+  // Open the verify-and-publish dialog. The actual publish happens in
+  // handlePublishConfirm once the user has confirmed author + cookbook.
+  function handlePublishClick() {
     if (!recipe) return
+    setPublishOpen(true)
+  }
 
-    // Build a recipe object compatible with the cook mode page
-    const tempRecipe = {
-      id: 'temp-scan',
-      slug: 'temp-scan',
-      title: recipe.title,
-      description: recipe.description || null,
-      cuisine: recipe.cuisine || null,
-      difficulty: recipe.difficulty || 'medium',
-      time_total: recipe.time_total || null,
-      servings: recipe.servings || null,
-      ingredients: recipe.ingredients,
-      steps: recipe.steps,
-      source_attribution: [recipe.source_author, recipe.source_book].filter(Boolean).join(' — ') || null,
+  async function handlePublishConfirm(credit: PublishCheckCredit) {
+    if (!recipe) return
+    setPublishing(true)
+    const baseSlug = (recipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = `${baseSlug}-${Date.now().toString(36)}`
+    const author = credit.author?.trim() || ''
+    const cookbook = credit.cookbook?.trim() || ''
+    const sourceAttribution = [author, cookbook].filter(Boolean).join(' — ') || null
+
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            status: 'published',
+            title: recipe.title,
+            description: recipe.description || null,
+            cuisine: recipe.cuisine || null,
+            difficulty: recipe.difficulty || 'easy',
+            time_total: recipe.time_total ?? null,
+            time_active: recipe.cook_time ?? null,
+            servings: recipe.servings ?? null,
+            ingredients: recipe.ingredients,
+            steps: recipe.steps,
+            creator_name: author || null,
+            source_attribution: sourceAttribution,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      const realSlug = data?.slug || slug
+      window.location.href = `/recipe/${realSlug}/cook`
+    } catch {
+      // Fallback to temp cook flow if publish errors out.
+      const tempRecipe = {
+        id: 'temp-scan', slug: 'temp-scan',
+        title: recipe.title,
+        description: recipe.description || null,
+        cuisine: recipe.cuisine || null,
+        difficulty: recipe.difficulty || 'medium',
+        time_total: recipe.time_total || null,
+        servings: recipe.servings || null,
+        ingredients: recipe.ingredients,
+        steps: recipe.steps,
+        source_attribution: sourceAttribution,
+      }
+      sessionStorage.setItem(TEMP_RECIPE_KEY, JSON.stringify(tempRecipe))
+      window.location.href = '/recipe/temp-scan/cook'
     }
+  }
 
-    sessionStorage.setItem(TEMP_RECIPE_KEY, JSON.stringify(tempRecipe))
-    window.location.href = '/recipe/temp-scan/cook'
+  async function handleCopyIngredients() {
+    if (!recipe) return
+    const items = getIngredientItems(recipe.ingredients)
+    const ok = await copyIngredientsToClipboard(recipe.title, items)
+    if (ok) {
+      setCopyToast(true)
+      setTimeout(() => setCopyToast(false), 2000)
+    }
   }
 
   function handleReset() {
     setImages([])
     setRecipe(null)
-    setRawText('')
     setError(null)
   }
 
@@ -204,31 +300,7 @@ export default function ScanPage() {
 
   return (
     <div style={{ minHeight: '100dvh', background: C.bg }}>
-      {/* Header */}
-      <div style={{
-        borderBottom: `1px solid ${C.rule}`, background: C.bg,
-        position: 'sticky', top: 0, zIndex: 50,
-      }}>
-        <div style={{
-          maxWidth: 600, margin: '0 auto',
-          padding: '12px clamp(16px, 4vw, 24px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <Link href="/" style={{ textDecoration: 'none', color: C.text, display: 'flex', alignItems: 'center', gap: 6 }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.text3} strokeWidth="2" strokeLinecap="round"><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
-            </Link>
-            <h1 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>
-              Scan cookbook
-            </h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-            <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-            <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </div>
+      <SiteHeader />
 
       <div style={{ maxWidth: 600, margin: '0 auto', padding: 'clamp(16px, 4vw, 24px)' }}>
 
@@ -594,7 +666,7 @@ export default function ScanPage() {
             {/* CTAs */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button
-                onClick={handleCookNow}
+                onClick={handlePublishClick}
                 style={{
                   width: '100%', padding: '14px 20px', borderRadius: 10,
                   border: 'none', background: C.accent, color: '#fff',
@@ -603,26 +675,42 @@ export default function ScanPage() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}
               >
-                Cook Now
+                Publish & cook
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
               </button>
 
-              <button
-                onClick={handleReset}
-                style={{
-                  width: '100%', padding: '12px 20px', borderRadius: 10,
-                  border: `1px solid ${C.ruleLight}`, background: 'transparent',
-                  color: C.text2,
-                  fontSize: 13, fontWeight: 500, fontFamily: SANS,
-                  cursor: 'pointer',
-                }}
-              >
-                Scan another recipe
-              </button>
-            </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={handleCopyIngredients}
+                  style={{
+                    flex: 1, padding: '11px 14px', borderRadius: 10,
+                    border: `1.5px solid ${C.accent}`, background: C.accentBg, color: C.accent,
+                    fontSize: 13, fontWeight: 600, fontFamily: SANS,
+                    cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  {copyToast ? 'Copied!' : 'Copy ingredients'}
+                </button>
 
-            {/* Raw text toggle */}
-            {rawText && <RawTextToggle rawText={rawText} />}
+                <button
+                  onClick={handleReset}
+                  style={{
+                    flex: 1, padding: '11px 14px', borderRadius: 10,
+                    border: `1px solid ${C.ruleLight}`, background: 'transparent',
+                    color: C.text2,
+                    fontSize: 13, fontWeight: 500, fontFamily: SANS,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Scan another
+                </button>
+              </div>
+            </div>
 
             <p style={{
               fontFamily: SANS, fontSize: 11, color: C.text3,
@@ -633,6 +721,26 @@ export default function ScanPage() {
           </div>
         )}
       </div>
+
+      {/* Verify-and-publish dialog */}
+      <PublishCheckModal
+        open={publishOpen && !!recipe}
+        mode="cookbook"
+        summary={{
+          title: recipe?.title || '',
+          cuisine: recipe?.cuisine || null,
+          timeMinutes: recipe?.time_total ?? null,
+          ingredientCount: recipe ? getIngredientItems(recipe.ingredients).length : 0,
+          stepCount: recipe?.steps?.length || 0,
+        }}
+        initialCredit={{
+          author: recipe?.source_author || '',
+          cookbook: recipe?.source_book || '',
+        }}
+        onCancel={() => setPublishOpen(false)}
+        onConfirm={handlePublishConfirm}
+        busy={publishing}
+      />
 
       {/* Spinner animation */}
       <style>{`
@@ -646,40 +754,3 @@ export default function ScanPage() {
 
 // ─── Raw text expandable ──────────────────────────────────────────────────
 
-function RawTextToggle({ rawText }: { rawText: string }) {
-  const [expanded, setExpanded] = useState(false)
-
-  return (
-    <div style={{ marginTop: 20 }}>
-      <button
-        onClick={() => setExpanded(!expanded)}
-        style={{
-          background: 'none', border: 'none', cursor: 'pointer',
-          color: C.text3, fontSize: 12, fontFamily: SANS,
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: 0,
-        }}
-      >
-        <svg
-          width="12" height="12" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="2" strokeLinecap="round"
-          style={{ transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}
-        >
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-        Raw text from image
-      </button>
-      {expanded && (
-        <pre style={{
-          marginTop: 8, padding: 16, borderRadius: 8,
-          background: C.warm, border: `1px solid ${C.ruleLight}`,
-          fontSize: 12, fontFamily: MONO, color: C.text2,
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          lineHeight: 1.6, maxHeight: 300, overflow: 'auto',
-        }}>
-          {rawText}
-        </pre>
-      )}
-    </div>
-  )
-}

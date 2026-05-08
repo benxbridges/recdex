@@ -5,9 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
-import ThemeToggle from '@/app/components/ThemeToggle'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
+import CookbookShelf from '@/app/components/CookbookShelf'
+import PublishCheckModal, { type PublishCheckCredit } from '@/app/components/PublishCheckModal'
+import SiteHeader from '@/app/components/SiteHeader'
 import { BENS_NOTE_PARAGRAPHS } from '@/app/lib/bens-note'
 
 // ===== TYPES =====
@@ -62,9 +64,6 @@ function EggDot({ size = 9 }: { size?: number }) {
   const h = Math.round(size * 1.35)
   return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
 }
-
-// Single static placeholder — rotation felt like marketing copy
-const PLACEHOLDER = 'Paste a recipe link…'
 
 // ===== INGREDIENT MATCHING HELPERS =====
 type IngredientItem = { name: string; amount: string; unit: string; notes?: string }
@@ -121,6 +120,9 @@ export default function Home() {
   const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null)
   const [extractError, setExtractError] = useState('')
   const [pasteText, setPasteText] = useState('')
+  const [extractedSourceUrl, setExtractedSourceUrl] = useState<string>('')
+  const [extractedPlatform, setExtractedPlatform] = useState<string>('web')
+  const [publishing, setPublishing] = useState(false)
   const extractingUrlRef = useRef('')
 
   // Responsive
@@ -159,7 +161,8 @@ export default function Home() {
     fetchHomepage()
   }, [shuffleRecipes])
 
-  // Extract recipe from URL
+  // Extract recipe from URL. Real publish happens after the user confirms
+  // credit + correctness in the PublishCheckModal — see handlePublishConfirm.
   const extractRecipe = useCallback(async (url: string) => {
     const normalized = url.startsWith('http') ? url : `https://${url}`
     extractingUrlRef.current = normalized
@@ -187,6 +190,8 @@ export default function Home() {
       }
       if (data.recipe) {
         setExtractedRecipe(data.recipe)
+        setExtractedSourceUrl(normalized)
+        setExtractedPlatform(platform)
         setExtractState('preview')
       }
     } catch {
@@ -319,22 +324,70 @@ export default function Home() {
     }
   }
 
-  const startCooking = () => {
+  // Publish the extracted recipe with the user's confirmed credit fields,
+  // then route to /recipe/{slug}/cook. This both makes the recipe live
+  // (returning visitors can re-cook it) and avoids the back-button cache
+  // bug — the recipe is a real DB row, not sessionStorage.
+  async function handlePublishConfirm(credit: PublishCheckCredit) {
     if (!extractedRecipe) return
-    const tempRecipe = {
-      id: 'temp-scan',
-      slug: 'temp-scan',
-      title: extractedRecipe.title,
-      description: extractedRecipe.description || null,
-      cuisine: extractedRecipe.cuisine || null,
-      difficulty: extractedRecipe.difficulty || 'medium',
-      time_total: extractedRecipe.time_total || null,
-      servings: extractedRecipe.servings || null,
-      ingredients: extractedRecipe.ingredients,
-      steps: extractedRecipe.steps,
+    setPublishing(true)
+    const baseSlug = (extractedRecipe.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const slug = `${baseSlug}-${Date.now().toString(36)}`
+    let fallbackAttribution: string | null = null
+    try { fallbackAttribution = new URL(extractedSourceUrl).hostname.replace('www.', '') } catch { /* ignore */ }
+
+    try {
+      const res = await fetch('/api/publish-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipe: {
+            slug,
+            status: 'published',
+            title: extractedRecipe.title,
+            description: extractedRecipe.description || null,
+            cuisine: extractedRecipe.cuisine || null,
+            difficulty: extractedRecipe.difficulty || 'easy',
+            time_total: extractedRecipe.time_total ?? null,
+            servings: extractedRecipe.servings ?? null,
+            ingredients: extractedRecipe.ingredients || [],
+            steps: (extractedRecipe.steps || []).map((s, i) => ({
+              step: i + 1, text: s.text, timer_minutes: s.timer_minutes ?? null,
+            })),
+            source_url: extractedSourceUrl,
+            source_attribution: credit.sourceAttribution?.trim() || fallbackAttribution,
+            creator_name: credit.creatorName?.trim() || null,
+            video_url: extractedPlatform !== 'web' ? extractedSourceUrl : null,
+          },
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      const realSlug = data?.slug || slug
+      window.location.href = `/recipe/${realSlug}/cook`
+    } catch {
+      // Network failure — fall back to temp cook flow so the user still
+      // gets to cook what they pasted.
+      const tempRecipe = {
+        id: 'temp-scan', slug: 'temp-scan',
+        title: extractedRecipe.title,
+        description: extractedRecipe.description || null,
+        cuisine: extractedRecipe.cuisine || null,
+        difficulty: extractedRecipe.difficulty || 'medium',
+        time_total: extractedRecipe.time_total || null,
+        servings: extractedRecipe.servings || null,
+        ingredients: extractedRecipe.ingredients,
+        steps: extractedRecipe.steps,
+      }
+      sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(tempRecipe))
+      window.location.href = '/recipe/temp-scan/cook'
     }
-    sessionStorage.setItem('recdex-temp-recipe', JSON.stringify(tempRecipe))
-    window.location.href = '/recipe/temp-scan/cook'
+  }
+
+  function handlePublishCancel() {
+    setExtractState('idle')
+    setExtractedRecipe(null)
+    setExtractedSourceUrl('')
+    setInput('')
   }
 
   // Onboarding fullscreen
@@ -350,8 +403,6 @@ export default function Home() {
     )
   }
 
-  const ingCount = extractedRecipe?.ingredients?.length || 0
-  const stepCount = extractedRecipe?.steps?.length || 0
 
   return (
     <div style={{ minHeight: '100vh', background: C.bg, fontFamily: SANS }}>
@@ -367,23 +418,7 @@ export default function Home() {
       <BensNoteModal />
 
       {/* ===== HEADER ===== */}
-      <header style={{ borderBottom: `1.5px solid ${C.text}`, position: 'sticky', top: 0, zIndex: 50, background: C.bg }}>
-        <div style={{ maxWidth: 960, margin: '0 auto', padding: isMobile ? '12px 16px 10px' : '18px clamp(16px,4vw,24px) 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => { setInput(''); setExtractState('idle'); setExtractedRecipe(null) }}>
-              <h1 style={{ fontFamily: SERIF, fontSize: isMobile ? 22 : 'clamp(24px, 4vw, 28px)', fontWeight: 700, color: C.text, margin: 0, letterSpacing: -1, lineHeight: 1 }}>
-                Recipe Index<EggDot size={9} />
-              </h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 18, fontSize: 12, fontFamily: SANS }}>
-              <Link href="/browse" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Browse</Link>
-              <Link href="/profile" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>Profile</Link>
-              <Link href="/about" style={{ textDecoration: 'none', color: C.text2, fontSize: 11, fontWeight: 500 }}>About</Link>
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       {/* ===== HERO: THE TOOLKIT ===== */}
       <div style={{
@@ -400,43 +435,69 @@ export default function Home() {
           <h2 style={{
             fontFamily: SERIF,
             fontSize: isMobile ? 30 : 42,
-            fontWeight: 700, color: C.text, margin: '0 0 10px',
+            fontWeight: 700, color: C.text, margin: '0 0 14px',
             letterSpacing: -1, lineHeight: 1.05,
           }}>
-            Cook something.
+            Cook from anything.
           </h2>
-          <p style={{
-            fontFamily: SANS, fontSize: isMobile ? 13 : 14,
-            color: C.text2, margin: '0 auto 22px', maxWidth: 420,
-            lineHeight: 1.5,
-          }}>
-            Recipe Index helps you cook any recipe more easily — and find one when you&apos;re curious.
-          </p>
 
-          {/* ─── Toolbox ─── */}
+          {/* ─── 1-2-3 ribbon ─── */}
           <div style={{
-            maxWidth: 480, margin: '0 auto',
-            background: C.bg, border: `1.5px solid ${C.accent}`,
-            borderRadius: 16, overflow: 'hidden',
-            boxShadow: '0 4px 24px rgba(232,123,90,0.15), 0 1px 2px rgba(232,123,90,0.08)',
-            textAlign: 'left' as const,
+            display: 'inline-flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+            justifyContent: 'center', margin: '0 auto 22px',
+            maxWidth: 480,
           }}>
-            {/* ── Row 1: Paste a recipe link ── */}
+            {[
+              { n: 1, t: 'Paste a recipe link' },
+              { n: 2, t: 'Click Cook' },
+              { n: 3, t: 'Cook' },
+            ].map((s, i, arr) => (
+              <span key={s.n} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 20, height: 20, borderRadius: '50%',
+                    background: C.accent, color: '#fff',
+                    fontFamily: MONO, fontSize: 11, fontWeight: 700,
+                  }}>{s.n}</span>
+                  <span style={{
+                    fontFamily: SANS, fontSize: isMobile ? 12 : 13, color: C.text2, fontWeight: 500,
+                  }}>{s.t}</span>
+                </span>
+                {i < arr.length - 1 && (
+                  <span style={{ color: C.text3, fontSize: 12, opacity: 0.6 }} aria-hidden>→</span>
+                )}
+              </span>
+            ))}
+          </div>
+
+          {/* ─── Search + Scan: one bar, one peer button ─── */}
+          <div style={{
+            maxWidth: 560, margin: '0 auto',
+            display: 'flex', gap: 8,
+            flexDirection: isMobile ? 'column' : 'row',
+            alignItems: 'stretch',
+          }}>
+            {/* Input bar */}
             <div style={{
               position: 'relative',
+              flex: 1, minWidth: 0,
+              display: 'flex', alignItems: 'center', gap: 10,
               padding: isMobile ? '12px 14px' : '14px 16px',
-              display: 'flex', alignItems: 'center', gap: 12,
-              borderBottom: `1px solid ${C.ruleLight}`,
-              background: extractState === 'extracting' ? `${C.accent}08` : inputFocused ? `${C.accent}06` : 'transparent',
-              transition: 'background 0.15s',
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              borderRadius: 12,
+              boxShadow: extractState === 'extracting' || inputFocused
+                ? '0 4px 18px rgba(232,123,90,0.18)'
+                : '0 2px 8px rgba(232,123,90,0.08)',
+              transition: 'box-shadow 0.15s',
             }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke={extractState === 'extracting' ? C.accent : inputFocused ? C.accent : C.text3}
                 strokeWidth="2" strokeLinecap="round"
                 style={{ flexShrink: 0, transition: 'stroke 0.15s' }}
               >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                <circle cx="11" cy="11" r="7" />
+                <path d="M21 21l-4.35-4.35" />
               </svg>
               <input
                 value={input}
@@ -446,7 +507,7 @@ export default function Home() {
                 onKeyDown={e => { if (e.key === 'Enter') handleSubmit() }}
                 onPaste={handlePaste}
                 disabled={extractState === 'extracting'}
-                placeholder={PLACEHOLDER}
+                placeholder="Paste a recipe link or search…"
                 style={{
                   flex: 1, minWidth: 0,
                   border: 'none', outline: 'none', background: 'transparent',
@@ -467,7 +528,7 @@ export default function Home() {
               {/* Live suggestion dropdown */}
               {inputFocused && searchMatches.length > 0 && (
                 <div style={{
-                  position: 'absolute', top: '100%', left: 12, right: 12, marginTop: 2,
+                  position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 6,
                   background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 10,
                   boxShadow: '0 8px 28px rgba(0,0,0,0.22)', zIndex: 30,
                   overflow: 'hidden',
@@ -509,114 +570,110 @@ export default function Home() {
               )}
             </div>
 
-            {/* ── Row 2: Scan a recipe ── */}
+            {/* Scan button — peer with the input */}
             <Link href="/scan" style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: isMobile ? '12px 14px' : '14px 16px',
-              borderBottom: `1px solid ${C.ruleLight}`,
-              textDecoration: 'none', color: C.text,
-              transition: 'background 0.15s',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              gap: 8,
+              padding: isMobile ? '12px 14px' : '0 22px',
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              borderRadius: 12, color: C.accent,
+              textDecoration: 'none',
+              fontFamily: SANS, fontSize: isMobile ? 15 : 15, fontWeight: 600,
+              boxShadow: '0 2px 8px rgba(232,123,90,0.08)',
+              transition: 'background 0.15s, color 0.15s',
+              minWidth: isMobile ? 'auto' : 110,
+              flexShrink: 0,
             }}
-              onMouseEnter={e => (e.currentTarget.style.background = `${C.accent}06`)}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={e => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = '#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.bg; e.currentTarget.style.color = C.accent }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.text3}
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <span style={{ flex: 1, fontSize: isMobile ? 15 : 16, fontFamily: SANS, fontWeight: 500 }}>
-                Scan a recipe
-              </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.text3}
-                strokeWidth="2" strokeLinecap="round" style={{ flexShrink: 0 }}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+              Scan
             </Link>
-
-            {/* ── Row 3: Cook with what you have ── */}
-            <div style={{ padding: isMobile ? '10px 14px 12px' : '12px 16px 14px' }}>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
-                minHeight: 28,
-              }}>
-                <span style={{
-                  fontSize: 16, lineHeight: 1, flexShrink: 0,
-                  filter: 'saturate(0.85)',
-                }} aria-hidden>🍳</span>
-                {kitchenTags.map(tag => (
-                  <span key={tag} style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                    padding: '4px 9px', borderRadius: 7, background: C.warm, border: `1px solid ${C.ruleLight}`,
-                    fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
-                  }}>
-                    {tag}
-                    <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
-                      background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                      fontSize: 11, color: C.text3, lineHeight: 1,
-                    }}>×</button>
-                  </span>
-                ))}
-                <input
-                  value={kitchenInput}
-                  onChange={e => handleKitchenInputChange(e.target.value)}
-                  onKeyDown={handleKitchenKeyDown}
-                  placeholder={kitchenTags.length === 0 ? 'What do you have to cook with?' : 'Add more…'}
-                  style={{
-                    flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
-                    fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
-                  }}
-                />
-              </div>
-            </div>
           </div>
 
-          {/* Extraction preview */}
-          {extractState === 'preview' && extractedRecipe && (
-            <div style={{ marginTop: 16, animation: 'slideUp 0.3s ease', textAlign: 'left', maxWidth: 480, marginLeft: 'auto', marginRight: 'auto' }}>
-              <div style={{
-                padding: '18px 20px', borderRadius: 14,
-                background: C.bg, border: `1.5px solid ${C.green}`,
-                boxShadow: '0 4px 20px rgba(107,158,98,0.15)',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: MONO, color: C.green, textTransform: 'uppercase', letterSpacing: 1 }}>Recipe found</span>
-                </div>
-                <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: '0 0 8px', lineHeight: 1.2 }}>
-                  {extractedRecipe.title}
-                </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-                  {extractedRecipe.time_total && <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{formatTime(extractedRecipe.time_total)}</span>}
-                  {extractedRecipe.cuisine && <><span style={{ color: C.rule, fontSize: 8 }}>·</span><span style={{ fontSize: 11, fontFamily: SANS, color: C.text3 }}>{extractedRecipe.cuisine}</span></>}
-                  <span style={{ color: C.rule, fontSize: 8 }}>·</span>
-                  <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>{ingCount} ingredients · {stepCount} steps</span>
-                </div>
-                <button
-                  onClick={startCooking}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                    padding: '14px 24px', borderRadius: 12, border: 'none',
-                    background: C.accent, color: '#fff',
-                    fontSize: 16, fontWeight: 700, fontFamily: SANS, cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(232,123,90,0.3)',
-                    transition: 'transform 0.15s',
-                  }}
-                  onMouseDown={e => (e.currentTarget.style.transform = 'scale(0.98)')}
-                  onMouseUp={e => (e.currentTarget.style.transform = 'scale(1)')}
-                >
-                  Start Cooking
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14" /><path d="M12 5l7 7-7 7" /></svg>
-                </button>
-              </div>
-              <button
-                onClick={() => { setExtractState('idle'); setInput(''); setExtractedRecipe(null) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: C.text3, fontFamily: SANS, marginTop: 8, padding: '4px 0' }}
-              >
-                Try a different recipe
-              </button>
+          {/* ─── Works-with caption row ─── */}
+          {extractState !== 'extracting' && extractState !== 'preview' && (
+            <div style={{
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              gap: 14, flexWrap: 'wrap',
+              maxWidth: 560, margin: '12px auto 0',
+              fontFamily: SANS, fontSize: 11, color: C.text3,
+            }}>
+              <span style={{ fontFamily: MONO, fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, color: C.text3 }}>
+                Works with
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#FF0000">
+                  <path d="M21.8 8s-.2-1.4-.8-2c-.8-.8-1.6-.9-2-.9C16.6 5 12 5 12 5s-4.6 0-7 .1c-.4 0-1.2.1-2 .9-.6.6-.8 2-.8 2S2 9.6 2 11.2v1.5c0 1.6.2 3.2.2 3.2s.2 1.4.8 2c.8.8 1.8.8 2.3.8C6.8 19 12 19 12 19s4.6 0 7-.1c.4 0 1.2-.1 2-.9.6-.6.8-2 .8-2s.2-1.6.2-3.2v-1.5C22 9.6 21.8 8 21.8 8zM10 15V9l5.5 3-5.5 3z" />
+                </svg>
+                YouTube
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="#69C9D0">
+                  <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.19 8.19 0 004.79 1.53V6.77a4.85 4.85 0 01-1.02-.08z" />
+                </svg>
+                TikTok
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#E1306C" strokeWidth="2" strokeLinecap="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <circle cx="12" cy="12" r="4" />
+                </svg>
+                Instagram
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={C.text2} strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+                </svg>
+                Any blog
+              </span>
             </div>
           )}
+
+          {/* ─── Loading panel — visible while extracting ─── */}
+          {extractState === 'extracting' && (
+            <div style={{
+              maxWidth: 480, margin: '14px auto 0',
+              padding: '20px 18px', borderRadius: 14,
+              background: C.bg, border: `1.5px solid ${C.accent}`,
+              boxShadow: '0 4px 20px rgba(232,123,90,0.18)',
+              textAlign: 'center' as const,
+              animation: 'fadeIn 0.2s ease',
+            }}>
+              <div style={{
+                width: 36, height: 36, border: `3px solid ${C.accent}`, borderTopColor: 'transparent',
+                borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 14px',
+              }} />
+              <h3 style={{
+                fontFamily: SERIF, fontSize: isMobile ? 18 : 20, fontWeight: 700,
+                color: C.text, margin: '0 0 6px',
+              }}>Reading the recipe…</h3>
+              <p style={{
+                fontFamily: SANS, fontSize: 13, color: C.text2, margin: '0 0 14px', lineHeight: 1.5,
+              }}>
+                Pulling the page, extracting ingredients and steps, getting it ready to cook.
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+                {['Fetching page', 'Reading content', 'Extracting recipe'].map((s, i) => (
+                  <span key={s} style={{
+                    fontFamily: MONO, fontSize: 10, color: C.text3,
+                    padding: '4px 10px', borderRadius: 20,
+                    background: C.warm, border: `1px solid ${C.ruleLight}`,
+                    animation: `fadeIn 0.3s ease ${i * 0.3}s both`,
+                  }}>{s}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* "Cook with what you have" was moved out of the hero — see section
+              below the Discover list. */}
 
           {/* Extraction error */}
           {extractState === 'error' && (
@@ -663,43 +720,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Kitchen matches (below toolbox, still within hero) */}
-          {kitchenMatches.length > 0 && (
-            <div style={{
-              marginTop: 16, textAlign: 'left' as const,
-              maxWidth: 480, marginLeft: 'auto', marginRight: 'auto',
-              display: 'flex', flexDirection: 'column', gap: 6,
-              animation: 'fadeIn 0.2s ease',
-            }}>
-              {kitchenMatches.slice(0, showAllKitchenMatches ? 10 : 3).map(m => (
-                <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px',
-                  borderRadius: 8, background: C.bg, border: `1px solid ${C.ruleLight}`,
-                  textDecoration: 'none',
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {m.recipe.title}
-                    </span>
-                    <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
-                      {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
-                    {m.matched}/{m.total}
-                  </span>
-                </Link>
-              ))}
-              {kitchenMatches.length > 3 && !showAllKitchenMatches && (
-                <button onClick={() => setShowAllKitchenMatches(true)} style={{
-                  fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600,
-                  background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '6px 0',
-                }}>
-                  +{kitchenMatches.length - 3} more matches →
-                </button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
@@ -751,6 +771,91 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
+
+      {/* ===== COOK WITH WHAT YOU HAVE ===== */}
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '24px 16px' : '36px clamp(16px,4vw,24px)' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+          <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Cook with what you have</p>
+          {kitchenTags.length > 0 && (
+            <button
+              onClick={() => { setKitchenTags([]); setShowAllKitchenMatches(false) }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, fontFamily: SANS, color: C.text3 }}
+            >Clear</button>
+          )}
+        </div>
+        <p style={{ fontFamily: SANS, fontSize: 13, color: C.text3, margin: '0 0 14px', lineHeight: 1.5 }}>
+          Type ingredients in your kitchen. We&apos;ll match recipes that use what you have.
+        </p>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          minHeight: 44, padding: '10px 14px',
+          background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }} aria-hidden>🍳</span>
+          {kitchenTags.map(tag => (
+            <span key={tag} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 9px', borderRadius: 7, background: C.bg, border: `1px solid ${C.ruleLight}`,
+              fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
+            }}>
+              {tag}
+              <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
+                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                fontSize: 11, color: C.text3, lineHeight: 1,
+              }}>×</button>
+            </span>
+          ))}
+          <input
+            value={kitchenInput}
+            onChange={e => handleKitchenInputChange(e.target.value)}
+            onKeyDown={handleKitchenKeyDown}
+            placeholder={kitchenTags.length === 0 ? 'e.g. chicken, garlic, lemon…' : 'Add more…'}
+            style={{
+              flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
+            }}
+          />
+        </div>
+
+        {kitchenMatches.length > 0 && (
+          <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {kitchenMatches.slice(0, showAllKitchenMatches ? 10 : 3).map(m => (
+              <Link key={m.recipe.id} href={`/recipe/${m.recipe.slug}`} style={{
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                borderRadius: 8, background: C.bg, border: `1px solid ${C.ruleLight}`,
+                textDecoration: 'none',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {m.recipe.title}
+                  </span>
+                  <span style={{ fontSize: 10, fontFamily: MONO, color: C.text3 }}>
+                    {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
+                  {m.matched}/{m.total}
+                </span>
+              </Link>
+            ))}
+            {kitchenMatches.length > 3 && !showAllKitchenMatches && (
+              <button onClick={() => setShowAllKitchenMatches(true)} style={{
+                fontSize: 12, fontFamily: SANS, color: C.accent, fontWeight: 600,
+                background: 'none', border: 'none', cursor: 'pointer', textAlign: 'center', padding: '8px 0',
+              }}>
+                +{kitchenMatches.length - 3} more matches →
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
+
+      {/* ===== COOKBOOK SHELF (affiliate) ===== */}
+      <CookbookShelf />
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 clamp(16px,4vw,24px)' }}><div style={{ height: 1, background: C.rule }} /></div>
 
@@ -841,6 +946,27 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Verify-and-publish dialog (shown after a successful extract) */}
+      <PublishCheckModal
+        open={extractState === 'preview' && !!extractedRecipe}
+        mode="link"
+        summary={{
+          title: extractedRecipe?.title || '',
+          cuisine: extractedRecipe?.cuisine || null,
+          timeMinutes: extractedRecipe?.time_total ?? null,
+          ingredientCount: extractedRecipe?.ingredients?.length || 0,
+          stepCount: extractedRecipe?.steps?.length || 0,
+        }}
+        initialCredit={{
+          sourceUrl: extractedSourceUrl,
+          creatorName: '',
+          sourceAttribution: (() => { try { return new URL(extractedSourceUrl).hostname.replace('www.', '') } catch { return '' } })(),
+        }}
+        onCancel={handlePublishCancel}
+        onConfirm={handlePublishConfirm}
+        busy={publishing}
+      />
     </div>
   )
 }
