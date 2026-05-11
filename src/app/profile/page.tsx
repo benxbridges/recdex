@@ -785,23 +785,42 @@ export default function ProfilePage() {
                   scrollSnapType: 'x mandatory',
                 }}>
                   {savedRecipes.map((r, i) => (
-                    <Link key={r.id} href={`/recipe/${r.slug}`} style={{
-                      textDecoration: 'none', flexShrink: 0,
-                      width: isMobile ? 200 : 220, padding: '14px 16px', borderRadius: 10,
-                      background: C.warm, border: `1px solid ${C.ruleLight}`,
-                      display: 'flex', flexDirection: 'column', gap: 6,
+                    <div key={r.id} style={{
+                      position: 'relative', flexShrink: 0,
+                      width: isMobile ? 200 : 220,
                       scrollSnapAlign: 'start',
                       animation: `fadeIn 0.3s ease ${i * 0.04}s both`,
                     }}>
-                      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                        {r.title}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
-                          {r.cuisine && `${r.cuisine}`}
+                      <Link href={`/recipe/${r.slug}`} style={{
+                        textDecoration: 'none',
+                        display: 'flex', flexDirection: 'column', gap: 6,
+                        padding: '14px 16px', borderRadius: 10,
+                        background: C.warm, border: `1px solid ${C.ruleLight}`,
+                      }}>
+                        <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, paddingRight: 28 }}>
+                          {r.title}
                         </span>
-                      </div>
-                    </Link>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+                            {r.cuisine && `${r.cuisine}`}
+                          </span>
+                        </div>
+                      </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); unsaveRecipe(r.id) }}
+                        aria-label={`Remove ${r.title} from saved`}
+                        title="Remove from saved"
+                        style={{
+                          position: 'absolute', top: 8, right: 8,
+                          width: 28, height: 28, borderRadius: '50%',
+                          border: `1px solid ${C.ruleLight}`,
+                          background: C.bg, color: C.text3,
+                          fontSize: 16, lineHeight: 1, cursor: 'pointer',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          padding: 0,
+                        }}
+                      >×</button>
+                    </div>
                   ))}
                   {/* Browse more card */}
                   <div onClick={() => router.push('/')} style={{
