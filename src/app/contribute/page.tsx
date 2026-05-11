@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import { resolveTimerMinutes } from '@/app/lib/cook-utils'
 import SiteHeader from '@/app/components/SiteHeader'
 
@@ -226,7 +226,7 @@ function ContributeInner() {
   useEffect(() => { setDisplayName(getDisplayName()) }, [])
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)

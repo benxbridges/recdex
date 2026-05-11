@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
+import { formatTime, formatNumber } from '@/app/lib/format'
 import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
@@ -27,15 +28,6 @@ function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
   if (!ingredients || ingredients.length === 0) return []
   if (ingredients[0]?.group) return ingredients.flatMap((g: { items: IngredientItem[] }) => g.items || [])
   return ingredients as IngredientItem[]
-}
-
-function formatTime(minutes: number | null): string {
-  if (!minutes) return ''
-  if (minutes >= 60) {
-    const h = Math.floor(minutes / 60), m = minutes % 60
-    return m > 0 ? `${h} hr ${m} min` : `${h} hr${h > 1 ? 's' : ''}`
-  }
-  return `${minutes} min`
 }
 
 function normalizeCuisine(c: string | null): string {
@@ -394,7 +386,7 @@ function BrowseContent() {
   }, [])
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 680)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check()
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)

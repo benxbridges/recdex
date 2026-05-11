@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
+import { safeGetItem, safeSetItem } from '@/app/lib/format'
 import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
@@ -170,20 +171,20 @@ export default function PantryPage() {
   const [addedMissing, setAddedMissing] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem(GROCERY_KEY)
+    const stored = safeGetItem(GROCERY_KEY)
     if (stored) {
       try { setGroceryItems(JSON.parse(stored)) } catch { /* ignore */ }
     }
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem(PANTRY_KEY)
+    const stored = safeGetItem(PANTRY_KEY)
     if (stored) {
       try { setPantryItems(JSON.parse(stored)) } catch { /* ignore */ }
     }
@@ -204,12 +205,12 @@ export default function PantryPage() {
 
   const saveGrocery = useCallback((items: GroceryItem[]) => {
     setGroceryItems(items)
-    localStorage.setItem(GROCERY_KEY, JSON.stringify(items))
+    safeSetItem(GROCERY_KEY, JSON.stringify(items))
   }, [])
 
   const savePantry = useCallback((items: PantryItem[]) => {
     setPantryItems(items)
-    localStorage.setItem(PANTRY_KEY, JSON.stringify(items))
+    safeSetItem(PANTRY_KEY, JSON.stringify(items))
   }, [])
 
   // Toggle item checked — click to strikethrough

@@ -29,3 +29,18 @@ export const C = {
 export const SERIF = "'Young Serif', Georgia, serif"
 export const SANS = "'Plus Jakarta Sans', system-ui, sans-serif"
 export const MONO = "'JetBrains Mono', 'Courier New', monospace"
+
+// ===== LAYOUT TOKENS =====
+// Single mobile breakpoint across the app. Pages currently mix 700/768/820;
+// 768 matches Tailwind/Bootstrap `md` and iPad portrait.
+export const MOBILE_BREAKPOINT = 768
+
+// Modal backdrop — dark wash that reads on both light and dark themes.
+export const BACKDROP = 'rgba(26, 26, 24, 0.5)'
+
+// Spacing scale for new components. Existing pages use ad-hoc values;
+// new component primitives should pull from here.
+export const SPACE = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
+
+// Border radius scale.
+export const RADIUS = { sm: 4, md: 8, lg: 12, pill: 999 } as const

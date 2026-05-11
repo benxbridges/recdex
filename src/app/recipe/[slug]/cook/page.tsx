@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
+import { formatTime } from '@/app/lib/format'
 import { getTipsForStep } from '@/app/lib/cooking-tips'
 import { scaleAmount, scaleStepProse, hasMeasurementBefore, classifyStep, findPhaseBreaks, PHASE_META, resolveTimerMinutes, parseIngredientString, isOvernightStep, recipeRequiresOvernight } from '@/app/lib/cook-utils'
 import { toJpeg } from 'html-to-image'
@@ -59,12 +60,6 @@ function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
     items = ingredients as IngredientItem[]
   }
   return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
-}
-
-function formatTime(minutes: number | null): string {
-  if (!minutes) return ''
-  if (minutes >= 60) { const h = Math.floor(minutes / 60), m = minutes % 60; return m > 0 ? `${h} hr ${m} min` : `${h} hr${h > 1 ? 's' : ''}` }
-  return `${minutes} min`
 }
 
 function formatTimerDisplay(seconds: number): string {
@@ -1433,7 +1428,7 @@ export default function CookModePage() {
   }, [slug])
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 820)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
@@ -2318,6 +2313,7 @@ export default function CookModePage() {
                           color: style.isCompleted ? C.text3 : C.text,
                           margin: 0, fontWeight: 400,
                           transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                          wordWrap: 'break-word', overflowWrap: 'break-word', hyphens: 'auto',
                         }}>
                           {renderStepText(step.text)}
                         </p>

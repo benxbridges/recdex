@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
@@ -127,7 +127,7 @@ export default function ProfilePage() {
   const [activeCategory, setActiveCategory] = useState('all')
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 700)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])

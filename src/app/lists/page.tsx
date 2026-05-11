@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
+import { formatTime, shuffle } from '@/app/lib/format'
 import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
@@ -35,12 +36,6 @@ const DIFFICULTY_MAP: Record<string, { label: string; color: string; bg: string 
   hard: { label: 'Advanced', color: C.accent, bg: C.accentBg },
   difficult: { label: 'Advanced', color: C.accent, bg: C.accentBg },
   advanced: { label: 'Advanced', color: C.accent, bg: C.accentBg },
-}
-
-function formatTime(minutes: number | null): string {
-  if (!minutes) return ''
-  if (minutes >= 60) { const h = Math.floor(minutes / 60), m = minutes % 60; return m > 0 ? `${h}h ${m}m` : `${h}h` }
-  return `${minutes}m`
 }
 
 function EggDot({ size = 9 }: { size?: number }) {
@@ -75,7 +70,7 @@ export default function ListsPage() {
   const [expandedAutoList, setExpandedAutoList] = useState<string | null>(null)
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 700)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
@@ -117,10 +112,7 @@ export default function ListsPage() {
         }
 
         // 2. Quick Weeknight Meals — under 30 min
-        const quick = allRecipes
-          .filter(r => r.time_total && r.time_total <= 30)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 10)
+        const quick = shuffle(allRecipes.filter(r => r.time_total && r.time_total <= 30)).slice(0, 10)
         if (quick.length > 0) {
           lists.push({
             key: 'quick-meals', name: 'Quick Weeknight Meals', subtitle: 'Ready in 30 minutes or less',
@@ -129,10 +121,7 @@ export default function ListsPage() {
         }
 
         // 3. Weekend Projects — longer/harder recipes
-        const weekend = allRecipes
-          .filter(r => (r.time_total && r.time_total >= 60) || ['hard', 'difficult', 'advanced'].includes(r.difficulty?.toLowerCase()))
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 10)
+        const weekend = shuffle(allRecipes.filter(r => (r.time_total && r.time_total >= 60) || ['hard', 'difficult', 'advanced'].includes(r.difficulty?.toLowerCase()))).slice(0, 10)
         if (weekend.length > 0) {
           lists.push({
             key: 'weekend-projects', name: 'Weekend Projects', subtitle: 'Worth the extra time and effort',
@@ -141,10 +130,7 @@ export default function ListsPage() {
         }
 
         // 4. Beginner Friendly — easy recipes
-        const beginner = allRecipes
-          .filter(r => ['easy', 'simple', 'beginner'].includes(r.difficulty?.toLowerCase()))
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 10)
+        const beginner = shuffle(allRecipes.filter(r => ['easy', 'simple', 'beginner'].includes(r.difficulty?.toLowerCase()))).slice(0, 10)
         if (beginner.length > 0) {
           lists.push({
             key: 'beginner-friendly', name: 'Beginner Friendly', subtitle: 'Great first recipes to build confidence',

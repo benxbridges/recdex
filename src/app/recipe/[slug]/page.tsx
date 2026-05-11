@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT, BACKDROP } from '@/app/lib/theme'
+import { formatTime, formatNumber, safeGetItem, safeSetItem, safeRemoveItem } from '@/app/lib/format'
 import { withUtm } from '@/app/lib/unsplash'
 import SiteHeader from '@/app/components/SiteHeader'
 import CookLog from '@/app/components/CookLog'
@@ -83,12 +84,6 @@ function getIngredientItems(ingredients: RawIngredients): IngredientItem[] {
     items = ingredients as IngredientItem[]
   }
   return items.map(item => ({ ...item, name: capitalizeIngredient(item.name) }))
-}
-
-function formatTime(minutes: number | null): string {
-  if (!minutes) return ''
-  if (minutes >= 60) { const h = Math.floor(minutes / 60), m = minutes % 60; return m > 0 ? `${h} hr ${m} min` : `${h} hr${h > 1 ? 's' : ''}` }
-  return `${minutes} min`
 }
 
 function scaleAmount(amount: string, multiplier: number): string {
@@ -246,7 +241,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
 
   // One-click: add ALL items directly to shopping list (no two-step)
   const addAllToShoppingList = () => {
-    const stored = localStorage.getItem('recdex-grocery')
+    const stored = safeGetItem('recdex-grocery')
     let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
     if (stored) {
       try { existing = JSON.parse(stored) } catch { /* ignore */ }
@@ -256,7 +251,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
       name: ing.name, amount: ing.amount, unit: ing.unit, notes: ing.notes,
       recipeId: recipe.id, recipeTitle: recipe.title, recipeSlug: recipe.slug, checked: false,
     }))
-    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    safeSetItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
     const a: Record<number, boolean> = {}
     items.forEach((_, i) => { a[i] = true })
     setAdded(a)
@@ -265,7 +260,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
 
   // Check if this recipe's items are already in the shopping list
   useEffect(() => {
-    const stored = localStorage.getItem('recdex-grocery')
+    const stored = safeGetItem('recdex-grocery')
     if (stored) {
       try {
         const existing = JSON.parse(stored)
@@ -275,8 +270,19 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
     }
   }, [recipe.id])
 
+  // Escape key + focus restore for a11y
+  useEffect(() => {
+    const opener = (document.activeElement as HTMLElement) || null
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      opener?.focus?.()
+    }
+  }, [onClose])
+
   const addToShoppingList = () => {
-    const stored = localStorage.getItem('recdex-grocery')
+    const stored = safeGetItem('recdex-grocery')
     let existing: { recipeId: string; name: string; amount: string; unit: string; notes?: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
     if (stored) {
       try { existing = JSON.parse(stored) } catch { /* ignore */ }
@@ -296,7 +302,7 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
         recipeSlug: recipe.slug,
         checked: false,
       }))
-    localStorage.setItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
+    safeSetItem('recdex-grocery', JSON.stringify([...existing, ...newItems]))
     setAddedToList(true)
   }
 
@@ -315,18 +321,18 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
       <style>{`@keyframes listIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}@keyframes backdropIn{from{opacity:0}to{opacity:1}}`}</style>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.4)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
-      <div style={{ position: 'relative', width: '100%', maxWidth: 400, maxHeight: '85vh', background: C.bg, borderRadius: 14, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.2)', animation: 'listIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+      <div style={{ position: 'absolute', inset: 0, background: BACKDROP, backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby="grocery-list-title" style={{ position: 'relative', width: '100%', maxWidth: 400, maxHeight: '85vh', background: C.bg, borderRadius: 14, overflow: 'hidden', boxShadow: '0 24px 80px rgba(0,0,0,0.2)', animation: 'listIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '20px 24px 16px', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <p style={{ fontSize: 9, fontWeight: 600, color: C.green, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 4px', fontFamily: SANS }}>Grocery List</p>
-              <h3 style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>{recipe.title}</h3>
+              <h3 id="grocery-list-title" style={{ fontFamily: SERIF, fontSize: 20, fontWeight: 700, color: C.text, margin: 0 }}>{recipe.title}</h3>
               <p style={{ fontSize: 11, fontFamily: MONO, color: C.text3, marginTop: 2 }}>
                 Serves {recipe.servings || 4} · {items.length} ingredient{items.length !== 1 ? 's' : ''}
               </p>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, color: C.text3, cursor: 'pointer', padding: 4 }}>×</button>
+            <button onClick={onClose} aria-label="Close grocery list" style={{ background: 'none', border: 'none', fontSize: 20, color: C.text3, cursor: 'pointer', padding: 4, minWidth: 44, minHeight: 44 }}>×</button>
           </div>
         </div>
         <div style={{ padding: '12px 24px 20px', overflowY: 'auto', flex: 1 }}>
@@ -336,18 +342,33 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
           {items.map((ing, i) => {
             const isAdded = added[i]
             return (
-              <div key={i} onClick={() => isAdded ? removeItem(i) : addItem(i)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: `1px solid ${C.ruleLight}`, cursor: 'pointer' }}>
+              <button
+                key={i}
+                type="button"
+                role="checkbox"
+                aria-checked={isAdded}
+                aria-label={`${isAdded ? 'Remove' : 'Add'} ${ing.name}`}
+                onClick={() => isAdded ? removeItem(i) : addItem(i)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                  borderBottom: `1px solid ${C.ruleLight}`,
+                  cursor: 'pointer', width: '100%',
+                  background: 'transparent', border: 'none', borderRadius: 0,
+                  textAlign: 'left', fontFamily: 'inherit',
+                }}
+              >
                 <span style={{
                   fontSize: 14, fontFamily: SANS, flex: 1,
                   color: isAdded ? C.text3 : C.text,
                   fontStyle: isAdded ? 'italic' : 'normal',
                   transition: 'all 0.15s',
+                  wordWrap: 'break-word', overflowWrap: 'break-word', minWidth: 0,
                 }}>
                   {ing.amount && <span style={{ fontWeight: 400 }}>{ing.amount}{ing.unit ? ` ${ing.unit}` : ''} </span>}
                   {ing.name}
                   {ing.notes && <span style={{ color: C.text3 }}> ({ing.notes})</span>}
                 </span>
-                <div style={{
+                <span aria-hidden="true" style={{
                   width: 24, height: 24, borderRadius: 6, flexShrink: 0,
                   border: `1.5px solid ${isAdded ? C.green : C.rule}`,
                   background: isAdded ? C.green : 'transparent',
@@ -357,8 +378,8 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
                   fontSize: 15, fontWeight: 300, lineHeight: 1,
                 }}>
                   {isAdded ? <span style={{ fontSize: 12, fontWeight: 600 }}>✓</span> : '+'}
-                </div>
-              </div>
+                </span>
+              </button>
             )
           })}
         </div>
@@ -414,7 +435,26 @@ function GroceryListModal({ recipe, onClose }: { recipe: Recipe; onClose: () => 
 // ===== SHARE CARD MODAL =====
 function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => void }) {
   const [linkCopied, setLinkCopied] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const items = getIngredientItems(recipe.ingredients)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // Escape key + focus restore for a11y
+  useEffect(() => {
+    const opener = (document.activeElement as HTMLElement) || null
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      opener?.focus?.()
+    }
+  }, [onClose])
 
   const copyLink = async () => {
     await navigator.clipboard?.writeText(window.location.href)
@@ -431,12 +471,12 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 24 }}>
       <style>{`@keyframes cardIn{from{opacity:0;transform:scale(0.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(26,26,24,0.55)', backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
-      <div onClick={e => e.stopPropagation()} style={{ width: 'min(380px, 90vw)', animation: 'cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+      <div style={{ position: 'absolute', inset: 0, background: BACKDROP, backdropFilter: 'blur(10px)', animation: 'backdropIn 0.2s ease' }} onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-labelledby="share-card-title" onClick={e => e.stopPropagation()} style={{ width: 'min(380px, 94vw)', animation: 'cardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
         {/* The card — uses theme bg so it renders correctly in dark + light mode */}
-        <div style={{ background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 10, padding: '28px 26px 24px', overflow: 'hidden' }}>
+        <div style={{ background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 10, padding: isMobile ? '20px 18px 18px' : '28px 26px 24px', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <span style={{ fontFamily: MONO, fontSize: 8, fontWeight: 600, letterSpacing: 2, color: C.text3, textTransform: 'uppercase' }}>Recipe Index</span>
@@ -445,7 +485,7 @@ function ShareCardModal({ recipe, onClose }: { recipe: Recipe; onClose: () => vo
           <div style={{ height: 1, background: C.rule, marginBottom: 18 }} />
 
           {/* Title & meta */}
-          <h2 style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.15, letterSpacing: -0.5 }}>{recipe.title}</h2>
+          <h2 id="share-card-title" style={{ fontFamily: SERIF, fontSize: 26, fontWeight: 700, color: C.text, margin: '0 0 4px', lineHeight: 1.15, letterSpacing: -0.5, wordWrap: 'break-word', overflowWrap: 'break-word' }}>{recipe.title}</h2>
           {recipe.submitted_by && (
             <p style={{ fontFamily: SANS, fontSize: 11, color: C.blue, margin: '2px 0 4px', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 2, background: C.blueBg, fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: MONO, color: C.blue }}>Community</span>
@@ -665,7 +705,7 @@ export default function RecipePage() {
   const [noteSaved, setNoteSaved] = useState(false)
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 700)
+    const check = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     check(); window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
@@ -688,8 +728,10 @@ export default function RecipePage() {
   // Check local storage for saved state
   useEffect(() => {
     if (!recipe) return
-    const box = JSON.parse(localStorage.getItem('recdex-box') || '[]')
-    setSaved(box.includes(recipe.id))
+    try {
+      const box = JSON.parse(safeGetItem('recdex-box') || '[]')
+      setSaved(box.includes(recipe.id))
+    } catch { /* ignore */ }
   }, [recipe])
 
   // Fetch comments from Supabase
@@ -712,7 +754,7 @@ export default function RecipePage() {
   useEffect(() => {
     if (!recipe) return
     try {
-      const notes: PrivateNote[] = JSON.parse(localStorage.getItem('recdex-notes') || '[]')
+      const notes: PrivateNote[] = JSON.parse(safeGetItem('recdex-notes') || '[]')
       const existing = notes.find(n => n.recipeId === recipe.id)
       if (existing) setPrivateNote(existing.text)
     } catch { /* ignore */ }
@@ -721,7 +763,7 @@ export default function RecipePage() {
   // Get display name from profile
   const getDisplayName = () => {
     try {
-      const prof = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+      const prof = JSON.parse(safeGetItem('recdex-profile') || '{}')
       return prof.displayName || ''
     } catch { return '' }
   }
@@ -746,7 +788,7 @@ export default function RecipePage() {
   const savePrivateNote = () => {
     if (!recipe) return
     try {
-      const notes: PrivateNote[] = JSON.parse(localStorage.getItem('recdex-notes') || '[]')
+      const notes: PrivateNote[] = JSON.parse(safeGetItem('recdex-notes') || '[]')
       const idx = notes.findIndex(n => n.recipeId === recipe.id)
       const now = Date.now()
       if (privateNote.trim()) {
@@ -758,7 +800,7 @@ export default function RecipePage() {
       } else if (idx >= 0) {
         notes.splice(idx, 1)
       }
-      localStorage.setItem('recdex-notes', JSON.stringify(notes))
+      safeSetItem('recdex-notes', JSON.stringify(notes))
       setEditingNote(false)
       setNoteSaved(true)
       setTimeout(() => setNoteSaved(false), 2000)
@@ -767,11 +809,11 @@ export default function RecipePage() {
 
   const toggleSave = () => {
     if (!recipe) return
-    const box = JSON.parse(localStorage.getItem('recdex-box') || '[]')
+    const box = JSON.parse(safeGetItem('recdex-box') || '[]')
     if (saved) {
-      localStorage.setItem('recdex-box', JSON.stringify(box.filter((id: string) => id !== recipe.id)))
+      safeSetItem('recdex-box', JSON.stringify(box.filter((id: string) => id !== recipe.id)))
     } else {
-      localStorage.setItem('recdex-box', JSON.stringify([...box, recipe.id]))
+      safeSetItem('recdex-box', JSON.stringify([...box, recipe.id]))
     }
     setSaved(!saved)
   }
@@ -1178,7 +1220,7 @@ export default function RecipePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        const stored = localStorage.getItem('recdex-grocery')
+                        const stored = safeGetItem('recdex-grocery')
                         let existing: { name: string; amount: string; unit: string; recipeId: string; recipeTitle: string; recipeSlug: string; checked: boolean }[] = []
                         if (stored) { try { existing = JSON.parse(stored) } catch { /* */ } }
                         if (!existing.some(e => e.recipeTitle === recipe.title && e.name === item.name)) {
@@ -1191,7 +1233,7 @@ export default function RecipePage() {
                             recipeSlug: slug,
                             checked: false,
                           })
-                          localStorage.setItem('recdex-grocery', JSON.stringify(existing))
+                          safeSetItem('recdex-grocery', JSON.stringify(existing))
                         }
                         setShoppingToast(true)
                         setTimeout(() => setShoppingToast(false), 1500)
@@ -1558,13 +1600,13 @@ export default function RecipePage() {
               {[...comments]
                 .sort((a, b) => {
                   // Sort by likes (stored in localStorage), then by date
-                  const likesA = parseInt(localStorage.getItem(`recdex-note-likes-${a.id}`) || '0')
-                  const likesB = parseInt(localStorage.getItem(`recdex-note-likes-${b.id}`) || '0')
+                  const likesA = parseInt(safeGetItem(`recdex-note-likes-${a.id}`) || '0')
+                  const likesB = parseInt(safeGetItem(`recdex-note-likes-${b.id}`) || '0')
                   if (likesB !== likesA) return likesB - likesA
                   return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
                 })
                 .map((c, i, sorted) => {
-                const likes = parseInt(localStorage.getItem(`recdex-note-likes-${c.id}`) || '0')
+                const likes = parseInt(safeGetItem(`recdex-note-likes-${c.id}`) || '0')
                 const isTop = i === 0 && likes >= 5
                 return (
                 <div key={c.id} style={{
@@ -1586,26 +1628,26 @@ export default function RecipePage() {
                         onClick={() => {
                           const key = `recdex-note-likes-${c.id}`
                           const likedKey = `recdex-note-liked-${c.id}`
-                          const alreadyLiked = localStorage.getItem(likedKey) === '1'
-                          const current = parseInt(localStorage.getItem(key) || '0')
+                          const alreadyLiked = safeGetItem(likedKey) === '1'
+                          const current = parseInt(safeGetItem(key) || '0')
                           if (alreadyLiked) {
-                            localStorage.setItem(key, String(Math.max(0, current - 1)))
-                            localStorage.removeItem(likedKey)
+                            safeSetItem(key, String(Math.max(0, current - 1)))
+                            safeRemoveItem(likedKey)
                           } else {
-                            localStorage.setItem(key, String(current + 1))
-                            localStorage.setItem(likedKey, '1')
+                            safeSetItem(key, String(current + 1))
+                            safeSetItem(likedKey, '1')
                           }
                           // Force re-render
                           setComments([...comments])
                         }}
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer', padding: 2,
-                          opacity: localStorage.getItem(`recdex-note-liked-${c.id}`) === '1' ? 1 : 0.5,
+                          opacity: safeGetItem(`recdex-note-liked-${c.id}`) === '1' ? 1 : 0.5,
                           transition: 'opacity 0.15s',
                         }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                          stroke={localStorage.getItem(`recdex-note-liked-${c.id}`) === '1' ? C.accent : C.text3}
+                          stroke={safeGetItem(`recdex-note-liked-${c.id}`) === '1' ? C.accent : C.text3}
                           strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
                           style={{ transform: 'rotate(-30deg)' }}
                         >

@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
-import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
+import { formatTime, formatNumber, safeGetItem, safeSetItem, shuffle } from '@/app/lib/format'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
 import CookbookShelf from '@/app/components/CookbookShelf'
@@ -36,12 +37,6 @@ type ExtractedRecipe = {
 type ExtractState = 'idle' | 'extracting' | 'preview' | 'error'
 
 // ===== HELPERS =====
-function formatTime(minutes: number | null): string {
-  if (!minutes) return ''
-  if (minutes >= 60) { const h = Math.floor(minutes / 60), m = minutes % 60; return m > 0 ? `${h} hr ${m} min` : `${h} hr${h > 1 ? 's' : ''}` }
-  return `${minutes} min`
-}
-
 function isUrl(text: string): boolean {
   const t = text.trim()
   if (/^https?:\/\//i.test(t)) return true
@@ -126,7 +121,7 @@ export default function Home() {
   const extractingUrlRef = useRef('')
 
   // Responsive
-  useEffect(() => { const c = () => setIsMobile(window.innerWidth < 768); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
+  useEffect(() => { const c = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT); c(); window.addEventListener('resize', c); return () => window.removeEventListener('resize', c) }, [])
 
   // Onboarding — disabled for now while we strip the homepage down to a
   // toolkit. Keep the component + state around for future revival.
@@ -134,26 +129,36 @@ export default function Home() {
   useEffect(() => {
     if (!ONBOARDING_ENABLED) return
     try {
-      const profile = JSON.parse(localStorage.getItem('recdex-profile') || '{}')
+      const profile = JSON.parse(safeGetItem('recdex-profile') || '{}')
       if (!profile.onboardingComplete) setShowOnboarding(true)
     } catch { setShowOnboarding(true) }
   }, [])
 
   // Fetch homepage data
-  useEffect(() => { supabase.from('categories').select('*').order('sort_order').then(({ data }) => { if (data) setCategories(data) }) }, [])
-  useEffect(() => { supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('status', 'published').then(({ count }) => { if (count) setTotalCount(count) }) }, [])
+  useEffect(() => {
+    supabase.from('categories').select('*').order('sort_order').then(({ data, error }) => {
+      if (error) { console.error('[home] categories load failed:', error); return }
+      if (data) setCategories(data)
+    })
+  }, [])
+  useEffect(() => {
+    supabase.from('recipes').select('*', { count: 'exact', head: true }).eq('status', 'published').then(({ count, error }) => {
+      if (error) { console.error('[home] recipe count failed:', error); return }
+      if (count) setTotalCount(count)
+    })
+  }, [])
 
   const shuffleRecipes = useCallback((all: Recipe[], excludeId?: string) => {
     const pool = excludeId ? all.filter(r => r.id !== excludeId) : all
-    const shuffled = [...pool].sort(() => Math.random() - 0.5)
-    setShuffledRecipes(shuffled.slice(0, 8))
+    setShuffledRecipes(shuffle(pool).slice(0, 8))
   }, [])
 
   useEffect(() => {
     async function fetchHomepage() {
-      const { data: allRecipes } = await supabase
+      const { data: allRecipes, error } = await supabase
         .from('recipes').select('*').eq('status', 'published')
         .order('created_at', { ascending: false })
+      if (error) { console.error('[home] recipes load failed:', error); return }
       if (!allRecipes || allRecipes.length === 0) return
       allRecipesRef.current = allRecipes
       shuffleRecipes(allRecipes)
@@ -251,13 +256,17 @@ export default function Home() {
     }
   }
 
-  // Handle paste event — auto-extract URLs
+  // Handle paste event — auto-extract URLs. Guard against rapid re-paste while
+  // a previous extraction is in flight to avoid duplicate work.
+  const pasteInFlight = useRef(false)
   const handlePaste = (e: React.ClipboardEvent) => {
     const pasted = e.clipboardData.getData('text').trim()
-    if (isUrl(pasted)) {
-      // Let the onChange update first, then extract
-      setTimeout(() => extractRecipe(pasted), 100)
-    }
+    if (!isUrl(pasted) || pasteInFlight.current) return
+    pasteInFlight.current = true
+    // Let the onChange update first, then extract
+    setTimeout(() => {
+      Promise.resolve(extractRecipe(pasted)).finally(() => { pasteInFlight.current = false })
+    }, 100)
   }
 
   // Start cooking with extracted recipe
@@ -564,7 +573,7 @@ export default function Home() {
                       borderTop: `1px solid ${C.ruleLight}`,
                     }}
                   >
-                    Search all {totalCount} recipes →
+                    Search all {formatNumber(totalCount)} recipes →
                   </div>
                 </div>
               )}
@@ -753,7 +762,7 @@ export default function Home() {
                 </svg>
               </button>
             </div>
-            <Link href="/browse" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>See all {totalCount} →</Link>
+            <Link href="/browse" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>See all {formatNumber(totalCount)} →</Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {shuffledRecipes.map((recipe, i) => (
@@ -789,22 +798,30 @@ export default function Home() {
           Type ingredients in your kitchen. We&apos;ll match recipes that use what you have.
         </p>
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
           minHeight: 44, padding: '10px 14px',
           background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 10,
+          maxWidth: '100%', boxSizing: 'border-box',
         }}>
           <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }} aria-hidden>🍳</span>
           {kitchenTags.map(tag => (
             <span key={tag} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 5,
-              padding: '4px 9px', borderRadius: 7, background: C.bg, border: `1px solid ${C.ruleLight}`,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '4px 4px 4px 9px', borderRadius: 7, background: C.bg, border: `1px solid ${C.ruleLight}`,
               fontSize: 12, fontFamily: SANS, fontWeight: 500, color: C.text,
+              maxWidth: '100%',
             }}>
-              {tag}
-              <button onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))} style={{
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                fontSize: 11, color: C.text3, lineHeight: 1,
-              }}>×</button>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160 }}>{tag}</span>
+              <button
+                onClick={() => setKitchenTags(prev => prev.filter(t => t !== tag))}
+                aria-label={`Remove ${tag}`}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: 0, width: 24, height: 24, display: 'inline-flex',
+                  alignItems: 'center', justifyContent: 'center',
+                  fontSize: 14, color: C.text3, lineHeight: 1, borderRadius: 4,
+                }}
+              >×</button>
             </span>
           ))}
           <input
@@ -813,8 +830,8 @@ export default function Home() {
             onKeyDown={handleKitchenKeyDown}
             placeholder={kitchenTags.length === 0 ? 'e.g. chicken, garlic, lemon…' : 'Add more…'}
             style={{
-              flex: 1, minWidth: 120, border: 'none', outline: 'none', background: 'transparent',
-              fontSize: isMobile ? 14 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
+              flex: '1 1 80px', minWidth: 80, border: 'none', outline: 'none', background: 'transparent',
+              fontSize: isMobile ? 16 : 15, fontFamily: SANS, color: C.text, padding: '4px 0',
             }}
           />
         </div>
@@ -835,7 +852,11 @@ export default function Home() {
                     {m.recipe.cuisine}{m.recipe.time_total ? ` · ${formatTime(m.recipe.time_total)}` : ''}
                   </span>
                 </div>
-                <span style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}>
+                <span
+                  title={`${m.matched} of ${m.total} ingredients in your kitchen`}
+                  aria-label={`${m.matched} of ${m.total} ingredients matched`}
+                  style={{ fontSize: 10, fontFamily: MONO, color: m.fraction >= 0.6 ? C.green : C.gold, fontWeight: 600, flexShrink: 0 }}
+                >
                   {m.matched}/{m.total}
                 </span>
               </Link>
@@ -864,7 +885,7 @@ export default function Home() {
         <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 32px' : '28px clamp(16px,4vw,24px) 40px' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Browse by cuisine</p>
-            <Link href="/browse" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>See all {totalCount} →</Link>
+            <Link href="/browse" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>See all {formatNumber(totalCount)} →</Link>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {categories.slice(0, isMobile ? 8 : 12).map(cat => (
@@ -936,7 +957,7 @@ export default function Home() {
               <p style={{ fontSize: 11, color: C.text3, margin: 0, maxWidth: 320, lineHeight: 1.5, fontFamily: SANS }}>A collection of kitchen tools and recipes to help you become your best cook.</p>
             </div>
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO, textAlign: isMobile ? 'left' : 'right' }}>
-              <p style={{ margin: '0 0 4px' }}>{totalCount} recipes · {categories.length} cuisines</p>
+              <p style={{ margin: '0 0 4px' }}>{formatNumber(totalCount)} recipes · {categories.length} cuisines</p>
               <p style={{ margin: 0 }}><Link href="/contribute" style={{ color: C.accent, textDecoration: 'none' }}>Import</Link>{' · '}<Link href="/browse" style={{ color: C.accent, textDecoration: 'none' }}>Browse</Link></p>
             </div>
           </div>
