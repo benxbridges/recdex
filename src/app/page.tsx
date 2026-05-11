@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import { formatTime, formatNumber, safeGetItem, safeSetItem, shuffle } from '@/app/lib/format'
+import { useUserLists } from '@/app/lib/user-lists'
 import OnboardingFlow, { type OnboardingProfile } from '@/app/components/OnboardingFlow'
 import BensNoteModal from '@/app/components/BensNoteModal'
 import CookbookShelf from '@/app/components/CookbookShelf'
@@ -93,6 +94,7 @@ function ingredientMatches(userIngredient: string, recipeIngredient: string): bo
 // ===== MAIN PAGE =====
 export default function Home() {
   const router = useRouter()
+  const { lists: userLists } = useUserLists()
   const [input, setInput] = useState('')
   const [inputFocused, setInputFocused] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
@@ -731,6 +733,61 @@ export default function Home() {
 
         </div>
       </div>
+
+      {/* ===== YOUR LISTS — visible whenever there's at least one (DB or local). ===== */}
+      {userLists.length > 0 && (
+        <div style={{ maxWidth: 640, margin: '0 auto', padding: isMobile ? '20px 16px 8px' : '28px clamp(16px,4vw,24px) 8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: C.accent, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: MONO, margin: 0 }}>Your Lists</p>
+            <Link href="/lists" style={{ fontSize: 11, fontFamily: SANS, color: C.accent, fontWeight: 600, textDecoration: 'none' }}>Manage all →</Link>
+          </div>
+          <div className="hide-scrollbar" style={{
+            display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4,
+            scrollSnapType: 'x mandatory',
+          }}>
+            {userLists.slice(0, 6).map((list, i) => (
+              <Link
+                key={list.id}
+                href="/lists"
+                style={{
+                  flexShrink: 0, width: isMobile ? 180 : 200,
+                  padding: '14px 16px', borderRadius: 10,
+                  background: C.warm, border: `1px solid ${C.ruleLight}`,
+                  textDecoration: 'none',
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                  scrollSnapAlign: 'start',
+                  animation: `fadeIn 0.3s ease ${i * 0.04}s both`,
+                }}
+              >
+                <span style={{
+                  fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25,
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                }}>
+                  {list.name}
+                </span>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: C.accent, fontWeight: 600 }}>
+                  {list.recipeIds.length} recipe{list.recipeIds.length !== 1 ? 's' : ''}
+                </span>
+              </Link>
+            ))}
+            <Link
+              href="/lists"
+              style={{
+                flexShrink: 0, width: isMobile ? 120 : 140,
+                padding: '14px 16px', borderRadius: 10,
+                background: C.cool, border: `1.5px dashed ${C.ruleLight}`,
+                textDecoration: 'none',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                scrollSnapAlign: 'start',
+              }}
+            >
+              <span style={{ fontSize: 20, lineHeight: 1, color: C.text3 }}>+</span>
+              <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3, textAlign: 'center' }}>New list</span>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ===== DISCOVER (index-style text list, no thumbnails) ===== */}
       {shuffledRecipes.length > 0 && (

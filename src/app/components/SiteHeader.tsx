@@ -31,6 +31,7 @@ function EggDot({ size = 9 }: { size?: number }) {
 
 const NAV: { href: string; label: string; matchPrefix: string }[] = [
   { href: '/browse',  label: 'Browse',  matchPrefix: '/browse' },
+  { href: '/lists',   label: 'Lists',   matchPrefix: '/lists' },
   { href: '/tools',   label: 'Tools',   matchPrefix: '/tools' },
   { href: '/profile', label: 'Profile', matchPrefix: '/profile' },
   { href: '/about',   label: 'About',   matchPrefix: '/about' },

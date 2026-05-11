@@ -285,84 +285,8 @@ export default function ListsPage() {
           </div>
         ) : (
           <>
-            {/* ========== AUTO-GENERATED LISTS ========== */}
-            <section style={{ marginBottom: 36 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
-                <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>RecDex Picks</h3>
-                <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>AUTO-GENERATED</span>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12 }}>
-                {autoLists.map((list, i) => {
-                  const isExpanded = expandedAutoList === list.key
-                  return (
-                    <div key={list.key} style={{
-                      background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 12,
-                      overflow: 'hidden', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                      cursor: 'pointer',
-                    }}
-                      onClick={() => setExpandedAutoList(isExpanded ? null : list.key)}
-                    >
-                      {/* Card header */}
-                      <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        <span style={{
-                          fontSize: 24, lineHeight: 1, flexShrink: 0,
-                          width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          background: list.bgColor, borderRadius: 10,
-                        }}>{list.emoji}</span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h4 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 2px' }}>
-                            {list.name}
-                          </h4>
-                          <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: 0 }}>{list.subtitle}</p>
-                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontFamily: MONO, fontSize: 10, color: list.accentColor, fontWeight: 600 }}>{list.recipes.length} recipes</span>
-                            <span style={{ fontSize: 10, color: C.text3 }}>{isExpanded ? '▲' : '▼'}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Expanded recipe list */}
-                      {isExpanded && (
-                        <div style={{ borderTop: `1px solid ${C.ruleLight}`, padding: '8px 0' }}>
-                          {list.recipes.map((r, ri) => (
-                            <Link key={r.id} href={`/recipe/${r.slug}`}
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10,
-                                padding: '8px 18px',
-                                background: ri % 2 === 0 ? 'transparent' : `${C.bg}80`,
-                              }}>
-                              <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, width: 20, textAlign: 'right', flexShrink: 0 }}>{ri + 1}</span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{
-                                  fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text,
-                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
-                                }}>
-                                  {r.title}
-                                </span>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                {r.time_total && (
-                                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{formatTime(r.time_total)}</span>
-                                )}
-                                {r.difficulty && (() => {
-                                  const d = DIFFICULTY_MAP[r.difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
-                                  return <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: d.color, background: d.bg, padding: '1px 5px', borderRadius: 2, textTransform: 'uppercase' }}>{d.label}</span>
-                                })()}
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-
             {/* ========== USER LISTS ========== */}
-            <section style={{ marginBottom: 40 }}>
+            <section style={{ marginBottom: 36 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
                 <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>Your Lists</h3>
                 <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{userLists.length}</span>
@@ -464,6 +388,82 @@ export default function ListsPage() {
                   })}
                 </div>
               )}
+            </section>
+
+            {/* ========== AUTO-GENERATED LISTS ========== */}
+            <section style={{ marginBottom: 40 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 16 }}>
+                <h3 style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, margin: 0 }}>RecDex Picks</h3>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>AUTO-GENERATED</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)', gap: 12 }}>
+                {autoLists.map((list, i) => {
+                  const isExpanded = expandedAutoList === list.key
+                  return (
+                    <div key={list.key} style={{
+                      background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 12,
+                      overflow: 'hidden', animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
+                      cursor: 'pointer',
+                    }}
+                      onClick={() => setExpandedAutoList(isExpanded ? null : list.key)}
+                    >
+                      {/* Card header */}
+                      <div style={{ padding: '16px 18px 12px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                        <span style={{
+                          fontSize: 24, lineHeight: 1, flexShrink: 0,
+                          width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: list.bgColor, borderRadius: 10,
+                        }}>{list.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h4 style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text, margin: '0 0 2px' }}>
+                            {list.name}
+                          </h4>
+                          <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: 0 }}>{list.subtitle}</p>
+                          <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontFamily: MONO, fontSize: 10, color: list.accentColor, fontWeight: 600 }}>{list.recipes.length} recipes</span>
+                            <span style={{ fontSize: 10, color: C.text3 }}>{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded recipe list */}
+                      {isExpanded && (
+                        <div style={{ borderTop: `1px solid ${C.ruleLight}`, padding: '8px 0' }}>
+                          {list.recipes.map((r, ri) => (
+                            <Link key={r.id} href={`/recipe/${r.slug}`}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{
+                                textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10,
+                                padding: '8px 18px',
+                                background: ri % 2 === 0 ? 'transparent' : `${C.bg}80`,
+                              }}>
+                              <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, width: 20, textAlign: 'right', flexShrink: 0 }}>{ri + 1}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{
+                                  fontFamily: SERIF, fontSize: 14, fontWeight: 600, color: C.text,
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block',
+                                }}>
+                                  {r.title}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                {r.time_total && (
+                                  <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3 }}>{formatTime(r.time_total)}</span>
+                                )}
+                                {r.difficulty && (() => {
+                                  const d = DIFFICULTY_MAP[r.difficulty?.toLowerCase()] || DIFFICULTY_MAP.easy
+                                  return <span style={{ fontSize: 8, fontFamily: MONO, fontWeight: 700, color: d.color, background: d.bg, padding: '1px 5px', borderRadius: 2, textTransform: 'uppercase' }}>{d.label}</span>
+                                })()}
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </section>
           </>
         )}
