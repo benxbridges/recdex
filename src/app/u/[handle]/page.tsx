@@ -9,6 +9,7 @@ import Button from '@/app/components/Button'
 import { supabase } from '@/app/lib/supabase'
 import { useAuth, type Profile } from '@/app/lib/auth'
 import { useSavedRecipes } from '@/app/lib/saved-recipes'
+import { useUserLists } from '@/app/lib/user-lists'
 
 export default function PublicProfilePage() {
   const params = useParams<{ handle: string }>()
@@ -65,7 +66,9 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
   // Owner-only: surface the Box count with a link to the full /profile list.
   // RLS hides other people's saves from this query, so non-owners always see 0.
   const { savedIds } = useSavedRecipes()
+  const { lists: userLists } = useUserLists()
   const savedCount = isOwner ? savedIds.size : 0
+  const listCount = isOwner ? userLists.length : 0
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 16 : 24, marginBottom: 28 }}>
@@ -98,10 +101,19 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
       <div style={{ height: 1, background: C.rule, margin: '8px 0 24px' }} />
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <EmptyShelf
-          title="Lists"
-          empty={isOwner ? 'You haven’t made any public lists yet.' : `${profile.display_name || profile.handle} hasn’t made any public lists yet.`}
-        />
+        {isOwner && listCount > 0 ? (
+          <CountShelf
+            title="Lists"
+            count={listCount}
+            href="/lists"
+            ctaLabel="Manage your lists →"
+          />
+        ) : (
+          <EmptyShelf
+            title="Lists"
+            empty={isOwner ? 'You haven’t made any public lists yet.' : `${profile.display_name || profile.handle} hasn’t made any public lists yet.`}
+          />
+        )}
         <EmptyShelf
           title="Recently cooked"
           empty={isOwner ? 'Your cooking log will appear here once you cook a recipe.' : `${profile.display_name || profile.handle} hasn’t shared any cooks yet.`}

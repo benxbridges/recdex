@@ -7,6 +7,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import { formatTime, shuffle } from '@/app/lib/format'
 import SiteHeader from '@/app/components/SiteHeader'
+import { useUserLists, type UserList as HookUserList } from '@/app/lib/user-lists'
 
 // ===== TYPES =====
 type Recipe = {
@@ -15,10 +16,8 @@ type Recipe = {
   time_total: number | null; image_url: string | null
 }
 
-type UserList = {
-  id: string; name: string; description: string
-  recipeIds: string[]; createdAt: number; updatedAt: number
-}
+// Re-export the hook type so existing references in this file keep working.
+type UserList = HookUserList
 
 type AutoList = {
   key: string; name: string; subtitle: string; emoji: string
@@ -52,8 +51,8 @@ export default function ListsPage() {
   // Auto-generated lists
   const [autoLists, setAutoLists] = useState<AutoList[]>([])
 
-  // User-created lists
-  const [userLists, setUserLists] = useState<UserList[]>([])
+  // User-created lists (hook handles DB/localStorage transparently)
+  const { lists: userLists, createList, updateList, deleteList: deleteUserList } = useUserLists()
   const [userListRecipes, setUserListRecipes] = useState<Map<string, Recipe>>(new Map())
 
   // Create / edit list UI
@@ -161,34 +160,25 @@ export default function ListsPage() {
     loadAutoLists()
   }, [])
 
-  // Load user lists from localStorage
+  // Fetch recipe details for any recipes referenced in user lists.
+  // Refires when lists change (sign-in, create, update, delete).
   useEffect(() => {
-    const raw = localStorage.getItem('recdex-lists')
-    if (raw) {
-      try {
-        const parsed: UserList[] = JSON.parse(raw)
-        setUserLists(parsed)
-        // Load recipe data for all recipes in user lists
-        const allIds = parsed.flatMap(l => l.recipeIds)
-        if (allIds.length > 0) {
-          supabase.from('recipes').select('id, slug, title, description, cuisine, difficulty, time_total, image_url')
-            .in('id', [...new Set(allIds)])
-            .then(({ data }) => {
-              if (data) {
-                const map = new Map<string, Recipe>()
-                data.forEach(r => map.set(r.id, r))
-                setUserListRecipes(map)
-              }
-            })
+    const allIds = [...new Set(userLists.flatMap(l => l.recipeIds))]
+    if (allIds.length === 0) { setUserListRecipes(new Map()); return }
+    let cancelled = false
+    supabase.from('recipes').select('id, slug, title, description, cuisine, difficulty, time_total, image_url')
+      .in('id', allIds)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) { console.error('[lists] recipe cache fetch failed:', error); return }
+        if (data) {
+          const map = new Map<string, Recipe>()
+          data.forEach(r => map.set(r.id, r))
+          setUserListRecipes(map)
         }
-      } catch { /* ignore */ }
-    }
-  }, [])
-
-  const saveUserLists = (lists: UserList[]) => {
-    setUserLists(lists)
-    localStorage.setItem('recdex-lists', JSON.stringify(lists))
-  }
+      })
+    return () => { cancelled = true }
+  }, [userLists])
 
   // Recipe search for list creation
   useEffect(() => {
@@ -219,42 +209,35 @@ export default function ListsPage() {
     setTimeout(() => searchInputRef.current?.focus(), 100)
   }
 
-  const saveList = () => {
+  const saveList = async () => {
     const name = newListName.trim()
     if (!name) return
-    const now = Date.now()
 
     if (editingList) {
-      // Update existing
-      const updated = userLists.map(l =>
-        l.id === editingList.id ? { ...l, name, description: newListDesc.trim(), recipeIds: selectedRecipeIds, updatedAt: now } : l
-      )
-      saveUserLists(updated)
-      // Update recipe cache
-      searchResults.forEach(r => {
-        if (selectedRecipeIds.includes(r.id)) {
-          setUserListRecipes(prev => new Map(prev).set(r.id, r))
-        }
+      await updateList(editingList.id, {
+        name,
+        description: newListDesc.trim(),
+        recipeIds: selectedRecipeIds,
       })
     } else {
-      // Create new
-      const newList: UserList = {
-        id: crypto.randomUUID(), name, description: newListDesc.trim(),
-        recipeIds: selectedRecipeIds, createdAt: now, updatedAt: now,
-      }
-      saveUserLists([newList, ...userLists])
-      // Update recipe cache
-      searchResults.forEach(r => {
-        if (selectedRecipeIds.includes(r.id)) {
-          setUserListRecipes(prev => new Map(prev).set(r.id, r))
-        }
+      await createList({
+        name,
+        description: newListDesc.trim(),
+        recipeIds: selectedRecipeIds,
       })
     }
+    // Seed the recipe cache from in-flight search results so the new/edited
+    // list renders thumbnails immediately without waiting on the re-fetch.
+    searchResults.forEach(r => {
+      if (selectedRecipeIds.includes(r.id)) {
+        setUserListRecipes(prev => new Map(prev).set(r.id, r))
+      }
+    })
     setShowCreateModal(false)
   }
 
   const deleteList = (listId: string) => {
-    saveUserLists(userLists.filter(l => l.id !== listId))
+    deleteUserList(listId)
   }
 
   return (
