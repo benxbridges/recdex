@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT, BACKDROP } from '@/app/lib/theme'
 import { formatTime, formatNumber, safeGetItem, safeSetItem, safeRemoveItem } from '@/app/lib/format'
+import { useSavedRecipes } from '@/app/lib/saved-recipes'
 import { withUtm } from '@/app/lib/unsplash'
 import SiteHeader from '@/app/components/SiteHeader'
 import CookLog from '@/app/components/CookLog'
@@ -658,7 +659,8 @@ export default function RecipePage() {
 
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [loading, setLoading] = useState(true)
-  const [saved, setSaved] = useState(false)
+  const { isSaved, toggle: toggleSavedRecipe } = useSavedRecipes()
+  const saved = recipe ? isSaved(recipe.id) : false
   const [copied, setCopied] = useState(false)
   const [heroImgFailed, setHeroImgFailed] = useState(false)
   const [showGroceryList, setShowGroceryList] = useState(false)
@@ -725,14 +727,7 @@ export default function RecipePage() {
     if (slug) fetchRecipe()
   }, [slug])
 
-  // Check local storage for saved state
-  useEffect(() => {
-    if (!recipe) return
-    try {
-      const box = JSON.parse(safeGetItem('recdex-box') || '[]')
-      setSaved(box.includes(recipe.id))
-    } catch { /* ignore */ }
-  }, [recipe])
+  // saved state is now derived from useSavedRecipes — no manual localStorage read needed here.
 
   // Fetch comments from Supabase
   useEffect(() => {
@@ -809,13 +804,7 @@ export default function RecipePage() {
 
   const toggleSave = () => {
     if (!recipe) return
-    const box = JSON.parse(safeGetItem('recdex-box') || '[]')
-    if (saved) {
-      safeSetItem('recdex-box', JSON.stringify(box.filter((id: string) => id !== recipe.id)))
-    } else {
-      safeSetItem('recdex-box', JSON.stringify([...box, recipe.id]))
-    }
-    setSaved(!saved)
+    toggleSavedRecipe(recipe.id)
   }
 
   const handleShare = () => {

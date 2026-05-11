@@ -8,6 +8,7 @@ import SiteHeader from '@/app/components/SiteHeader'
 import Button from '@/app/components/Button'
 import { supabase } from '@/app/lib/supabase'
 import { useAuth, type Profile } from '@/app/lib/auth'
+import { useSavedRecipes } from '@/app/lib/saved-recipes'
 
 export default function PublicProfilePage() {
   const params = useParams<{ handle: string }>()
@@ -61,6 +62,10 @@ export default function PublicProfilePage() {
 
 function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner: boolean; isMobile: boolean }) {
   const initials = (profile.display_name || profile.handle).slice(0, 2).toUpperCase()
+  // Owner-only: surface the Box count with a link to the full /profile list.
+  // RLS hides other people's saves from this query, so non-owners always see 0.
+  const { savedIds } = useSavedRecipes()
+  const savedCount = isOwner ? savedIds.size : 0
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 16 : 24, marginBottom: 28 }}>
@@ -101,10 +106,19 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
           title="Recently cooked"
           empty={isOwner ? 'Your cooking log will appear here once you cook a recipe.' : `${profile.display_name || profile.handle} hasn’t shared any cooks yet.`}
         />
-        <EmptyShelf
-          title="Saved recipes"
-          empty={isOwner ? 'Recipes you save will appear here.' : ''}
-        />
+        {isOwner && savedCount > 0 ? (
+          <CountShelf
+            title="Saved recipes"
+            count={savedCount}
+            href="/profile"
+            ctaLabel="Open your Box →"
+          />
+        ) : (
+          <EmptyShelf
+            title="Saved recipes"
+            empty={isOwner ? 'Recipes you save will appear here.' : ''}
+          />
+        )}
       </section>
     </>
   )
@@ -116,6 +130,27 @@ function EmptyShelf({ title, empty }: { title: string; empty: string }) {
     <div>
       <h2 style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 10px' }}>{title}</h2>
       <p style={{ fontFamily: SERIF, fontSize: 14, color: C.text3, fontStyle: 'italic', margin: 0, padding: '20px', border: `1px dashed ${C.ruleLight}`, borderRadius: RADIUS.md }}>{empty}</p>
+    </div>
+  )
+}
+
+function CountShelf({ title, count, href, ctaLabel }: { title: string; count: number; href: string; ctaLabel: string }) {
+  return (
+    <div>
+      <h2 style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, margin: '0 0 10px' }}>{title}</h2>
+      <Link
+        href={href}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px',
+          border: `1px solid ${C.rule}`, borderRadius: RADIUS.md,
+          background: C.warm,
+          textDecoration: 'none',
+        }}
+      >
+        <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 600, color: C.text }}>{count} recipe{count !== 1 ? 's' : ''} saved</span>
+        <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.accent }}>{ctaLabel}</span>
+      </Link>
     </div>
   )
 }

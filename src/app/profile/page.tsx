@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import SiteHeader from '@/app/components/SiteHeader'
+import { useSavedRecipes } from '@/app/lib/saved-recipes'
 
 // ===== TYPES =====
 type Recipe = {
@@ -88,7 +89,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true)
 
   // Core data
-  const [savedIds, setSavedIds] = useState<string[]>([])
+  const { savedIds: savedIdsSet, unsave: hookUnsave } = useSavedRecipes()
+  const savedIds = Array.from(savedIdsSet)
   const [savedRecipes, setSavedRecipes] = useState<Recipe[]>([])
 
   // Profile + cook history
@@ -133,13 +135,10 @@ export default function ProfilePage() {
   }, [])
 
   useEffect(() => {
-    const boxRaw = localStorage.getItem('recdex-box')
+    // Saved-recipe IDs come from useSavedRecipes hook (DB when signed in,
+    // localStorage when not). The recipe-detail fetch below reacts to that.
     const cookedRaw = localStorage.getItem('recdex-cooked')
     const profileRaw = localStorage.getItem('recdex-profile')
-
-    let ids: string[] = []
-    if (boxRaw) try { ids = JSON.parse(boxRaw) } catch { /* ignore */ }
-    setSavedIds(ids)
 
     if (cookedRaw) try { setCookEvents(JSON.parse(cookedRaw)) } catch { /* ignore */ }
 
@@ -157,20 +156,35 @@ export default function ProfilePage() {
         .then(({ data }) => { if (data) setFavDishRecipes(data) })
     }
 
-    if (ids.length > 0) {
-      supabase.from('recipes').select('id, slug, title, description, cuisine, difficulty, time_total, time_active, image_url, servings')
-        .in('id', ids).eq('status', 'published')
-        .then(({ data }) => { if (data) setSavedRecipes(data); setLoading(false) })
-    } else {
-      setLoading(false)
-    }
-
     // Load grocery + pantry from localStorage
     const groceryRaw = localStorage.getItem(GROCERY_KEY)
     if (groceryRaw) try { setGroceryItems(JSON.parse(groceryRaw)) } catch { /* ignore */ }
     const pantryRaw = localStorage.getItem(PANTRY_KEY)
     if (pantryRaw) try { setPantryItems(JSON.parse(pantryRaw)) } catch { /* ignore */ }
   }, [])
+
+  // Fetch full recipe details whenever the saved set changes (sign-in/out,
+  // save, unsave, etc.). The hook delivers stable Set identity per change.
+  useEffect(() => {
+    if (savedIdsSet.size === 0) {
+      setSavedRecipes([])
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    supabase
+      .from('recipes')
+      .select('id, slug, title, description, cuisine, difficulty, time_total, time_active, image_url, servings')
+      .in('id', Array.from(savedIdsSet))
+      .eq('status', 'published')
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) console.error('[profile] saved recipes fetch failed:', error)
+        if (data) setSavedRecipes(data)
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [savedIdsSet])
 
   const saveProfile = (updated: UserProfile) => {
     setProfile(updated)
@@ -189,10 +203,10 @@ export default function ProfilePage() {
   }, [favDishSearch, showFavDishPicker])
 
   const unsaveRecipe = (recipeId: string) => {
-    const newIds = savedIds.filter(id => id !== recipeId)
-    setSavedIds(newIds)
+    // Optimistic local filter so the list updates instantly. The hook
+    // mirrors the change to DB/localStorage and triggers a re-fetch.
     setSavedRecipes(prev => prev.filter(r => r.id !== recipeId))
-    localStorage.setItem('recdex-box', JSON.stringify(newIds))
+    hookUnsave(recipeId)
   }
 
   // === Shopping list helpers ===
