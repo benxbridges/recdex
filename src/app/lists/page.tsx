@@ -60,6 +60,7 @@ export default function ListsPage() {
   const [editingList, setEditingList] = useState<UserList | null>(null)
   const [newListName, setNewListName] = useState('')
   const [newListDesc, setNewListDesc] = useState('')
+  const [newListIsPublic, setNewListIsPublic] = useState(false)
   const [recipeSearch, setRecipeSearch] = useState('')
   const [searchResults, setSearchResults] = useState<Recipe[]>([])
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<string[]>([])
@@ -196,11 +197,13 @@ export default function ListsPage() {
       setEditingList(list)
       setNewListName(list.name)
       setNewListDesc(list.description)
+      setNewListIsPublic(!!list.isPublic)
       setSelectedRecipeIds([...list.recipeIds])
     } else {
       setEditingList(null)
       setNewListName('')
       setNewListDesc('')
+      setNewListIsPublic(false)
       setSelectedRecipeIds([])
     }
     setRecipeSearch('')
@@ -218,12 +221,14 @@ export default function ListsPage() {
         name,
         description: newListDesc.trim(),
         recipeIds: selectedRecipeIds,
+        isPublic: newListIsPublic,
       })
     } else {
       await createList({
         name,
         description: newListDesc.trim(),
         recipeIds: selectedRecipeIds,
+        isPublic: newListIsPublic,
       })
     }
     // Seed the recipe cache from in-flight search results so the new/edited
@@ -348,6 +353,9 @@ export default function ListsPage() {
                             )}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <span style={{ fontFamily: MONO, fontSize: 10, color: C.accent, fontWeight: 600 }}>{list.recipeIds.length} recipes</span>
+                              {list.isPublic && (
+                                <span title="Visible on your /u/ profile" style={{ fontFamily: MONO, fontSize: 9, color: C.green, fontWeight: 600, padding: '1px 6px', borderRadius: 3, background: C.greenBg, border: `1px solid ${C.green}`, textTransform: 'uppercase', letterSpacing: 0.5 }}>Public</span>
+                              )}
                               <span style={{ fontFamily: MONO, fontSize: 9, color: C.text3 }}>
                                 Updated {new Date(list.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                               </span>
@@ -504,9 +512,35 @@ export default function ListsPage() {
                 style={{
                   width: '100%', fontFamily: SANS, fontSize: 13, color: C.text2,
                   background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 8,
-                  outline: 'none', padding: '10px 12px', resize: 'none', marginBottom: 16,
+                  outline: 'none', padding: '10px 12px', resize: 'none', marginBottom: 12,
                 }}
               />
+
+              {/* Public toggle. Public lists show up on /u/[handle] for anyone
+                  to browse. Private (default) is owner-only. */}
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 12px', marginBottom: 16,
+                background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 8,
+                cursor: 'pointer',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={newListIsPublic}
+                  onChange={e => setNewListIsPublic(e.target.checked)}
+                  style={{ marginTop: 2, accentColor: C.accent, cursor: 'pointer' }}
+                />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: SANS, fontSize: 13, fontWeight: 600, color: C.text }}>
+                    Make this list public
+                  </div>
+                  <div style={{ fontFamily: SANS, fontSize: 11, color: C.text3, marginTop: 2, lineHeight: 1.4 }}>
+                    {newListIsPublic
+                      ? 'Anyone can see this list on your profile.'
+                      : 'Only you can see this list. Flip this to share it on your /u/ page.'}
+                  </div>
+                </div>
+              </label>
 
               {/* Recipe search */}
               <div style={{ marginBottom: 12 }}>

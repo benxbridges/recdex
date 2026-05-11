@@ -9,7 +9,18 @@ import Button from '@/app/components/Button'
 import { supabase } from '@/app/lib/supabase'
 import { useAuth, type Profile } from '@/app/lib/auth'
 import { useSavedRecipes } from '@/app/lib/saved-recipes'
-import { useUserLists } from '@/app/lib/user-lists'
+
+type PublicList = {
+  id: string
+  name: string
+  description: string | null
+  recipeIds: string[]
+  updated_at: string
+}
+
+type RecipeLite = {
+  id: string; slug: string; title: string; image_url: string | null; cuisine: string | null
+}
 
 export default function PublicProfilePage() {
   const params = useParams<{ handle: string }>()
@@ -66,9 +77,52 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
   // Owner-only: surface the Box count with a link to the full /profile list.
   // RLS hides other people's saves from this query, so non-owners always see 0.
   const { savedIds } = useSavedRecipes()
-  const { lists: userLists } = useUserLists()
   const savedCount = isOwner ? savedIds.size : 0
-  const listCount = isOwner ? userLists.length : 0
+
+  // Public lists from this profile's user. RLS allows everyone to read
+  // user_lists rows where is_public = true.
+  const [publicLists, setPublicLists] = useState<PublicList[]>([])
+  const [listRecipes, setListRecipes] = useState<Map<string, RecipeLite>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+    async function load() {
+      const { data, error } = await supabase
+        .from('user_lists')
+        .select('id, name, description, is_public, updated_at, user_list_recipes (recipe_id, position)')
+        .eq('user_id', profile.id)
+        .eq('is_public', true)
+        .order('updated_at', { ascending: false })
+      if (cancelled) return
+      if (error) { console.error('[u/handle] public lists failed:', error); return }
+      const lists: PublicList[] = (data ?? []).map((row: { id: string; name: string; description: string | null; updated_at: string; user_list_recipes?: { recipe_id: string; position: number }[] }) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        updated_at: row.updated_at,
+        recipeIds: (row.user_list_recipes ?? [])
+          .slice()
+          .sort((a, b) => a.position - b.position)
+          .map(m => m.recipe_id),
+      }))
+      setPublicLists(lists)
+
+      // Hydrate recipe details for thumbnails.
+      const allIds = [...new Set(lists.flatMap(l => l.recipeIds))]
+      if (allIds.length === 0) { setListRecipes(new Map()); return }
+      const { data: recipes } = await supabase
+        .from('recipes')
+        .select('id, slug, title, image_url, cuisine')
+        .in('id', allIds)
+      if (cancelled || !recipes) return
+      const m = new Map<string, RecipeLite>()
+      ;(recipes as RecipeLite[]).forEach(r => m.set(r.id, r))
+      setListRecipes(m)
+    }
+    load()
+    return () => { cancelled = true }
+  }, [profile.id])
+
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: isMobile ? 16 : 24, marginBottom: 28 }}>
@@ -101,17 +155,20 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
       <div style={{ height: 1, background: C.rule, margin: '8px 0 24px' }} />
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-        {isOwner && listCount > 0 ? (
-          <CountShelf
-            title="Lists"
-            count={listCount}
-            href="/lists"
-            ctaLabel="Manage your lists →"
+        {publicLists.length > 0 ? (
+          <PublicListsShelf
+            lists={publicLists}
+            recipes={listRecipes}
+            isOwner={isOwner}
+            displayName={profile.display_name || profile.handle}
+            isMobile={isMobile}
           />
         ) : (
           <EmptyShelf
             title="Lists"
-            empty={isOwner ? 'You haven’t made any public lists yet.' : `${profile.display_name || profile.handle} hasn’t made any public lists yet.`}
+            empty={isOwner
+              ? 'You haven’t made any public lists yet. Edit a list and check "Make this list public" to share it here.'
+              : `${profile.display_name || profile.handle} hasn’t made any public lists yet.`}
           />
         )}
         <EmptyShelf
@@ -133,6 +190,67 @@ function ProfileView({ profile, isOwner, isMobile }: { profile: Profile; isOwner
         )}
       </section>
     </>
+  )
+}
+
+function PublicListsShelf({ lists, recipes, isOwner, displayName, isMobile }: {
+  lists: PublicList[]
+  recipes: Map<string, RecipeLite>
+  isOwner: boolean
+  displayName: string
+  isMobile: boolean
+}) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
+        <h2 style={{ fontFamily: SANS, fontSize: 11, fontWeight: 700, color: C.text3, textTransform: 'uppercase', letterSpacing: 2, margin: 0 }}>Lists</h2>
+        {isOwner && (
+          <Link href="/lists" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.accent, textDecoration: 'none' }}>Manage all →</Link>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {lists.map(list => {
+          const previewRecipes = list.recipeIds.map(id => recipes.get(id)).filter(Boolean) as RecipeLite[]
+          return (
+            <div key={list.id} style={{
+              background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: RADIUS.md,
+              padding: isMobile ? '14px 14px' : '16px 18px',
+              display: 'flex', flexDirection: 'column', gap: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                <h3 style={{ fontFamily: SERIF, fontSize: 17, fontWeight: 600, color: C.text, margin: 0 }}>{list.name}</h3>
+                <span style={{ fontFamily: MONO, fontSize: 10, color: C.accent, fontWeight: 600 }}>{list.recipeIds.length} recipes</span>
+              </div>
+              {list.description && (
+                <p style={{ fontFamily: SANS, fontSize: 13, color: C.text2, margin: 0, lineHeight: 1.5 }}>{list.description}</p>
+              )}
+              {previewRecipes.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                  {previewRecipes.slice(0, 6).map(r => (
+                    <Link key={r.id} href={`/recipe/${r.slug}`} style={{
+                      textDecoration: 'none', fontFamily: SANS, fontSize: 11, color: C.text2,
+                      background: C.bg, padding: '3px 9px', borderRadius: 4, border: `1px solid ${C.ruleLight}`,
+                    }}>
+                      {r.title}
+                    </Link>
+                  ))}
+                  {previewRecipes.length > 6 && (
+                    <span style={{ fontFamily: MONO, fontSize: 10, color: C.text3, padding: '3px 6px' }}>
+                      +{previewRecipes.length - 6} more
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {!isOwner && lists.length > 0 && (
+        <p style={{ fontFamily: SANS, fontSize: 12, color: C.text3, margin: '12px 0 0' }}>
+          {lists.length} public list{lists.length !== 1 ? 's' : ''} by {displayName}
+        </p>
+      )}
+    </div>
   )
 }
 
