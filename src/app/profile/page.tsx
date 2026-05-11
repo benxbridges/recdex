@@ -7,6 +7,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT } from '@/app/lib/theme'
 import SiteHeader from '@/app/components/SiteHeader'
 import { useSavedRecipes } from '@/app/lib/saved-recipes'
+import { useAuth, updateProfile } from '@/app/lib/auth'
 
 // ===== TYPES =====
 type Recipe = {
@@ -87,6 +88,10 @@ export default function ProfilePage() {
   const router = useRouter()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // Auth state — when signed in, display_name + bio come from DB; the @handle
+  // is the immutable signup handle and is shown but not edited here.
+  const { user, profile: authProfile } = useAuth()
 
   // Core data
   const { savedIds: savedIdsSet, unsave: hookUnsave } = useSavedRecipes()
@@ -189,7 +194,27 @@ export default function ProfilePage() {
   const saveProfile = (updated: UserProfile) => {
     setProfile(updated)
     localStorage.setItem('recdex-profile', JSON.stringify(updated))
+    // When signed in, mirror display_name + bio to the profiles row so other
+    // surfaces (comments, /u/[handle]) read the latest. Handle stays
+    // immutable — we don't write it from here.
+    if (user) {
+      updateProfile({ display_name: updated.displayName, bio: updated.bio })
+        .catch(err => console.error('[profile] DB sync failed:', err))
+    }
   }
+
+  // When the auth profile loads, hydrate the local display_name + bio from DB.
+  // The legacy localStorage value remains as a backup for signed-out sessions.
+  useEffect(() => {
+    if (!authProfile) return
+    setProfile(prev => ({
+      ...prev,
+      displayName: authProfile.display_name || authProfile.handle,
+      bio: authProfile.bio ?? prev.bio,
+    }))
+    setNameInput(authProfile.display_name || authProfile.handle)
+    setBioInput(authProfile.bio ?? '')
+  }, [authProfile])
 
   // Favorite dish picker search (now fetches image_url too)
   useEffect(() => {
@@ -361,7 +386,31 @@ export default function ProfilePage() {
                 {profile.displayName ? profile.displayName[0].toUpperCase() : '?'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                {editingName ? (
+                {/* Signed-in: editable freeform display name + immutable @handle below.
+                    Signed-out: legacy single @displayName editor (backward compat). */}
+                {authProfile ? (
+                  editingName ? (
+                    <form onSubmit={(e) => {
+                      e.preventDefault()
+                      const trimmed = nameInput.trim()
+                      if (trimmed) saveProfile({ ...profile, displayName: trimmed })
+                      setEditingName(false)
+                    }} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input ref={nameInputRef} value={nameInput} onChange={e => setNameInput(e.target.value)}
+                        placeholder="Your name" autoFocus maxLength={40}
+                        style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 4, padding: '4px 8px', outline: 'none', flex: 1, maxWidth: 240 }} />
+                      <button type="submit" style={{ fontSize: 11, fontFamily: SANS, fontWeight: 600, color: C.green, background: 'none', border: 'none', cursor: 'pointer' }}>Save</button>
+                      <button type="button" onClick={() => { setEditingName(false); setNameInput(profile.displayName) }} style={{ fontSize: 11, fontFamily: SANS, color: C.text3, background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                    </form>
+                  ) : (
+                    <div onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50) }} style={{ cursor: 'pointer' }}>
+                      <div style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600, color: C.text, lineHeight: 1.2 }}>
+                        {profile.displayName || authProfile.handle}
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: 11, color: C.text3, marginTop: 2 }}>@{authProfile.handle}</div>
+                    </div>
+                  )
+                ) : editingName ? (
                   <form onSubmit={(e) => {
                     e.preventDefault()
                     const trimmed = nameInput.trim().replace(/\s+/g, '_').toLowerCase()
