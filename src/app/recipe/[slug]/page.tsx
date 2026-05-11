@@ -7,6 +7,7 @@ import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO, MOBILE_BREAKPOINT, BACKDROP } from '@/app/lib/theme'
 import { formatTime, formatNumber, safeGetItem, safeSetItem, safeRemoveItem } from '@/app/lib/format'
 import { useSavedRecipes } from '@/app/lib/saved-recipes'
+import { useAuth } from '@/app/lib/auth'
 import { withUtm } from '@/app/lib/unsplash'
 import SiteHeader from '@/app/components/SiteHeader'
 import CookLog from '@/app/components/CookLog'
@@ -45,6 +46,7 @@ type Comment = {
   id: string; recipe_id: string; display_name: string
   body: string; rating: string | null; rating_numeric: number | null
   created_at: string
+  user_id?: string | null
 }
 
 type PrivateNote = {
@@ -659,6 +661,7 @@ export default function RecipePage() {
 
   const [recipe, setRecipe] = useState<Recipe | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user, profile: authProfile } = useAuth()
   const { isSaved, toggle: toggleSavedRecipe } = useSavedRecipes()
   const saved = recipe ? isSaved(recipe.id) : false
   const [copied, setCopied] = useState(false)
@@ -755,8 +758,9 @@ export default function RecipePage() {
     } catch { /* ignore */ }
   }, [recipe])
 
-  // Get display name from profile
+  // Get display name from profile (handle when signed in, localStorage when not)
   const getDisplayName = () => {
+    if (authProfile?.handle) return authProfile.handle
     try {
       const prof = JSON.parse(safeGetItem('recdex-profile') || '{}')
       return prof.displayName || ''
@@ -772,6 +776,8 @@ export default function RecipePage() {
       recipe_id: recipe.id,
       display_name: displayName,
       body: commentBody.trim(),
+      // Set when signed in so the UI can link this comment to /u/[handle].
+      user_id: user?.id ?? null,
     }).select().single()
     if (data && !error) {
       setComments(prev => [data, ...prev])
@@ -1651,16 +1657,33 @@ export default function RecipePage() {
                     {/* Comment content */}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <div style={{
-                          width: 20, height: 20, borderRadius: '50%', background: C.accent,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
-                        }}>
-                          {c.display_name.charAt(0).toUpperCase()}
-                        </div>
-                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
-                          @{c.display_name}
-                        </span>
+                        {c.user_id ? (
+                          <Link href={`/u/${c.display_name}`} style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                            <span style={{
+                              width: 20, height: 20, borderRadius: '50%', background: C.accent,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
+                            }}>
+                              {c.display_name.charAt(0).toUpperCase()}
+                            </span>
+                            <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
+                              @{c.display_name}
+                            </span>
+                          </Link>
+                        ) : (
+                          <>
+                            <div style={{
+                              width: 20, height: 20, borderRadius: '50%', background: C.accent,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 9, fontWeight: 700, color: '#fff', fontFamily: SANS, flexShrink: 0,
+                            }}>
+                              {c.display_name.charAt(0).toUpperCase()}
+                            </div>
+                            <span style={{ fontSize: 11, fontFamily: MONO, color: C.accent, fontWeight: 500 }}>
+                              @{c.display_name}
+                            </span>
+                          </>
+                        )}
                         <span style={{ fontSize: 9, fontFamily: MONO, color: C.text3 }}>
                           {new Date(c.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
