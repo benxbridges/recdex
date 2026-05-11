@@ -639,6 +639,19 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
     setPublishing(null)
   }
 
+  async function handleUnpublish(slug: string) {
+    setPublishing(slug)
+    try {
+      await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'unpublish-recipe', password, slug }),
+      })
+      onUpdate()
+    } catch { /* ignore */ }
+    setPublishing(null)
+  }
+
   return (
     <>
       {/* Status pills */}
@@ -750,8 +763,9 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
                     <button
                       onClick={() => handleDelete(recipe.slug)}
                       disabled={deleting}
-                      style={{ background: C.accent, color: '#fff', border: 'none', borderRadius: 3, padding: '3px 8px', fontFamily: MONO, fontSize: 9, cursor: 'pointer' }}
-                    >Delete</button>
+                      title="Permanently delete — cannot be undone"
+                      style={{ background: C.accent, color: '#fff', border: 'none', borderRadius: 3, padding: '3px 8px', fontFamily: MONO, fontSize: 9, cursor: 'pointer', fontWeight: 700, letterSpacing: 0.5 }}
+                    >DELETE FOREVER</button>
                     <button
                       onClick={() => setConfirmDelete(null)}
                       style={{ background: C.rule, color: C.text2, border: 'none', borderRadius: 3, padding: '3px 8px', fontFamily: MONO, fontSize: 9, cursor: 'pointer' }}
@@ -759,7 +773,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
                   </div>
                 ) : (
                   <>
-                    {recipe.status === 'draft' && (
+                    {recipe.status === 'draft' ? (
                       <button
                         onClick={() => handlePublish(recipe.slug)}
                         disabled={publishing === recipe.slug}
@@ -771,10 +785,22 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
                           opacity: publishing === recipe.slug ? 0.6 : 1, letterSpacing: 0.5,
                         }}
                       >{publishing === recipe.slug ? '…' : 'PUBLISH'}</button>
+                    ) : (
+                      <button
+                        onClick={() => handleUnpublish(recipe.slug)}
+                        disabled={publishing === recipe.slug}
+                        title="Hide from site (move to drafts) — does not delete"
+                        style={{
+                          background: C.warm, border: `1px solid ${C.rule}`, color: C.text2,
+                          borderRadius: 4, padding: '2px 10px', fontFamily: MONO, fontSize: 9, fontWeight: 700,
+                          cursor: publishing === recipe.slug ? 'wait' : 'pointer',
+                          opacity: publishing === recipe.slug ? 0.6 : 1, letterSpacing: 0.5,
+                        }}
+                      >{publishing === recipe.slug ? '…' : 'HIDE'}</button>
                     )}
                     <button
                       onClick={() => setConfirmDelete(recipe.slug)}
-                      title="Delete recipe"
+                      title="Delete permanently"
                       style={{ background: C.accentBg, border: `1px solid ${C.accent}`, color: C.accent, borderRadius: 4, padding: '2px 8px', fontSize: 12, cursor: 'pointer', fontWeight: 700, lineHeight: 1 }}
                     >&#10007;</button>
                   </>
