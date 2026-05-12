@@ -1,5 +1,82 @@
 # RecDex Task Tracker
 
+## Session pin — 2026-05-12 (paused mid-test)
+
+Branch: **`claude/recipe-tags-user-lists-BTVAt`** · Head: `9edf4ac` · All code pushed to origin.
+
+### What landed this session
+
+Code (10 commits, all on this branch):
+- `ee27015` — Auth foundation (Letterboxd-style email + password + handle)
+- `846def9` — Made auth SQL non-destructive + added RLS to reserved_handles
+- `fcf6901` — Migrated saved recipes (the Box) from localStorage to DB
+- `5282142` — Quick-unsave × button on profile saved-recipe cards
+- `efe5939` — Migrated user lists from localStorage to DB
+- `1e3e46d` — Surfaced lists: homepage shelf + nav + reorder on /lists
+- `d306fc7` — Promoted Lists to top nav, dropped Tools (still at /tools, linked from /about)
+- `f2eef05` — Wired /profile display_name + bio to DB when signed in
+- `8091259` — Comments author as @handle linked to /u/[handle] when signed in
+- `9edf4ac` — Public lists toggle on /lists + render on /u/[handle]
+
+Also: audit pass before all of this (commit `05c3b1e` — mobile/a11y/display consistency).
+
+### SQL migrations to run (Supabase Dashboard → SQL Editor)
+
+Run in order. All idempotent and non-destructive.
+
+| File | Status | Verify |
+|---|---|---|
+| `supabase/auth-profiles-setup.sql` | ✅ already run | `select * from public.profiles limit 1;` works |
+| `supabase/saved-recipes-setup.sql` | ✅ already run | `select * from public.saved_recipes limit 1;` |
+| `supabase/user-lists-setup.sql` | ✅ already run | `select * from public.user_lists limit 1;` |
+| `supabase/comments-add-user-id.sql` | ⚠️ **NEEDS RUNNING** | `select column_name from information_schema.columns where table_schema='public' and table_name='comments' and column_name='user_id';` should return 1 row |
+
+### Pending verification (pick up here when back)
+
+Two items reported "not working" — most likely stale dev or unrun SQL, not real bugs:
+
+1. **Comment usernames not clickable**
+   - Most likely: `comments-add-user-id.sql` hasn't been run yet — without `user_id` column, the Link path is never taken
+   - After running the SQL: post a NEW comment while signed in (legacy comments stay null user_id, won't link)
+   - Pull/restart dev server to load latest bundle
+
+2. **Publish lists toggle not working**
+   - SQL is in place (is_public shipped with `user-lists-setup.sql`)
+   - Most likely cause: local dev running a stale JS bundle. Hard refresh (Cmd+Shift+R) after pulling
+   - Files that matter: `src/app/lists/page.tsx`, `src/app/lib/user-lists.ts`, `src/app/u/[handle]/page.tsx`
+
+To resume:
+```bash
+cd ~/recdex
+git fetch origin
+git checkout claude/recipe-tags-user-lists-BTVAt
+git pull origin claude/recipe-tags-user-lists-BTVAt
+# sync to worktree (per CLAUDE.md), restart `next dev`, hard refresh browser
+```
+
+### Manual Supabase Dashboard setup (one-time, if not done already)
+
+1. Authentication → URL Configuration: Site URL = `https://recipeindex.org`, Additional Redirect URLs include `http://localhost:3000`
+2. Authentication → Providers → Email: confirm "Enable email confirmations" set how you want (ON for prod, OFF for instant dev signups)
+3. (Optional) Authentication → SMTP: hook up SendGrid/Resend/Postmark for real email delivery
+
+### Next-up queue (rough priority)
+
+1. **Recipe tags** — branch name's stated third axis. Schema for a tag taxonomy (cuisine intersect, diet, technique, occasion), assignment UI, /browse filtering
+2. **Profile polish** — "@handle is permanent" copy, 30-char display_name limit, a real settings page for display_name/bio/avatar
+3. **Private notes → DB** (currently localStorage `recdex-notes`)
+4. **Cook log → DB** (currently `recdex-cooked`)
+5. **Claim-a-handle onboarding** — if a guest signs up via auto-generated handle from email, prompt them to claim a real one
+6. **Public list deep-link** — `/u/[handle]/list/[id]` for shareable list URLs (currently /u/[handle] is the only public surface)
+7. **Mass-apply `<Button>` + `<Modal>` primitives** — built in audit pass, only used in new auth code so far. ~85 inline buttons + 4 bespoke modals (GroceryList, ShareCard, Onboarding, CookModeTutorial, PublishCheck, BensNote) still pending
+
+### Things I built but didn't ship to all sites
+
+- `<Button>` primitive — used in auth pages only
+- `<Modal>` primitive — built, but existing modals still use bespoke wrappers
+
+---
+
 ## Shipped 2026-04-20/21 — Cook Mode Overhaul Phase 1–4
 
 Key wins:
