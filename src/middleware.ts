@@ -10,7 +10,7 @@ const CSP = [
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https:",
   "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com https://api.unsplash.com https://api.supadata.ai https://www.googleapis.com https://www.youtube.com https://www.tiktok.com",
-  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.tiktok.com",
+  "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
