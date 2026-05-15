@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { searchPhotos, toImageData, triggerDownload } from '@/app/lib/unsplash'
+import { applyRateLimit, clampString, safeHref } from '@/app/lib/security'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zacwsrcdvpglrcvirlng.supabase.co'
 
 // Use service role key for writes to bypass RLS — lazy init to avoid build-time crash
 function getSupabaseAdmin() {
-  return createClient(
-    'https://zacwsrcdvpglrcvirlng.supabase.co',
-    process.env.SUPABASE_SERVICE_KEY!
-  )
+  return createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY!)
 }
 
 async function fetchUnsplashImage(query: string): Promise<{ url: string; credit: string; creditUrl: string; photoUrl: string; unsplashId: string; downloadLocation: string } | null> {
@@ -26,6 +26,9 @@ async function fetchUnsplashImage(query: string): Promise<{ url: string; credit:
 }
 
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'publish-recipe', 10, 60_000)
+  if (rl) return rl
+
   if (!process.env.SUPABASE_SERVICE_KEY) {
     console.error('[publish-recipe] SUPABASE_SERVICE_KEY not set')
     return NextResponse.json({ error: 'server_config_error' }, { status: 500 })
@@ -43,6 +46,22 @@ export async function POST(req: NextRequest) {
   if (!recipe?.slug || !recipe?.title) {
     return NextResponse.json({ error: 'slug and title required' }, { status: 400 })
   }
+
+  // Length caps + URL sanitization so attacker-controlled fields can't smuggle
+  // javascript: URLs or unbounded text into the public DB.
+  recipe.slug = clampString(recipe.slug, 200) || recipe.slug
+  recipe.title = clampString(recipe.title, 300)
+  if (!recipe.title) return NextResponse.json({ error: 'title required' }, { status: 400 })
+  recipe.description = clampString(recipe.description, 2000)
+  recipe.summary = clampString(recipe.summary, 1000)
+  recipe.source_attribution = clampString(recipe.source_attribution, 200)
+  recipe.creator_name = clampString(recipe.creator_name, 200)
+  if (recipe.image_url) recipe.image_url = safeHref(String(recipe.image_url)) ?? null
+  if (recipe.source_url) recipe.source_url = safeHref(String(recipe.source_url)) ?? null
+  if (recipe.video_url) recipe.video_url = safeHref(String(recipe.video_url)) ?? null
+  if (recipe.creator_url) recipe.creator_url = safeHref(String(recipe.creator_url)) ?? null
+  if (recipe.photographer_url) recipe.photographer_url = safeHref(String(recipe.photographer_url)) ?? null
+  if (recipe.unsplash_photo_url) recipe.unsplash_photo_url = safeHref(String(recipe.unsplash_photo_url)) ?? null
 
   // Dedup check — skip if slug already exists
   const { data: existing } = await getSupabaseAdmin().from('recipes').select('slug').eq('slug', recipe.slug).single()

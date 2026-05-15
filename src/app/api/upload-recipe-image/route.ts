@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { isAdminAuthenticated, applyRateLimit } from '@/app/lib/security'
 
 const BUCKET = 'recipe-images'
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024 // 8MB
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
+const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,199}$/
 
 function getSupabaseAdmin() {
   return createClient(
@@ -11,25 +15,39 @@ function getSupabaseAdmin() {
 }
 
 export async function POST(req: NextRequest) {
+  // Image upload upserts into the recipe-images bucket and updates DB. Admin-only.
+  if (!isAdminAuthenticated(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  const rl = applyRateLimit(req, 'upload-recipe-image', 30, 60_000)
+  if (rl) return rl
+
   try {
     const { slug, imageBase64, mimeType } = await req.json()
 
-    if (!slug || !imageBase64) {
-      return NextResponse.json({ error: 'slug and imageBase64 required' }, { status: 400 })
+    if (!slug || typeof slug !== 'string' || !SLUG_RE.test(slug)) {
+      return NextResponse.json({ error: 'invalid slug' }, { status: 400 })
     }
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return NextResponse.json({ error: 'imageBase64 required' }, { status: 400 })
+    }
+    const mime = typeof mimeType === 'string' && ALLOWED_MIME.has(mimeType) ? mimeType : 'image/jpeg'
 
     // Determine file extension from mime type
-    const ext = mimeType?.includes('png') ? 'png' : 'jpg'
+    const ext = mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg'
     const filePath = `${slug}.${ext}`
 
-    // Decode base64 to buffer
+    // Decode base64 to buffer; cap size to prevent storage abuse.
     const buffer = Buffer.from(imageBase64, 'base64')
+    if (buffer.byteLength === 0 || buffer.byteLength > MAX_IMAGE_BYTES) {
+      return NextResponse.json({ error: 'image_too_large_or_empty' }, { status: 413 })
+    }
 
     // Upload to Supabase Storage (upsert to allow regeneration)
     const { error: uploadError } = await getSupabaseAdmin().storage
       .from(BUCKET)
       .upload(filePath, buffer, {
-        contentType: mimeType || 'image/jpeg',
+        contentType: mime,
         upsert: true,
       })
 

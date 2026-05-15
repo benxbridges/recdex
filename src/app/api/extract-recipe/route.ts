@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractJsonLdRecipe, yieldToNumber, type JsonLdRecipe } from '@/app/lib/json-ld-recipe'
+import { applyRateLimit, isUnsafeFetchTarget } from '@/app/lib/security'
 
 // ===== PLATFORM HELPERS =====
 
@@ -41,6 +42,12 @@ type FetchedPage = {
 }
 
 async function fetchWebPage(url: string): Promise<FetchedPage | null> {
+  // SSRF protection: never let user URLs hit private IP ranges, localhost, or
+  // cloud metadata services. This must run after URL parsing in the caller too.
+  if (await isUnsafeFetchTarget(url)) {
+    console.warn('[extract] blocked unsafe fetch target')
+    return null
+  }
   try {
     const res = await fetch(url, {
       headers: {
@@ -48,6 +55,7 @@ async function fetchWebPage(url: string): Promise<FetchedPage | null> {
         'Accept': 'text/html,application/xhtml+xml',
       },
       signal: AbortSignal.timeout(15000),
+      redirect: 'follow',
     })
     if (!res.ok) return null
     const html = await res.text()
@@ -336,8 +344,27 @@ async function extractWithRetry(prompt: string, apiKey: string): Promise<unknown
 // ===== ROUTE =====
 
 export async function POST(req: NextRequest) {
-  let { url, platform, authorName, authorUrl, oembedTitle, transcript } = await req.json()
-  if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
+  const rl = applyRateLimit(req, 'extract-recipe', 15, 60_000)
+  if (rl) return rl
+
+  const reqBody = await req.json()
+  const url: unknown = reqBody.url
+  const platform: string = typeof reqBody.platform === 'string' ? reqBody.platform : ''
+  const authorUrl: string | null = reqBody.authorUrl ?? null
+  const oembedTitle: string | null = reqBody.oembedTitle ?? null
+  const transcript: string | null = reqBody.transcript ?? null
+  let authorName: string | null = reqBody.authorName ?? null
+  if (!url || typeof url !== 'string') return NextResponse.json({ error: 'url required' }, { status: 400 })
+  if (url.length > 2048) return NextResponse.json({ error: 'url_too_long' }, { status: 400 })
+  const urlStr: string = url
+  try {
+    const parsed = new URL(urlStr)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return NextResponse.json({ error: 'invalid_url_scheme' }, { status: 400 })
+    }
+  } catch {
+    return NextResponse.json({ error: 'invalid_url' }, { status: 400 })
+  }
 
   let content = oembedTitle || ''
   let videoId: string | null = null

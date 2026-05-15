@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
+import { safeHref } from '@/app/lib/url-safe'
 import SiteHeader from '@/app/components/SiteHeader'
 
 // ===== TYPES =====
@@ -177,7 +178,7 @@ export default function TrendingPage() {
           <div style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {topics.map((t, i) => (
-                <a key={i} href={t.url} target="_blank" rel="noopener noreferrer"
+                <a key={i} href={safeHref(t.url)} target="_blank" rel="noopener noreferrer"
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     background: C.warm, border: `1px solid ${C.ruleLight}`, borderRadius: 20,
@@ -229,7 +230,7 @@ export default function TrendingPage() {
               border: `1px solid ${C.ruleLight}`, marginBottom: 32,
             }}>
               {/* Hero thumbnail */}
-              <a href={hero.url} target="_blank" rel="noopener noreferrer"
+              <a href={safeHref(hero.url)} target="_blank" rel="noopener noreferrer"
                 style={{ display: 'block', position: 'relative', overflow: 'hidden' }}>
                 <img src={hero.thumbnail} alt={hero.dishName}
                   style={{ width: '100%', height: '100%', minHeight: 280, objectFit: 'cover', display: 'block' }} />
@@ -306,7 +307,7 @@ export default function TrendingPage() {
                   >
                     Edit first →
                   </button>
-                  <a href={hero.url} target="_blank" rel="noopener noreferrer"
+                  <a href={safeHref(hero.url)} target="_blank" rel="noopener noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center', gap: 6,
                       background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: 8,
@@ -357,7 +358,7 @@ export default function TrendingPage() {
                     animation: `fadeUp 0.3s ease-out ${i * 0.04}s both`,
                   }}>
                   {/* Thumb */}
-                  <a href={video.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
+                  <a href={safeHref(video.url)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative' }}>
                     <img src={video.thumbnail} alt={video.dishName}
                       style={{ width: '100%', height: 146, objectFit: 'cover', display: 'block' }} />
                     <div style={{

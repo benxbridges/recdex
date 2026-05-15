@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchPhotos, toImageData, extractDishQuery } from '@/app/lib/unsplash'
+import { applyRateLimit } from '@/app/lib/security'
 
 export async function GET(req: NextRequest) {
+  const rl = applyRateLimit(req, 'image-search', 30, 60_000)
+  if (rl) return rl
+
   const rawQuery = req.nextUrl.searchParams.get('q')
   if (!rawQuery) return NextResponse.json({ images: [] })
 
-  const accessKey = req.nextUrl.searchParams.get('key') || process.env.UNSPLASH_ACCESS_KEY
+  // Use the server's configured key only — never trust a key from the query
+  // string. Accepting `?key=` lets clients drain or probe arbitrary Unsplash keys.
+  const accessKey = process.env.UNSPLASH_ACCESS_KEY
   if (!accessKey) {
     console.warn('[image-search] UNSPLASH_ACCESS_KEY not set')
     return NextResponse.json({ images: [], error: 'no_key' })

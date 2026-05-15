@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit, clampString } from '@/app/lib/security'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 
@@ -8,12 +9,22 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
  * Returns 1-3 context-aware substitution options.
  */
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'substitute', 20, 60_000)
+  if (rl) return rl
+
   if (!ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
   }
 
   try {
-    const { ingredient, recipeTitle, recipeCuisine, stepContext, dietary } = await req.json()
+    const body = await req.json()
+    const ingredient = clampString(body.ingredient, 200)
+    const recipeTitle = clampString(body.recipeTitle, 200)
+    const recipeCuisine = clampString(body.recipeCuisine, 100)
+    const stepContext = clampString(body.stepContext, 500)
+    const dietary: string[] = Array.isArray(body.dietary)
+      ? body.dietary.filter((d: unknown): d is string => typeof d === 'string').slice(0, 10).map((d: string) => d.slice(0, 50))
+      : []
 
     if (!ingredient) {
       return NextResponse.json({ error: 'ingredient is required' }, { status: 400 })

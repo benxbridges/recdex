@@ -23,8 +23,12 @@
  *   ON feedback FOR SELECT TO service_role USING (true);
  */
 
-const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTg3NjA1MywiZXhwIjoyMDg3NDUyMDUzfQ.cXHsjm-QAjAsx5xL89TNxILFhlU7cOJBp7O_j-XSmHs'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zacwsrcdvpglrcvirlng.supabase.co'
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY
+if (!SUPABASE_KEY) {
+  console.error('SUPABASE_SERVICE_KEY env var is required. Add it to .env.local before running this script.')
+  process.exit(1)
+}
 
 const SQL = `
 CREATE TABLE IF NOT EXISTS feedback (

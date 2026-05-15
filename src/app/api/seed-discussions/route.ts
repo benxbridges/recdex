@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/app/lib/supabase'
+import { isAdminAuthenticated } from '@/app/lib/security'
 
 const SEED_THREADS = [
   {
@@ -69,7 +70,12 @@ const SEED_THREADS = [
   },
 ]
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // One-time seed: admin only.
+  if (!isAdminAuthenticated(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   // Check if threads already exist
   const { data: existing } = await supabase.from('threads').select('id').limit(1)
   if (existing && existing.length > 0) {

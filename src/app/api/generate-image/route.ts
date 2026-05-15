@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit, isAdminAuthenticated } from '@/app/lib/security'
 
 // ===== CONFIG =====
 // Supports two providers: Gemini (Google) and Replicate (Flux)
@@ -168,6 +169,13 @@ async function generateWithReplicate(prompt: string): Promise<{ image: string; m
 
 // ===== HANDLER =====
 export async function POST(req: NextRequest) {
+  // Image generation is paid + slow; admin-only by default. Loosen if/when needed.
+  if (!isAdminAuthenticated(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+  const rl = applyRateLimit(req, 'generate-image', 10, 60_000)
+  if (rl) return rl
+
   try {
     const body = await req.json()
     const { title, ingredients, cuisine, provider: requestedProvider } = body

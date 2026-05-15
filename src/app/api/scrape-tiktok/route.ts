@@ -423,10 +423,13 @@ async function storeVideos(videos: (ScrapedVideo & { dish_name: string })[]) {
 // ===== ROUTE HANDLER =====
 
 export async function POST(req: NextRequest) {
-  // Auth check
-  const key = req.nextUrl.searchParams.get('key')
+  // Auth check — accept either Authorization: Bearer header (preferred) or
+  // ?key= for backwards compatibility. Fail closed if no secret configured.
   const validKey = process.env.CRON_SECRET || process.env.SCRAPE_TIKTOK_KEY
-  if (!validKey || key !== validKey) {
+  const authHeader = req.headers.get('authorization') || ''
+  const headerKey = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const queryKey = req.nextUrl.searchParams.get('key') || ''
+  if (!validKey || (headerKey !== validKey && queryKey !== validKey)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
