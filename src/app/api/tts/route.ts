@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/app/lib/security'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
@@ -13,6 +14,9 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY
  * Default: "nova" — warm, clear, good for instructions
  */
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'tts', 30, 60_000)
+  if (rl) return rl
+
   if (!OPENAI_API_KEY) {
     return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 })
   }

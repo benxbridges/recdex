@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit, clampString } from '@/app/lib/security'
 
 const PAYWALL_DOMAINS = ['cooking.nytimes.com', 'nytimes.com', 'wsj.com']
 
@@ -29,12 +30,22 @@ async function resolveUrl(url: string): Promise<string> {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { url: string; authorName?: string }
+  const rl = applyRateLimit(req, 'find-mirror', 10, 60_000)
+  if (rl) return rl
+
+  let body: { url?: unknown; authorName?: unknown }
   try { body = await req.json() }
   catch { return NextResponse.json({ error: 'invalid_json' }, { status: 400 }) }
 
-  const { url, authorName } = body
+  const url = clampString(body.url, 2048)
+  const authorName = clampString(body.authorName, 200) || undefined
   if (!url) return NextResponse.json({ error: 'url_required' }, { status: 400 })
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return NextResponse.json({ error: 'invalid_url' }, { status: 400 })
+    }
+  } catch { return NextResponse.json({ error: 'invalid_url' }, { status: 400 }) }
 
   const paywalled = isPaywalled(url)
   const searchTerms = slugToSearchTerms(url)

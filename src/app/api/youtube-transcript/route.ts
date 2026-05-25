@@ -1,4 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/app/lib/security'
+
+const ALLOWED_TRANSCRIPT_HOSTS = ['youtube.com', 'youtu.be', 'tiktok.com']
+const VIDEO_ID_RE = /^[A-Za-z0-9_-]{5,32}$/
+
+function isAllowedTranscriptUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false
+    const host = parsed.hostname.toLowerCase().replace(/^www\./, '')
+    return ALLOWED_TRANSCRIPT_HOSTS.some(h => host === h || host.endsWith('.' + h))
+  } catch { return false }
+}
 
 /**
  * Unified transcript endpoint — works for YouTube AND TikTok.
@@ -9,13 +22,19 @@ import { NextRequest, NextResponse } from 'next/server'
  * Returns { transcript: string } or { error: string }
  */
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'youtube-transcript', 20, 60_000)
+  if (rl) return rl
+
   const { videoId, url, platform } = await req.json()
 
   // Build the video URL for Supadata
   let videoUrl: string | null = null
-  if (url) {
+  if (typeof url === 'string' && url) {
+    if (!isAllowedTranscriptUrl(url)) {
+      return NextResponse.json({ error: 'invalid_url' }, { status: 400 })
+    }
     videoUrl = url
-  } else if (videoId) {
+  } else if (typeof videoId === 'string' && VIDEO_ID_RE.test(videoId)) {
     videoUrl = `https://www.youtube.com/watch?v=${videoId}`
   }
 

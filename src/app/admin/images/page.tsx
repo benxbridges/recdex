@@ -17,8 +17,17 @@ export default function ImageReview() {
   const [loading, setLoading] = useState(true)
   const [cleared, setCleared] = useState<string[]>([])
   const [filter, setFilter] = useState<'all' | 'with-image' | 'no-image'>('with-image')
+  const [authed, setAuthed] = useState<boolean | null>(null)
 
   useEffect(() => {
+    fetch('/api/admin', { method: 'GET' })
+      .then(r => r.json())
+      .then(d => setAuthed(!!d?.authenticated))
+      .catch(() => setAuthed(false))
+  }, [])
+
+  useEffect(() => {
+    if (authed !== true) return
     supabase.from('recipes').select('id, slug, title, image_url, cuisine')
       .eq('status', 'published')
       .order('title')
@@ -26,12 +35,28 @@ export default function ImageReview() {
         if (data) setRecipes(data)
         setLoading(false)
       })
-  }, [])
+  }, [authed])
 
-  const clearImage = async (id: string) => {
-    await supabase.from('recipes').update({ image_url: null }).eq('id', id)
+  const clearImage = async (id: string, slug: string) => {
+    const res = await fetch('/api/admin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'clear-image', slug }),
+    })
+    if (!res.ok) return
     setCleared(prev => [...prev, id])
     setRecipes(prev => prev.map(r => r.id === id ? { ...r, image_url: null } : r))
+  }
+
+  if (authed === null) return null
+  if (authed === false) {
+    return (
+      <div style={{ minHeight: '100vh', background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontFamily: SANS, fontSize: 14, color: C.text2 }}>
+          <a href="/admin" style={{ color: C.accent, textDecoration: 'underline' }}>Sign in to admin</a>
+        </p>
+      </div>
+    )
   }
 
   const filtered = recipes.filter(r => {
@@ -82,7 +107,7 @@ export default function ImageReview() {
                     {/* Thumbs down button */}
                     {!cleared.includes(recipe.id) && (
                       <button
-                        onClick={() => clearImage(recipe.id)}
+                        onClick={() => clearImage(recipe.id, recipe.slug)}
                         style={{
                           position: 'absolute', bottom: 8, right: 8,
                           width: 36, height: 36, borderRadius: '50%',

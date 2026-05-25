@@ -31,7 +31,17 @@ export async function searchPhotos(query: string, accessKey: string, perPage = 6
   return data.results || []
 }
 
+// Only ever send the Unsplash access key to api.unsplash.com — passing it to
+// any other host would leak the credential to that host's logs.
+function isUnsplashApiUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'https:' && u.hostname === 'api.unsplash.com'
+  } catch { return false }
+}
+
 export async function triggerDownload(downloadLocation: string, accessKey: string): Promise<void> {
+  if (!isUnsplashApiUrl(downloadLocation)) return
   try {
     await fetch(downloadLocation, {
       headers: { Authorization: `Client-ID ${accessKey}` },

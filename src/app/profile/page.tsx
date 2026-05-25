@@ -181,8 +181,11 @@ export default function ProfilePage() {
   useEffect(() => {
     if (showFavDishPicker === null || favDishSearch.length < 2) { setFavDishResults([]); return }
     const timer = setTimeout(() => {
+      // Escape LIKE/ILIKE metacharacters so users can't inject wildcards
+      // (e.g. `%%%%%` forces an expensive full-table scan).
+      const escaped = favDishSearch.replace(/[\\%_]/g, '\\$&')
       supabase.from('recipes').select('id, slug, title, image_url').eq('status', 'published')
-        .ilike('title', `%${favDishSearch}%`).limit(8)
+        .ilike('title', `%${escaped}%`).limit(8)
         .then(({ data }) => { if (data) setFavDishResults(data) })
     }, 200)
     return () => clearTimeout(timer)

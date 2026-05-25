@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/app/lib/security'
 
 const SCAN_PROMPT = `You are extracting a recipe from photograph(s) of a cookbook page. Analyze every image carefully and extract ALL recipe information visible across ALL images. Cookbook recipes often span two facing pages — if multiple images are provided, treat them as a single continuous recipe.
 
@@ -96,7 +97,14 @@ async function callClaude(images: { mediaType: string; data: string }[], apiKey:
   }
 }
 
+// Roughly cap each image at ~6MB of base64 (~4.5MB binary) so a single request
+// can't burn unbounded Claude Vision tokens.
+const MAX_BASE64_LEN_PER_IMAGE = 6 * 1024 * 1024
+
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'scan-recipe', 5, 60_000)
+  if (rl) return rl
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return NextResponse.json({ error: 'server_misconfigured' }, { status: 500 })
@@ -121,6 +129,11 @@ export async function POST(req: NextRequest) {
   }
   if (rawImages.length > 4) {
     return NextResponse.json({ error: 'too_many_images' }, { status: 400 })
+  }
+  for (const img of rawImages) {
+    if (typeof img !== 'string' || img.length > MAX_BASE64_LEN_PER_IMAGE) {
+      return NextResponse.json({ error: 'image_too_large' }, { status: 413 })
+    }
   }
 
   const parsedImages = rawImages.map(image => {

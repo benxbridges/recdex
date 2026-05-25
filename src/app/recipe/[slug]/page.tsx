@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import { withUtm } from '@/app/lib/unsplash'
+import { safeHref, safeImageSrc } from '@/app/lib/url-safe'
 import SiteHeader from '@/app/components/SiteHeader'
 import CookLog from '@/app/components/CookLog'
 import { recipeRequiresOvernight } from '@/app/lib/cook-utils'
@@ -820,7 +821,7 @@ export default function RecipePage() {
 
       {/* HERO IMAGE — only when we have a working photo. Missing/broken
           falls through to the title rendering in the content section. */}
-      {recipe.image_url && !heroImgFailed && (
+      {recipe.image_url && safeImageSrc(recipe.image_url) && !heroImgFailed && (
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px clamp(16px,4vw,24px) 0' }}>
         <div style={{
           width: '100%', aspectRatio: isMobile ? '16/10' : '21/9',
@@ -830,7 +831,7 @@ export default function RecipePage() {
         }}>
           {true ? (
             <>
-              <img src={recipe.image_url} alt={recipe.title}
+              <img src={safeImageSrc(recipe.image_url)} alt={recipe.title}
                 onError={() => setHeroImgFailed(true)}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               {/* Title overlay on photo */}
@@ -855,12 +856,12 @@ export default function RecipePage() {
                   letterSpacing: '0.02em',
                 }}>
                   Photo by{' '}
-                  {recipe.photographer_url ? (
-                    <a href={withUtm(recipe.photographer_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{recipe.photo_credit}</a>
+                  {safeHref(recipe.photographer_url) ? (
+                    <a href={withUtm(safeHref(recipe.photographer_url)!)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>{recipe.photo_credit}</a>
                   ) : recipe.photo_credit}
                   {' '}on{' '}
-                  {recipe.unsplash_photo_url ? (
-                    <a href={withUtm(recipe.unsplash_photo_url)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Unsplash</a>
+                  {safeHref(recipe.unsplash_photo_url) ? (
+                    <a href={withUtm(safeHref(recipe.unsplash_photo_url)!)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>Unsplash</a>
                   ) : 'Unsplash'}
                 </div>
               )}
@@ -966,8 +967,8 @@ export default function RecipePage() {
                   {recipe.cookbook_author && (
                     <div>
                       Original source:{' '}
-                      {recipe.cookbook_purchase_url ? (
-                        <a href={recipe.cookbook_purchase_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                      {safeHref(recipe.cookbook_purchase_url) ? (
+                        <a href={safeHref(recipe.cookbook_purchase_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
                           {recipe.cookbook_title}
                         </a>
                       ) : (
@@ -980,19 +981,19 @@ export default function RecipePage() {
                 <>
                   <div>
                     Inspired by{' '}
-                    {recipe.creator_url ? (
-                      <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                    {safeHref(recipe.creator_url) ? (
+                      <a href={safeHref(recipe.creator_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.text2, fontWeight: 600, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
                         {recipe.creator_name}
                       </a>
                     ) : (
                       <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
                     )}
                   </div>
-                  {recipe.video_url && (
+                  {safeHref(recipe.video_url) && (
                     <div>
                       Original source:{' '}
-                      <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
-                        {(() => { try { return new URL(recipe.video_url.startsWith('http') ? recipe.video_url : `https://${recipe.video_url}`).hostname.replace('www.', '') } catch { return 'Watch original' } })()}
+                      <a href={safeHref(recipe.video_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {(() => { try { return new URL(recipe.video_url!.startsWith('http') ? recipe.video_url! : `https://${recipe.video_url}`).hostname.replace('www.', '') } catch { return 'Watch original' } })()}
                       </a>
                     </div>
                   )}
@@ -1003,11 +1004,11 @@ export default function RecipePage() {
                     Adapted from{' '}
                     <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.source_attribution}</span>
                   </div>
-                  {recipe.source_url && (
+                  {safeHref(recipe.source_url) && (
                     <div>
                       Original source:{' '}
-                      <a href={recipe.source_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
-                        {(() => { try { return new URL(recipe.source_url.startsWith('http') ? recipe.source_url : `https://${recipe.source_url}`).hostname.replace('www.', '') } catch { return recipe.source_url } })()}
+                      <a href={safeHref(recipe.source_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'underline', textDecorationColor: C.ruleLight, textUnderlineOffset: 2 }}>
+                        {(() => { try { return new URL(recipe.source_url!.startsWith('http') ? recipe.source_url! : `https://${recipe.source_url}`).hostname.replace('www.', '') } catch { return recipe.source_url } })()}
                       </a>
                     </div>
                   )}
@@ -1023,18 +1024,18 @@ export default function RecipePage() {
           )}
 
           {/* Creator attribution (video-sourced recipes) */}
-          {recipe.creator_name && recipe.video_url && (
+          {recipe.creator_name && safeHref(recipe.video_url) && (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '6px 12px', borderRadius: 6, background: C.cool, border: `1px solid ${C.ruleLight}` }}>
               <span style={{ fontFamily: SANS, fontSize: 12, color: C.text3 }}>Recipe by</span>
-              {recipe.creator_url ? (
-                <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2, textDecoration: 'none' }}>
+              {safeHref(recipe.creator_url) ? (
+                <a href={safeHref(recipe.creator_url)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2, textDecoration: 'none' }}>
                   {recipe.creator_name}
                 </a>
               ) : (
                 <span style={{ fontFamily: SANS, fontSize: 12, fontWeight: 600, color: C.text2 }}>{recipe.creator_name}</span>
               )}
               <span style={{ color: C.rule }}>·</span>
-              <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, color: C.text3, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <a href={safeHref(recipe.video_url)} target="_blank" rel="noopener noreferrer" style={{ fontFamily: SANS, fontSize: 12, color: C.text3, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                 Watch original
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
@@ -1044,28 +1045,28 @@ export default function RecipePage() {
           )}
 
           {/* AI-extracted badge + creator credit for video-sourced recipes */}
-          {recipe.video_url && recipe.source_attribution === 'RecDex Trending' && (
+          {safeHref(recipe.video_url) && recipe.source_attribution === 'RecDex Trending' && (
             <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 12px', borderRadius: 6, background: C.accentBg, border: `1px solid ${C.accentMed}`, alignSelf: 'flex-start' }}>
                 <span style={{ fontSize: 12 }}>🤖</span>
                 <span style={{ fontFamily: SANS, fontSize: 11, color: C.text3 }}>AI-extracted from video</span>
                 <span style={{ color: C.rule }}>·</span>
-                <a href={`/contribute?url=${encodeURIComponent(recipe.video_url)}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
+                <a href={`/contribute?url=${encodeURIComponent(safeHref(recipe.video_url) || '')}`} style={{ fontFamily: SANS, fontSize: 11, color: C.accent, textDecoration: 'none', fontWeight: 500 }}>
                   Verify or edit
                 </a>
               </div>
               {recipe.creator_name && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontFamily: SANS, color: C.text3 }}>
                   <span>Recipe by</span>
-                  {recipe.creator_url ? (
-                    <a href={recipe.creator_url} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
+                  {safeHref(recipe.creator_url) ? (
+                    <a href={safeHref(recipe.creator_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.accent, textDecoration: 'none', fontWeight: 600 }}>
                       {recipe.creator_name}
                     </a>
                   ) : (
                     <span style={{ color: C.text2, fontWeight: 600 }}>{recipe.creator_name}</span>
                   )}
                   <span style={{ color: C.text3 }}>·</span>
-                  <a href={recipe.video_url} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'none' }}>
+                  <a href={safeHref(recipe.video_url)} target="_blank" rel="noopener noreferrer" style={{ color: C.text3, textDecoration: 'none' }}>
                     Watch original →
                   </a>
                 </div>

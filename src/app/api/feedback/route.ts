@@ -1,47 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+import { applyRateLimit, clampString } from '@/app/lib/security'
 
-const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTg3NjA1MywiZXhwIjoyMDg3NDUyMDUzfQ.cXHsjm-QAjAsx5xL89TNxILFhlU7cOJBp7O_j-XSmHs'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zacwsrcdvpglrcvirlng.supabase.co'
+
+function getSupabaseAdmin() {
+  return createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY!)
+}
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json()
-    const { type, message, url, userAgent, screenSize, userName, timestamp } = body
+  const rl = applyRateLimit(req, 'feedback', 10, 60_000)
+  if (rl) return rl
 
-    if (!message?.trim()) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
-    }
-
-    const row = {
-      type: type || 'bug',
-      message: message.trim(),
-      url: url || null,
-      user_agent: userAgent || null,
-      screen_size: screenSize || null,
-      user_name: userName || null,
-      created_at: timestamp || new Date().toISOString(),
-    }
-
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/feedback`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        Prefer: 'return=minimal',
-      },
-      body: JSON.stringify(row),
-    })
-
-    if (!res.ok) {
-      const text = await res.text()
-      console.error('Supabase feedback insert failed:', res.status, text)
-      return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
-    }
-
-    return NextResponse.json({ success: true })
-  } catch (err) {
-    console.error('Feedback API error:', err)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  if (!process.env.SUPABASE_SERVICE_KEY) {
+    console.error('[feedback] SUPABASE_SERVICE_KEY not set')
+    return NextResponse.json({ error: 'server_config_error' }, { status: 500 })
   }
+
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'invalid_json' }, { status: 400 })
+  }
+
+  const message = clampString(body.message, 5000)
+  if (!message) {
+    return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+  }
+
+  const row = {
+    type: clampString(body.type, 32) || 'bug',
+    message,
+    url: clampString(body.url, 2048),
+    user_agent: clampString(body.userAgent, 500),
+    screen_size: clampString(body.screenSize, 32),
+    user_name: clampString(body.userName, 100),
+    created_at: clampString(body.timestamp, 64) || new Date().toISOString(),
+  }
+
+  const { error } = await getSupabaseAdmin().from('feedback').insert(row)
+  if (error) {
+    console.error('[feedback] insert error:', error)
+    return NextResponse.json({ error: 'Failed to save feedback' }, { status: 500 })
+  }
+
+  return NextResponse.json({ success: true })
 }

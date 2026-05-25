@@ -42,9 +42,11 @@ export default function AdminPage() {
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('recdex-admin-auth')
-    if (stored) setAuthed(true)
-    setCheckingAuth(false)
+    // Check whether the HttpOnly session cookie is still valid.
+    fetch('/api/admin', { method: 'GET' })
+      .then(r => r.json())
+      .then(d => { if (d?.authenticated) setAuthed(true) })
+      .finally(() => setCheckingAuth(false))
   }, [])
 
   async function handleLogin() {
@@ -57,8 +59,10 @@ export default function AdminPage() {
         body: JSON.stringify({ action: 'auth', password }),
       })
       if (res.ok) {
-        localStorage.setItem('recdex-admin-auth', password)
         setAuthed(true)
+        setPassword('')
+      } else if (res.status === 429) {
+        setAuthError('Too many attempts — wait a minute')
       } else {
         setAuthError('Invalid password')
       }
@@ -66,6 +70,17 @@ export default function AdminPage() {
       setAuthError('Connection error')
     }
     setAuthLoading(false)
+  }
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      })
+    } catch { /* ignore */ }
+    setAuthed(false)
   }
 
   if (checkingAuth) return null
@@ -107,11 +122,11 @@ export default function AdminPage() {
     )
   }
 
-  return <AdminDashboard password={localStorage.getItem('recdex-admin-auth') || ''} onLogout={() => { localStorage.removeItem('recdex-admin-auth'); setAuthed(false) }} />
+  return <AdminDashboard onLogout={handleLogout} />
 }
 
 // ===== DASHBOARD =====
-function AdminDashboard({ password, onLogout }: { password: string; onLogout: () => void }) {
+function AdminDashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<'photos' | 'recipes'>('photos')
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
@@ -221,9 +236,9 @@ function AdminDashboard({ password, onLogout }: { password: string; onLogout: ()
             <span style={{ fontFamily: MONO, fontSize: 11, color: C.text3 }}>Loading recipes</span>
           </div>
         ) : tab === 'photos' ? (
-          <PhotoReview recipes={recipes.filter(r => r.status === 'published')} password={password} onUpdate={loadRecipes} unsplashKey={unsplashKey} />
+          <PhotoReview recipes={recipes.filter(r => r.status === 'published')} onUpdate={loadRecipes} unsplashKey={unsplashKey} />
         ) : (
-          <RecipeManagement recipes={recipes} password={password} onUpdate={loadRecipes} />
+          <RecipeManagement recipes={recipes} onUpdate={loadRecipes} />
         )}
       </div>
 
@@ -247,7 +262,7 @@ function saveApproved(set: Set<string>) {
 }
 
 // ===== PHOTO REVIEW TAB =====
-function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Recipe[]; password: string; onUpdate: () => void; unsplashKey: string }) {
+function PhotoReview({ recipes, onUpdate, unsplashKey }: { recipes: Recipe[]; onUpdate: () => void; unsplashKey: string }) {
   const [filter, setFilter] = useState<'all' | 'has' | 'none' | 'nocredit' | 'approved' | 'pending'>('pending')
   const [page, setPage] = useState(0)
   const [expandedSlug, setExpandedSlug] = useState<string | null>(null)
@@ -364,7 +379,6 @@ function PhotoReview({ recipes, password, onUpdate, unsplashKey }: { recipes: Re
             onApprove={() => handleApprove(recipe.slug)}
             onUnapprove={() => handleUnapprove(recipe.slug)}
             onToggleExpand={() => setExpandedSlug(expandedSlug === recipe.slug ? null : recipe.slug)}
-            password={password}
             onUpdate={onUpdate}
             unsplashKey={unsplashKey}
           />
@@ -409,10 +423,10 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
 }
 
 // ===== PHOTO CARD =====
-function PhotoCard({ recipe, expanded, isApproved, onApprove, onUnapprove, onToggleExpand, password, onUpdate, unsplashKey }: {
+function PhotoCard({ recipe, expanded, isApproved, onApprove, onUnapprove, onToggleExpand, onUpdate, unsplashKey }: {
   recipe: Recipe; expanded: boolean; isApproved: boolean
   onApprove: () => void; onUnapprove: () => void
-  onToggleExpand: () => void; password: string; onUpdate: () => void; unsplashKey: string
+  onToggleExpand: () => void; onUpdate: () => void; unsplashKey: string
 }) {
   const [images, setImages] = useState<UnsplashImage[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -449,7 +463,7 @@ function PhotoCard({ recipe, expanded, isApproved, onApprove, onUnapprove, onTog
       await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update-image', password, slug: recipe.slug, image_url: selectedUrl, photo_credit: selectedCredit }),
+        body: JSON.stringify({ action: 'update-image', slug: recipe.slug, image_url: selectedUrl, photo_credit: selectedCredit }),
       })
       onUpdate()
       onApprove()
@@ -572,7 +586,7 @@ function EggPlaceholder() {
 }
 
 // ===== RECIPE MANAGEMENT TAB =====
-function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; password: string; onUpdate: () => void }) {
+function RecipeManagement({ recipes, onUpdate }: { recipes: Recipe[]; onUpdate: () => void }) {
   const [search, setSearch] = useState('')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all')
@@ -618,7 +632,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
       await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete-recipe', password, slug }),
+        body: JSON.stringify({ action: 'delete-recipe', slug }),
       })
       setConfirmDelete(null)
       onUpdate()
@@ -632,7 +646,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
       await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'publish-recipe', password, slug }),
+        body: JSON.stringify({ action: 'publish-recipe', slug }),
       })
       onUpdate()
     } catch { /* ignore */ }
@@ -645,7 +659,7 @@ function RecipeManagement({ recipes, password, onUpdate }: { recipes: Recipe[]; 
       await fetch('/api/admin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'unpublish-recipe', password, slug }),
+        body: JSON.stringify({ action: 'unpublish-recipe', slug }),
       })
       onUpdate()
     } catch { /* ignore */ }

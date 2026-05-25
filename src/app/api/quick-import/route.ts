@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { applyRateLimit, clampString } from '@/app/lib/security'
 
 /**
  * POST /api/quick-import
@@ -10,31 +11,38 @@ import { createClient } from '@supabase/supabase-js'
  * Returns: { slug: string, title: string, alreadyExists?: boolean } or { error: string }
  */
 
-const SUPABASE_URL = 'https://zacwsrcdvpglrcvirlng.supabase.co'
-const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zacwsrcdvpglrcvirlng.supabase.co'
+const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphY3dzcmNkdnBnbHJjdmlybG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4NzYwNTMsImV4cCI6MjA4NzQ1MjA1M30.ShCsMBs1mvIK-_3r3GhOTkStmUAUagGQvil5q763D9c'
 
-// Use service role key for writes (bypasses RLS), fall back to anon for reads
 const supabaseRead = createClient(SUPABASE_URL, ANON_KEY)
-const supabaseWrite = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || ANON_KEY)
 
 function detectPlatform(url: string): 'youtube' | 'tiktok' | 'instagram' | 'other' {
   try {
     const h = new URL(url).hostname.toLowerCase()
-    if (h.includes('tiktok.com')) return 'tiktok'
-    if (h.includes('youtube.com') || h.includes('youtu.be')) return 'youtube'
-    if (h.includes('instagram.com')) return 'instagram'
+    if (h === 'tiktok.com' || h.endsWith('.tiktok.com')) return 'tiktok'
+    if (h === 'youtube.com' || h.endsWith('.youtube.com') || h === 'youtu.be') return 'youtube'
+    if (h === 'instagram.com' || h.endsWith('.instagram.com')) return 'instagram'
   } catch { /* invalid */ }
   return 'other'
 }
 
 export async function POST(req: NextRequest) {
+  const rl = applyRateLimit(req, 'quick-import', 5, 60_000)
+  if (rl) return rl
+
   const body = await req.json()
-  const url = typeof body.url === 'string' ? body.url.trim().slice(0, 2048) : ''
-  const dishName = typeof body.dishName === 'string' ? body.dishName.trim().slice(0, 200) : undefined
+  const url = clampString(body.url, 2048) || ''
+  const dishName = clampString(body.dishName, 200) || undefined
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 })
 
   // Validate URL format
-  try { new URL(url) } catch { return NextResponse.json({ error: 'invalid_url' }, { status: 400 }) }
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return NextResponse.json({ error: 'invalid_url_scheme' }, { status: 400 })
+    }
+  } catch { return NextResponse.json({ error: 'invalid_url' }, { status: 400 }) }
 
   const platform = detectPlatform(url)
   if (platform === 'other') {
@@ -46,6 +54,7 @@ export async function POST(req: NextRequest) {
     console.error('[quick-import] SUPABASE_SERVICE_KEY not set — cannot save recipes')
     return NextResponse.json({ error: 'server_config_error' }, { status: 500 })
   }
+  const supabaseWrite = createClient(SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
   try {
     // Step 1: Fetch oEmbed metadata

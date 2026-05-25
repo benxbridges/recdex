@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/app/lib/security'
 
 const OEMBED_ENDPOINTS: Record<string, string> = {
   tiktok: 'https://www.tiktok.com/oembed',
   youtube: 'https://www.youtube.com/oembed',
 }
 
+// Match the host on exact suffix to avoid `evil.tiktok.com.attacker.com` style spoofing.
 function detectPlatform(url: string): string | null {
   try {
     const hostname = new URL(url).hostname.toLowerCase()
-    if (hostname.includes('tiktok.com')) return 'tiktok'
-    if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) return 'youtube'
+    if (hostname === 'tiktok.com' || hostname === 'www.tiktok.com' || hostname.endsWith('.tiktok.com')) return 'tiktok'
+    if (hostname === 'youtube.com' || hostname === 'www.youtube.com' || hostname.endsWith('.youtube.com') || hostname === 'youtu.be') return 'youtube'
   } catch { /* invalid URL */ }
   return null
 }
 
 export async function GET(req: NextRequest) {
+  const rl = applyRateLimit(req, 'oembed', 30, 60_000)
+  if (rl) return rl
+
   const url = req.nextUrl.searchParams.get('url')
   if (!url) return NextResponse.json({ error: 'url parameter required' }, { status: 400 })
 
