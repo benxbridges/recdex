@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { rateLimit, clientIp, isAdminAuthenticated } from '@/app/lib/security'
 
 /**
  * GET /api/trending
@@ -49,18 +50,52 @@ const CACHE_TTL = 60 * 60 * 1000 // 1 hour
 
 const MIN_VIEW_COUNT = 50_000
 
+// A full (non-cached) build of this endpoint fans out to ~16 YouTube Data API
+// searches (100 quota units each) plus a Claude call — easily $$ and quota if
+// looped. Only the cron job / admins may force a rebuild; the public reads cache.
+function canForceRefresh(req: NextRequest): boolean {
+  const secret = process.env.CRON_SECRET || process.env.SCRAPE_TIKTOK_KEY
+  if (secret) {
+    const auth = req.headers.get('authorization') || ''
+    const bearer = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    const queryKey = req.nextUrl.searchParams.get('key') || ''
+    if (bearer === secret || queryKey === secret) return true
+  }
+  return isAdminAuthenticated(req)
+}
+
 export async function GET(req: NextRequest) {
   const limit = Math.min(Number(req.nextUrl.searchParams.get('limit') || '10'), 25)
   const region = req.nextUrl.searchParams.get('region') || 'US'
-  const refresh = req.nextUrl.searchParams.get('refresh') === 'true'
+  const authorized = canForceRefresh(req)
+  // `?refresh=true` is honored only for authorized callers (cron/admin).
+  const refresh = req.nextUrl.searchParams.get('refresh') === 'true' && authorized
 
-  // Return cache if fresh
+  // Return cache if fresh (public callers can only ever read cache)
   if (!refresh && cache && Date.now() - cache.ts < CACHE_TTL) {
     return NextResponse.json({
       videos: cache.videos.slice(0, limit),
       trendingTopics: cache.topics,
       cached: true,
     })
+  }
+
+  // Past here we spend money (YouTube Data API + Claude). Throttle unauthorized
+  // callers so a cold/expired cache can't be hammered into repeated rebuilds.
+  // Serve stale cache instead of erroring when we have it.
+  if (!authorized && !rateLimit(`trending-build:${clientIp(req)}`, 2, 60_000).ok) {
+    if (cache) {
+      return NextResponse.json({
+        videos: cache.videos.slice(0, limit),
+        trendingTopics: cache.topics,
+        cached: true,
+        stale: true,
+      })
+    }
+    return NextResponse.json(
+      { error: 'rate_limited' },
+      { status: 429, headers: { 'Retry-After': '60' } },
+    )
   }
 
   const apiKey = process.env.YOUTUBE_API_KEY
