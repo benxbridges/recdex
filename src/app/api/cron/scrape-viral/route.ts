@@ -50,7 +50,9 @@ export async function GET(req: NextRequest) {
 
   // 2. Refresh YouTube trending cache
   try {
-    const ytRes = await fetch(`${baseUrl}/api/trending?refresh=true&limit=15`)
+    const ytRes = await fetch(`${baseUrl}/api/trending?refresh=true&limit=15`, {
+      headers: { authorization: `Bearer ${cronSecret}` },
+    })
     results.youtube = ytRes.ok ? { refreshed: true, status: ytRes.status } : { error: ytRes.status }
   } catch (err) {
     results.youtube = { error: String(err) }

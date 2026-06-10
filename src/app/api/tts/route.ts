@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { applyRateLimit } from '@/app/lib/security'
+import { applyRateLimit, isAdminAuthenticated } from '@/app/lib/security'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
@@ -14,6 +14,13 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY
  * Default: "nova" — warm, clear, good for instructions
  */
 export async function POST(req: NextRequest) {
+  // Voice mode was removed — nothing in the app calls this. Keep the code in
+  // case it's revived, but gate it behind admin auth so the public can't run up
+  // OpenAI charges by hitting it directly. (Delete this route to remove it fully.)
+  if (!isAdminAuthenticated(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  }
+
   const rl = applyRateLimit(req, 'tts', 30, 60_000)
   if (rl) return rl
 
