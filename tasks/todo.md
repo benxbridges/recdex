@@ -55,6 +55,31 @@ Goal: make URL/picture → cook mode reliable enough that cook mode stands as th
 - [ ] Polish mid-cook substitutions
 - [ ] Multi-page cookbook scan
 
+## Recommended Next (from 2026-06-10 site audit + marketing research)
+
+### SEO / Marketing-critical product work
+- [ ] **Emit Recipe JSON-LD on recipe pages** — we parse schema.org on import but never output it. Recipe pages render client-side with no `application/ld+json` script, so Google can't show rich results. Highest-leverage SEO fix; cornerstone of the marketing strategy (`docs/marketing/strategy.md`).
+- [ ] **Shareable cook-completion card** — upgrade share-on-completion to a postable card (dish, time, steps done) whose link opens that recipe in cook mode. This is the viral object for the Share funnel step.
+- [ ] **"Clean this recipe" micro-tool** — no-signup paste-URL → readable recipe page with "Cook this step-by-step →" upsell. Second launch beat; extract-recipe API already does the work.
+
+### Usability audit findings (top fixes)
+- [x] Add Pantry to global nav — it was orphaned (only reachable by URL)
+- [ ] Homepage hero 1-2-3 ribbon doesn't match actual flow ("Paste → Click Cook → Cook" vs paste → extract → review → cook). Rewrite to "Paste → We extract → Cook."
+- [ ] Standardize "Import" vs "Contribute" vs "Bring a recipe" — three names for one action (contribute page heading, homepage footer, about page). Pick one.
+- [ ] Trending + Community unreachable from nav — decide if they're tier-1 nav or surfaced from Browse/leaderboard
+- [ ] Verify recipe detail page has a prominent "Cook now →" CTA (critical Browse → Cook funnel step)
+- [ ] Brand casing: footer says "RecDex", header says "Recipe Index" — canonicalize on "Recipe Index" for display
+- [ ] Standardize mobile breakpoint (browse uses 680, others 700/768) — export one constant from theme.ts
+- [ ] Community threads tagged with a recipe should link to "View recipe / Cook now"
+- [ ] Trending cards: add "Cook now →" primary CTA next to import (skip review, straight to cook mode)
+- NOTE: audit suggested defaulting browse to grid view — **rejected**, contradicts decided "cookbook index, not Pinterest" principle
+
+### Marketing launch sequence (see docs/marketing/)
+- [ ] Set up TikTok + Instagram accounts; start 3x/week faceless video cadence (`video-scripts.md`)
+- [ ] Show HN + Product Hunt launch: "paste URL → cook mode" (`launch-posts.md` — post after JSON-LD ships)
+- [ ] Pitch Lifehacker/Verge tier (`press-pitch.md`)
+- [ ] Weekly helpful presence in r/Cooking / r/AskCulinary threads
+
 ## Backlog
 
 ### Monetization

@@ -4,31 +4,15 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import ThemeToggle from '@/app/components/ThemeToggle'
+import { EggDot } from '@/app/components/EggBadge'
 
 // Single source of truth for the top nav. Every page renders <SiteHeader />
 // instead of bespoke markup. Matches against the current pathname so the
 // active section is highlighted automatically — no `current` prop needed.
 
-function EggDot({ size = 9 }: { size?: number }) {
-  const h = Math.round(size * 1.35)
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        width: size,
-        height: h,
-        marginLeft: 2,
-        background: C.accent,
-        borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%',
-        verticalAlign: 'baseline',
-        marginBottom: -1,
-      }}
-    />
-  )
-}
-
 const NAV: { href: string; label: string; matchPrefix: string }[] = [
   { href: '/browse',  label: 'Browse',  matchPrefix: '/browse' },
+  { href: '/pantry',  label: 'Pantry',  matchPrefix: '/pantry' },
   { href: '/tools',   label: 'Tools',   matchPrefix: '/tools' },
   { href: '/profile', label: 'Profile', matchPrefix: '/profile' },
   { href: '/about',   label: 'About',   matchPrefix: '/about' },

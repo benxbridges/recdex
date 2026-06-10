@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
 import SiteHeader from '@/app/components/SiteHeader'
+import { EggBadge, EggDot, getEggTier } from '@/app/components/EggBadge'
 
 // ===== TYPES =====
 type Recipe = {
@@ -74,16 +74,8 @@ function formatDate(ts: number): string {
   return `${months[d.getMonth()]} ${d.getDate()}`
 }
 
-function EggDot({ size = 9 }: { size?: number }) {
-  const h = Math.round(size * 1.35)
-  return <span style={{ display: 'inline-block', width: size, height: h, marginLeft: 2, background: C.accent, borderRadius: '50% 50% 50% 50% / 40% 40% 60% 60%', verticalAlign: 'baseline', marginBottom: -1 }} />
-}
-
-
-
 // ===== MAIN PAGE =====
 export default function ProfilePage() {
-  const router = useRouter()
   const [isMobile, setIsMobile] = useState(false)
   const [loading, setLoading] = useState(true)
 
@@ -341,11 +333,11 @@ export default function ProfilePage() {
           <div style={{ padding: isMobile ? '14px 12px 12px' : '22px 28px 18px' }}>
 
             {/* Avatar + name row */}
-            <div style={{ display: 'flex', flexDirection: 'row-reverse', alignItems: 'center', gap: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 10 }}>
               <div style={{
-                width: 48, height: 48, borderRadius: '50%', background: profile.displayName ? C.accent : C.ruleLight,
+                width: 56, height: 56, borderRadius: '50%', background: profile.displayName ? C.accent : C.ruleLight,
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                fontFamily: SANS, fontSize: 19, fontWeight: 700, color: profile.displayName ? '#fff' : C.text3,
+                fontFamily: SANS, fontSize: 22, fontWeight: 700, color: profile.displayName ? '#fff' : C.text3,
               }}>
                 {profile.displayName ? profile.displayName[0].toUpperCase() : '?'}
               </div>
@@ -365,13 +357,19 @@ export default function ProfilePage() {
                     <button type="button" onClick={() => { setEditingName(false); setNameInput(profile.displayName) }} style={{ fontSize: 11, fontFamily: SANS, color: C.text3, background: 'none', border: 'none', cursor: 'pointer' }}>Cancel</button>
                   </form>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div onClick={() => { setEditingName(true); setTimeout(() => nameInputRef.current?.focus(), 50) }} style={{ cursor: 'pointer' }}>
                       {profile.displayName ? (
-                        <span style={{ fontFamily: MONO, fontSize: 15, color: C.accent, fontWeight: 600 }}>@{profile.displayName}</span>
+                        <span style={{ fontFamily: MONO, fontSize: 16, color: C.accent, fontWeight: 600 }}>@{profile.displayName}</span>
                       ) : (
                         <span style={{ fontFamily: MONO, fontSize: 15, color: C.text3, fontStyle: 'italic' }}>Pick a display name...</span>
                       )}
+                    </div>
+                    {/* Egg tier — same system as the leaderboard */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <EggBadge eggs={totalCooks} />
+                      <span style={{ fontFamily: SANS, fontSize: 11, fontWeight: 600, color: getEggTier(totalCooks).color }}>{getEggTier(totalCooks).name}</span>
+                      <Link href="/leaderboard" style={{ fontFamily: MONO, fontSize: 10, color: C.text3, textDecoration: 'none' }}>leaderboard →</Link>
                     </div>
                   </div>
                 )}
@@ -483,12 +481,12 @@ export default function ProfilePage() {
         {/* Stats row — own container below profile card */}
         <div style={{ marginBottom: 16, background: C.cool, borderRadius: 8, padding: '10px 14px', display: 'flex', justifyContent: 'space-around', alignItems: 'baseline', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: uniqueDishes > 0 ? C.text : C.text3 }}>{uniqueDishes}</span>
-            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Cooked</span>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: totalCooks > 0 ? C.text : C.text3 }}>{totalCooks}</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Cooks</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
-            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: C.text3 }}>0</span>
-            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Contributed</span>
+            <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: uniqueDishes > 0 ? C.text : C.text3 }}>{uniqueDishes}</span>
+            <span style={{ fontFamily: SANS, fontSize: 10, color: C.text3 }}>Dishes</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, whiteSpace: 'nowrap' }}>
             <span style={{ fontFamily: SERIF, fontSize: 16, fontWeight: 700, color: weekStreak > 0 ? C.green : C.text3 }}>{weekStreak}</span>
@@ -641,10 +639,12 @@ export default function ProfilePage() {
                       {/* Picker dropdown */}
                       {isPickingThis && (
                         <div style={{
-                          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 20,
+                          // Anchor right-column dropdowns to the right edge so they don't overflow the viewport
+                          position: 'absolute', top: '100%', zIndex: 20,
+                          ...(slotIdx >= 2 ? { right: 0 } : { left: 0 }),
                           marginTop: 4, background: C.bg, border: `1.5px solid ${C.rule}`, borderRadius: 8,
                           padding: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-                          minWidth: isMobile ? 180 : 200,
+                          width: isMobile ? 200 : 220,
                         }}>
                           <input ref={favDishInputRef} value={favDishSearch} onChange={e => setFavDishSearch(e.target.value)}
                             placeholder="Search recipes..." autoFocus
@@ -692,7 +692,7 @@ export default function ProfilePage() {
                   <p style={{ fontSize: 13, color: C.text3, lineHeight: 1.6, margin: '0 0 20px', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
                     Cook a recipe, leave a note, or save something — it&apos;ll all show up here.
                   </p>
-                  <button onClick={() => router.push('/')} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Find something to cook</button>
+                  <button onClick={() => { window.location.href = '/browse' }} style={{ padding: '10px 24px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Find something to cook</button>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -723,6 +723,10 @@ export default function ProfilePage() {
                             </span>
                           )}
                         </div>
+                        <Link href={`/recipe/${e.recipeSlug}/cook`} style={{
+                          flexShrink: 0, fontFamily: MONO, fontSize: 10, fontWeight: 500, color: C.accent,
+                          textDecoration: 'none', padding: '3px 8px', borderRadius: 4, border: `1px solid ${C.ruleLight}`,
+                        }}>cook again →</Link>
                       </div>
                     )
                   })}
@@ -766,7 +770,7 @@ export default function ProfilePage() {
                   <p style={{ fontSize: 13, color: C.text3, lineHeight: 1.6, margin: '0 0 24px', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
                     Browse the index and tap &ldquo;Save&rdquo; on recipes you want to cook later.
                   </p>
-                  <button onClick={() => router.push('/')} style={{ padding: '12px 28px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Browse recipes</button>
+                  <button onClick={() => { window.location.href = '/browse' }} style={{ padding: '12px 28px', borderRadius: 6, border: 'none', background: C.text, color: C.bg, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS }}>Browse recipes</button>
                 </div>
               ) : (
                 <div className="hide-scrollbar" style={{
@@ -776,24 +780,29 @@ export default function ProfilePage() {
                   {savedRecipes.map((r, i) => (
                     <Link key={r.id} href={`/recipe/${r.slug}`} style={{
                       textDecoration: 'none', flexShrink: 0,
-                      width: isMobile ? 200 : 220, padding: '14px 16px', borderRadius: 10,
+                      width: isMobile ? 200 : 220, borderRadius: 10, overflow: 'hidden',
                       background: C.warm, border: `1px solid ${C.ruleLight}`,
-                      display: 'flex', flexDirection: 'column', gap: 6,
+                      display: 'flex', flexDirection: 'column',
                       scrollSnapAlign: 'start',
                       animation: `fadeIn 0.3s ease ${i * 0.04}s both`,
                     }}>
-                      <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                        {r.title}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
-                          {r.cuisine && `${r.cuisine}`}
+                      {r.image_url && (
+                        <img src={r.image_url} alt={r.title} style={{ width: '100%', height: 100, objectFit: 'cover', display: 'block' }} />
+                      )}
+                      <div style={{ padding: '12px 16px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <span style={{ fontFamily: SERIF, fontSize: 15, fontWeight: 600, color: C.text, lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                          {r.title}
                         </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontSize: 11, fontFamily: MONO, color: C.text3 }}>
+                            {[r.cuisine, r.time_total].filter(Boolean).join(' · ')}
+                          </span>
+                        </div>
                       </div>
                     </Link>
                   ))}
                   {/* Browse more card */}
-                  <div onClick={() => router.push('/')} style={{
+                  <div onClick={() => { window.location.href = '/browse' }} style={{
                     flexShrink: 0, width: isMobile ? 140 : 160, padding: '14px 16px', borderRadius: 10,
                     background: C.cool, border: `1.5px dashed ${C.ruleLight}`,
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -826,7 +835,7 @@ export default function ProfilePage() {
                 <p style={{ fontSize: 13, color: C.text3, lineHeight: 1.6, margin: '0 0 24px', maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
                   Browse recipes and tap &ldquo;Grocery list&rdquo; to start building your list.
                 </p>
-                <button onClick={() => router.push('/')} style={{
+                <button onClick={() => { window.location.href = '/browse' }} style={{
                   padding: '12px 28px', borderRadius: 6, border: 'none',
                   background: C.text, color: C.bg,
                   fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: SANS,
@@ -883,7 +892,7 @@ export default function ProfilePage() {
                             </p>
                           ))}
                           {items[0]?.recipeSlug && (
-                            <button onClick={() => router.push(`/recipe/${items[0].recipeSlug}`)} style={{
+                            <button onClick={() => { window.location.href = `/recipe/${items[0].recipeSlug}` }} style={{
                               marginTop: 8, padding: '4px 0', border: 'none',
                               background: 'transparent', fontSize: 10, color: C.accent,
                               cursor: 'pointer', fontFamily: MONO, fontWeight: 500,
@@ -1153,7 +1162,7 @@ export default function ProfilePage() {
               <p style={{ fontSize: 11, color: C.text3, margin: 0, maxWidth: 320, lineHeight: 1.5, fontFamily: SANS }}>A collection of kitchen tools and recipes to help you become your best cook.</p>
             </div>
             <div style={{ fontSize: 11, color: C.text3, fontFamily: MONO }}>
-              <p style={{ margin: 0 }}><span style={{ color: C.accent, cursor: 'pointer' }} onClick={() => router.push('/')}>Home</span> · <span style={{ color: C.accent, cursor: 'pointer' }}>About</span></p>
+              <p style={{ margin: 0 }}><Link href="/" style={{ color: C.accent, textDecoration: 'none' }}>Home</Link> · <Link href="/about" style={{ color: C.accent, textDecoration: 'none' }}>About</Link></p>
             </div>
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -21,10 +21,10 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Recipe Index — The recipe site you actually want to use",
+    default: "Recipe Index — Any recipe, cook-ready",
     template: "%s | Recipe Index",
   },
-  description: "A free, ad-free, community-driven recipe index. Structured recipes with cook mode, servings adjuster, and AI-powered recipe extraction from cooking videos.",
+  description: "Paste any recipe link or snap a cookbook page — get clean steps and timers that actually ring in cook mode. Free, ad-free, no app to install.",
   metadataBase: new URL("https://www.recipeindex.org"),
   manifest: "/manifest.json",
   appleWebApp: {
@@ -39,12 +39,12 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Recipe Index",
     title: "Recipe Index",
-    description: "A free, ad-free, community-driven recipe index. No paywalls, no life stories. Just food.",
+    description: "Any recipe, cook-ready. No paywalls, no life stories. Just food.",
   },
   twitter: {
     card: "summary_large_image",
     title: "Recipe Index",
-    description: "A free, ad-free, community-driven recipe index. No paywalls, no life stories. Just food.",
+    description: "Any recipe, cook-ready. No paywalls, no life stories. Just food.",
   },
 };
 
