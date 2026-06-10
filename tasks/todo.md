@@ -58,7 +58,7 @@ Goal: make URL/picture → cook mode reliable enough that cook mode stands as th
 ## Recommended Next (from 2026-06-10 site audit + marketing research)
 
 ### Timer reliability — browser-closed timers (see docs/timer-reliability.md)
-- [ ] **Android native-timer handoff** — `intent:` URL sets a real OS Clock timer in one tap, zero permissions/infra. Ships in an hour, alarm-grade on Android today.
+- [x] **Android native-timer handoff** — "set phone timer too" link on running timers (inline step timers + floating panel) builds an `intent:` SET_TIMER URL from the remaining seconds. One tap sets a native Clock timer, no permissions/infra. Note: works on Chromium browsers (Chrome, Samsung Internet); Firefox Android ignores `intent:` links — harmless no-op there.
 - [ ] **Web Push via QStash** — VAPID keys + QStash account (Ben), then 2 API routes + ~30 SW lines + subscribe call. Rings with the browser closed (Android/desktop; iOS when installed as PWA).
 - [ ] **Trust UI** — "Rings at 7:42 PM · ✓ here · ✓ phone locked" row under running timers; missing checks become the permission/install upsell.
 - [ ] **iOS "RecDex Timer" Apple Shortcut** — publish once, then `shortcuts://run-shortcut` deep link sets a native Clock timer.

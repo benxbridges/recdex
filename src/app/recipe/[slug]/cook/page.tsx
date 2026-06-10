@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo, useSyncExternalStore } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/app/lib/supabase'
 import { C, SERIF, SANS, MONO } from '@/app/lib/theme'
@@ -84,6 +84,33 @@ function formatTimerDisplay(seconds: number): string {
 function formatExpiryTime(startedAt: number, totalSeconds: number): string {
   const fireAt = new Date(startedAt + totalSeconds * 1000)
   return fireAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+// ─── Native OS timer handoff (Android) ───────────────────────────────────
+// Chrome on Android follows `intent:` URLs into system actions. SET_TIMER
+// starts a real Clock-app timer — alarm-grade, keeps ringing if the browser
+// is closed or the phone reboots. No permission or install needed.
+// See docs/timer-reliability.md (ladder layer L4).
+function nativeTimerIntentUrl(seconds: number, label: string): string {
+  const len = Math.max(1, Math.round(seconds))
+  const msg = encodeURIComponent(`${label} — Recipe Index`.slice(0, 80))
+  return (
+    'intent:#Intent;action=android.intent.action.SET_TIMER;' +
+    `i.android.intent.extra.alarm.LENGTH=${len};` +
+    `S.android.intent.extra.alarm.MESSAGE=${msg};` +
+    'B.android.intent.extra.alarm.SKIP_UI=true;end'
+  )
+}
+
+// Server snapshot is false so SSR HTML and the first client render agree —
+// avoids a hydration mismatch.
+const noopSubscribe = () => () => {}
+function useIsAndroid(): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => /android/i.test(navigator.userAgent),
+    () => false,
+  )
 }
 
 // ─── Egg dot (brand element) ─────────────────────────────────────────────
@@ -340,6 +367,7 @@ function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
   timers: Record<string, { active: boolean; total: number; remaining: number; startedAt: number; label: string; alarmed?: boolean }>
   onStart: (key: string, seconds: number, label: string) => void
 }) {
+  const isAndroid = useIsAndroid()
   const t = timers[timerKey]
   const isActive = t && t.active
   const isFinished = t && t.active && t.remaining <= 0
@@ -365,6 +393,16 @@ function InlineTimer({ minutes, label, timerKey, timers, onStart }: {
           {!isFinished && (
             <p style={{ fontSize: 10, fontFamily: MONO, color: C.text3, margin: '2px 0 0', letterSpacing: 0.2 }}>
               done at {formatExpiryTime(t.startedAt, t.total)}
+              {isAndroid && t.remaining > 1 && (
+                <>
+                  {' · '}
+                  <a
+                    href={nativeTimerIntentUrl(t.remaining, label)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ color: C.accent, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >set phone timer too</a>
+                </>
+              )}
             </p>
           )}
           <div style={{ height: 3, borderRadius: 2, background: C.timerRing, marginTop: 5, overflow: 'hidden' }}>
@@ -514,6 +552,7 @@ function FloatingTimerPanel({ timers, onGoToStep, onStartCustom }: {
   const activeTimers = Object.entries(timers).filter(([, t]) => t.active)
   const [minimized, setMinimized] = useState(false)
   const [showCustom, setShowCustom] = useState(false)
+  const isAndroid = useIsAndroid()
 
   // Always-visible FAB when no timers are running — lets users start an ad-hoc timer
   if (activeTimers.length === 0) {
@@ -619,6 +658,16 @@ function FloatingTimerPanel({ timers, onGoToStep, onStartCustom }: {
               {!isFinished && (
                 <p style={{ fontSize: 9, fontFamily: MONO, color: C.text3, margin: '0 0 4px', letterSpacing: 0.2 }}>
                   done at {formatExpiryTime(timer.startedAt, timer.total)}
+                  {isAndroid && timer.remaining > 1 && (
+                    <>
+                      {' · '}
+                      <a
+                        href={nativeTimerIntentUrl(timer.remaining, timer.label)}
+                        onClick={e => e.stopPropagation()}
+                        style={{ color: C.accent, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                      >phone timer</a>
+                    </>
+                  )}
                 </p>
               )}
               <div style={{ height: 3, borderRadius: 2, background: C.ruleLight, overflow: 'hidden' }}>
